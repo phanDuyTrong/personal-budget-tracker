@@ -1,0 +1,710 @@
+id,user_id,account_id,category_id,amount,type,description,date,is_recurring,recurrence_rule,is_reviewed,to_account_id,created_at,updated_at,contact_id
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,440250.0,expense,Quà tốt nghiệp cho Long,2025-06-02,NULL,NULL,NULL,Bạn bè,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Điện thoại,50000.0,expense,Nạp tiền điện thoại,2025-06-04,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Hoạt động thể thao,34000.0,expense,Thua kèo 2 chai Pocari,2025-06-05,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,3000.0,expense,Ly đá 3k,2025-06-05,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ khác,500000.0,expense,Ly đá 3k,2025-06-05,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 1,2025-06-05,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,30000.0,expense,Ăn hủ tiếu gõ,2025-06-05,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-06-05,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,31211.0,expense,Ăn jolibee với công ty,2025-06-06,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 2,2025-06-06,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,50000.0,expense,Đánh cầu vãng lai,2025-06-06,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,453000.0,expense,"Bao nhóm Hạnh, Nhi, VA ăn tốt nghiệp",2025-06-07,NULL,NULL,NULL,Bạn bè,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Phí qua BOT,500000.0,expense,Nạp tiền VETC cho ba,2025-06-07,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Hớt tóc,140000.0,expense,Cắt tóc 2 đứa,2025-06-07,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,460946.0,expense,Mua đồ shopee,2025-06-07,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Xem phim,289090.0,expense,Mua vé xem Doraemon với ín,2025-06-08,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xem phim,74000.0,expense,Mua bắp rang,2025-06-08,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,199000.0,expense,Mua nước hoa cho ín,2025-06-08,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,553000.0,expense,Ăn lấu bò Triều Châu,2025-06-08,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,50000.0,expense,Đánh cầu vãng lai,2025-06-09,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,30000.0,expense,Ăn mì trộn 711,2025-06-09,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,598000.0,expense,Mua Serum dưỡng da,2025-06-09,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 3,2025-06-10,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Khóa học online,220000.0,expense,Mua Mobbin chung với anh Bâu,2025-06-10,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Khóa học online,80000.0,expense,Mua Patreon của anh Mingg,2025-06-10,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,39000.0,expense,Ăn McDonald,2025-06-11,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,30000.0,expense,Ăn mì trộn 711,2025-06-12,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-06-12,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Lương chính,10402000.0,income,Lương tháng 5-6,2025-06-13,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,2000000.0,expense,Cho mẹ tiền hằng tháng,2025-06-13,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Khóa học online,1085000.0,expense,Góp tiền học khóa Data với anh Bâu,2025-06-13,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,144000.0,expense,Ăn jolibee với ín,2025-06-15,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 4,2025-06-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,21000.0,expense,Mua ngô gia cho ín,2025-06-15,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Thuốc,2000.0,expense,Mua thuốc cho ín,2025-06-15,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,50000.0,expense,Đánh cầu vãng lai,2025-06-16,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,30000.0,expense,Ăn mì trộn 711,2025-06-16,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-06-16,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua sắm đồ cá nhân,19000.0,expense,Mua khăn giấy ướt,2025-06-16,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,20000.0,expense,Mua đồ ăn cho anh bâu,2025-06-17,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 5,2025-06-18,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,500000.0,expense,Cho ín tiền mua dây sạc,2025-06-18,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,10000.0,expense,Sữa chua,2025-06-18,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-06-19,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 6,2025-06-23,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Thưởng,50000.0,income,Long giả tiền đi ké,2025-06-24,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,64000.0,expense,Bao anh bâu với bà má uống nước,2025-06-25,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,36896.0,expense,Mua Jolibee,2025-06-26,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-06-26,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-06-26,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Bảo trì bảo dưỡng,5000.0,expense,Bơm lốp xe,2025-06-27,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 7,2025-06-27,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Xem phim,356910.0,expense,Đi xem F1,2025-06-27,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,500000.0,expense,Mua Forza Horizon tặng em zai,2025-06-27,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,30000.0,expense,Gửi xe civic ở Landmark,2025-06-28,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,100000.0,expense,Ăn mì vịt tiềm ở Gigamall,2025-06-28,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,311040.0,expense,Ăn Unatoto với ín,2025-06-29,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,75000.0,expense,Mua đồ ở Hasaki cho ín,2025-06-29,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ khác,128520.0,expense,Đi chidori với ín,2025-06-29,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ khác,425000.0,expense,Đi bliss với ín,2025-06-29,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,591319.0,expense,Mua đồ shopee,2025-06-29,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,150000.0,expense,Đánh cầu định kì,2025-06-30,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,400000.0,income,ín giả tiền đi chơi,2025-06-30,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,50000.0,expense,Đánh cầu vãng lai,2025-07-01,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,29000.0,expense,Uống cf coti,2025-07-01,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 1,2025-07-01,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,AI,379000.0,expense,Mua GPT từ anh Hiếu,2025-07-02,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-07-03,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,30000.0,expense,Mua Revive Chanh muối cho Vĩ,2025-07-03,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,20000.0,expense,Cafe GS25,2025-07-04,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,129000.0,expense,Đăng ký đánh cầu định kì ,2025-07-04,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Điện thoại,48000.0,expense,Nạp 50k vào đth,2025-07-05,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Lãi suất,19417.0,income,Techcombank trả lãi tháng 6,2025-07-05,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Chuyển tiền,40500000.0,NULL,Nộp tiền mặt vào techcombank,2025-07-05,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,215000.0,expense,Mua đồ ăn qua Grab ,2025-07-06,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,1438479.0,expense,Mua đồ shopee cho ba mẹ,2025-07-06,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 2,2025-07-06,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dụng cụ thể thao,300000.0,expense,Mua cầu 88 và ca trà đá,2025-07-07,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,23000.0,expense,Mua mì trộn trả cho anh Tấn,2025-07-07,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,45000.0,expense,Mua quà sn cho anh bâu với bà nọc,2025-07-08,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,290000.0,income,Chị Thúy trả lại tiền mua ống cầu,2025-07-08,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 3,2025-07-10,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-07-10,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,500000.0,income,Ba giả lại tiền mua đồ shopee,2025-07-10,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,36815000.0,expense,Mua macbook pro m4,2025-07-10,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,598206.0,expense,Mua đồ shopee cho macbook,2025-07-10,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,500000.0,income,Mẹ giả lại tiền mua đồ shopee,2025-07-11,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Tour,13350000.0,expense,Chuyển tiền cọc đi thái lan cho cô bảy,2025-07-11,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Chuyển tiền,5000000.0,NULL,Nộp tiền mặt vào techcombank,2025-07-12,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Răng,70000.0,expense,Lấy cao răng với vouncher tại Parkway,2025-07-12,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Bảo trì bảo dưỡng,1119000.0,expense,"Thay lốp trước, thay nhớt máy ở 38.888km",2025-07-12,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,39000.0,expense,Ăn McDonald với anh Tấn,2025-07-11,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-07-11,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,530000.0,expense,Đổ xăng civic,2025-07-12,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,35000.0,expense,Gửi xe civic ở Cresent Mall,2025-07-12,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,891000.0,expense,Mua quà cho anh Bâu và MQuan,2025-07-12,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Ăn sang,86000.0,expense,Ăn mì muối ớt với ín,2025-07-13,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,50000.0,expense,Uống trà sữa ở cf Lego,2025-07-13,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chuyển tiền,500000.0,NULL,Đổi tiền mặt với dì Nguyệt,2025-07-14,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,70000.0,expense,Đánh cầu với nhóm xịn cùng chị Nhi,2025-07-14,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-07-14,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,20000.0,expense,Mua trà đá,2025-07-14,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,70000.0,expense,Đổ xăng lần 4,2025-07-15,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Thuốc,73500.0,expense,Mua thuốc cảm ở Long Châu,2025-07-15,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Lương chính,13254300.0,income,Lương tháng 6-7,2025-07-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,2500000.0,expense,Cho mẹ tiền hằng tháng,2025-07-15,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chuyển tiền,5000000.0,NULL,Đổi tiền mặt với em zai,2025-07-14,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,560015.0,expense,Mua đồ shopee cho macbook,2025-07-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,130000.0,expense,Đóng tiền đăng ký đánh giải cầu lông FPT,2025-07-16,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,88000.0,expense,Thua kèo nước với anh Nam,2025-07-17,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Gửi xe,5000.0,expense,Gửi xe đánh cầu,2025-07-17,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Photo,5000.0,expense,Photo căng cước và bằng ĐH,2025-07-19,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,In ảnh thẻ,20000.0,expense,In 4 ảnh 3x4,2025-07-19,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,3765800.0,expense,Mua airpod tặng quà sn cho ín,2025-07-20,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ khác,520000.0,expense,Đi bliss với ín,2025-07-20,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,156200.0,expense,Mua đồ shopee,2025-07-20,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,85000.0,expense,Mua mì trộn Tên lửa ăn với ín,2025-07-20,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-07-21,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Hoạt động thể thao,10000.0,expense,Mua ca trà đá,2025-07-21,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,20000.0,expense,Mua caà phê sữa gs25,2025-07-22,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho mượn tiền,3000000.0,expense,Cho chú tí mượn 3tr,2025-07-22,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,216000.0,expense,Ăn Som in Thai với anh bâu bà ngọc,2025-07-23,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,492158.0,expense,Cho em zai nước hoa,2025-07-22,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Điện thoại,50000.0,expense,Nạp tiền đth,2025-07-23,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Thưởng,63000.0,income,Từ zalopay chưa rõ gd gì,2025-07-23,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dụng cụ thể thao,100000.0,expense,Góp tiền mua ống cầu do thua kèo với anh Nam,2025-07-24,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,126000.0,expense,Mua cho ín quà tặng tốt nghiệp cho bạn của ín,2025-07-24,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,3000000.0,income,Chú tí trả tiền 3tr cho mượn,2025-07-25,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Chuyển tiền,5000000.0,NULL,Nộp tiền mặt vào techcombank,2025-07-30,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mạng 4G,20000.0,expense,Mua 4G từ Zalopay,2025-07-25,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mạng 4G,20000.0,expense,Mua 4G từ Zalopay,2025-07-29,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,8000.0,expense,Gửi xe ở Sân bay cam ranh,2025-07-26,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,8000.0,expense,Gửi xe ở Sân bay cam ranh,2025-07-27,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,70000.0,expense,Đánh cầu vãng lai ngày 23/07,2025-07-30,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe ở sân cầu,2025-07-30,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Gửi xe,312000.0,expense,Bao mn trên cty ăn gà lá é,2025-07-30,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,70000.0,expense,Đánh cầu vãng lai,2025-07-30,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,70000.0,expense,Đổ xăng lần 5,2025-07-30,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,28000.0,expense,Ăn sáng bún thịt nướng ở đường Tăng Nhơn Phú,2025-07-30,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,320000.0,income,Chị Ngọc trả lại tiền ăn gà lá é,2025-07-30,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nghe nhạc,99000.0,expense,Phí Apple Music,2025-07-31,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,32000.0,expense,Ăn cơm gà xối mỡ,2025-07-31,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,25000.0,expense,Ăn hủ tiếu gõ,2025-07-31,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Dụng cụ thể thao,70000.0,expense,Mua tất cầu lông,2025-07-31,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,40000.0,expense,Mua 2 ca trà đá,2025-07-31,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-07-31,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,3000.0,expense,Mua ly đá ở 7Eleven,2025-07-31,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Di chuyển xa,29000.0,expense,Phí 10% trả vé của Phương Trang,2025-07-31,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Trả nợ,5000000.0,expense,Trả lại mẹ tiền đi Thái của Phúc,2025-07-30,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,4450000.0,income,Cô bảy giả lại tiền cọc của Yến,2025-07-31,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,78000.0,expense,Ăn McDonald với anh Tấn,2025-08-01,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Trả nợ,570000.0,expense,Trả ba tiền 2 vé xe Phương Trang,2025-08-01,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,600000.0,income,Ba không nhận tiền vé :v,2025-08-01,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,10000.0,expense,Gửi xe sân cầu lông đánh giải,2025-08-02,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông đánh giải,2025-08-03,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,130000.0,expense,Trả anh bâu tiền ăn Pizza Company,2025-08-02,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Dụng cụ thể thao,40000.0,expense,Mua quấn cán vải cầu lông,2025-08-03,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 1,2025-08-03,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,25000.0,expense,Mua hộp kẹo sin gum,2025-08-02,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,AI,379000.0,expense,Phí mua ChatGPT Plus,2025-08-04,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,600000.0,expense,Trả mẹ tiền mua quà từ dưới quê cho ín,2025-08-04,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,663406.0,income,Rút tiền từ ví ShopeePay,2025-08-04,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Trả nợ,444444.0,expense,Trả lại em zai tiền mua đồ Shopee,2025-08-04,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 2,2025-08-07,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-08-07,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,70000.0,expense,Đánh cầu vãng lai,2025-08-07,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,39000.0,expense,Ăn McDonald,2025-08-07,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,38000.0,expense,Ăn bò né để đánh cầu,2025-08-07,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,60000.0,expense,Mua đồ shopee,2025-08-07,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,40000.0,income,Chị Ngọc trả lại tiền ăn mua trà đá,2025-08-08,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,923400.0,expense,Đãi mn ăn lẩu đài loan dịp sinh nhật,2025-08-08,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,2784734.0,expense,Em zai mua đồ shopee,2025-08-07,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,960000.0,income,Em zai giả lại tiền mua đồ shopee,2025-08-08,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Nhận lại nợ,1500000.0,income,Em zai giả lại tiền mua đồ shopee,2025-08-08,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,20000.0,expense,Gửi xe civic ở Vạn Hạnh Mall,2025-08-09,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,500000.0,expense,Cho em zai tiền vu vơ,2025-08-09,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,120000.0,income,Em zai giả lại tiền mua nhờ mua ghế,2025-08-08,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,500000.0,income,Cho ba tiền sinh nhật,2025-08-08,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,3300000.0,income,Mẹ cho tiền sinh nhật & tiền mua đồ,2025-08-08,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,50000.0,expense,Gửi xe ở Coffee House,2025-08-10,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,50000.0,expense,Gửi xe ở Rooftop Soul Classic,2025-08-10,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,49000.0,expense,Mua nước ở Coffee House cho em zai đi học với thầy Phong,2025-08-10,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Xăng xe,569913.0,expense,Đổ xăng civic,2025-08-10,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,115000.0,expense,Đi rooftop với ín,2025-08-10,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,525000.0,expense,Dẫn ín đi ăn Calore Eatery,2025-08-10,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,221506.0,income,UEH giả lại tiền bảo hiểm,2025-08-10,NULL,NULL,NULL,Đối tác,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ khác,530000.0,expense,Đi bliss với ín,2025-08-10,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 3,2025-08-12,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,12000.0,expense,"Gửi xe ở sân bay, cho cả dượng Luân",2025-08-12,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-08-11,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-08-13,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,39000.0,expense,Mua 3 gói mì Omachi của anh Tán,2025-08-13,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-08-13,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,75000.0,expense,Đánh cầu vãng lai,2025-08-13,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,28000.0,expense,Chuyển tiền ăn phở 25k cho chị Nhi,2025-08-13,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chuyển tiền,500000.0,NULL,Đổi tiền mặt với dì Nguyệt,2025-08-05,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,580000.0,expense,Mua hoa cho ín,2025-08-14,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,10000.0,expense,Mua Sprite trả cho dì Nguyệt,2025-08-14,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,52000.0,expense, Mua đồ uống bao anh bâu và bà má,2025-08-14,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,6000.0,expense,Gửi xe Thảo Điền Mall,2025-08-14,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 4,2025-08-14,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Lương chính,13305300.0,income,Lương tháng 7-8,2025-08-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,2500000.0,expense,Cho mẹ tiền hằng tháng,2025-08-15,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Crypto,2000000.0,NULL,Mua 2tr SUI,2025-08-15,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Chuyển tiền,3000000.0,NULL,Nộp tiền mặt vào techcombank,2025-08-15,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Hớt tóc,70000.0,expense,Hớt tóc,2025-08-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,33000.0,expense,Ăn cơm gà xối mỡ,2025-08-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe ở Vạn Hạnh Mall,2025-08-17,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,500400.0,expense,Dẫn ín đi ăn WOW Yakiniku,2025-08-17,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,12000.0,expense,Ăn kem ở Lotteria,2025-08-17,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Điện thoại,50000.0,expense,Nạp tiền điện thoại,2025-08-17,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,123000.0,expense,Bao mn trên cty ún Highland,2025-08-18,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,19000.0,expense,Mua hộ anh Tấn xiên thịt,2025-08-18,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-08-18,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,51500.0,expense,góp tiền mua Halli Galli,2025-08-19,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 4,2025-08-20,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,36000.0,expense,Mua 2 xiên thịt ở 7eleven,2025-08-20,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho mượn tiền,3000000.0,expense,Cho chú tí mượn 3tr,2025-08-20,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,20000.0,expense,Mua cf ở gs25,2025-08-21,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Thuốc,20000.0,expense,Mua thuốc tiêu hoá ở LC,2025-08-21,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Thuốc,118000.0,expense,Mua thuốc bao tử cho ín ở LC,2025-08-22,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,200000.0,income,Thắng em trai HaliGali,2025-08-22,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Người thân cho tiền,200000.0,income,Cô sáu cho tiền,2025-08-22,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,200000.0,expense,Cho mẹ 200k bù tiền mua nước ở sân bay,2025-08-22,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Cho tiền người thân,200000.0,expense,Trả lại em zai tiền thua HaliGali,2025-08-22,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,362000.0,expense,Ăn đồ hấp với anh bâu bà Ngọc,2025-08-23,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,590000.0,expense,Mua quà sn ở UNIQLO cho bà Ngọc,2025-08-23,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,185000.0,expense,Ăn gà khổng lồ với ín,2025-08-23,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 5,2025-08-24,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,15000.0,expense,Mua xiên ăn với mì trả cho anh Tấn,2025-08-25,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,10000.0,expense,Mua bánh flan của anh bâu,2025-08-26,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 6,2025-08-28,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dụng cụ thể thao,500000.0,expense,Cọc 500k mua vợt Lining Axforce Cannon Pro,2025-08-27,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dụng cụ thể thao,1650000.0,expense,Trả phần còn lại của vợt,2025-08-28,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,146000.0,expense,Ăn Jolibee với ín,2025-08-28,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,7000.0,expense,Ăn kem Jolibee với ín,2025-08-28,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Dụng cụ thể thao,10000.0,expense,Mua quấn cán đen,2025-08-28,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,361000.0,expense,Ăn hadilao ctay chị Mùa thu hà nội,2025-08-30,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,28000.0,expense,Góp tiền làm scrapbook tặng chị Mùa thu hà nội,2025-08-30,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nghe nhạc,99000.0,expense,Phí Apple Music,2025-08-30,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,180000.0,expense,Bao tụi nhỏ đi ăn cơm gà,2025-08-31,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Xăng xe,700000.0,expense,Đổ xăng civic,2025-08-31,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ khác,430000.0,expense,Đi chơi VR ở Nha Trang với tụi nhó,2025-09-01,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,1098360.0,expense,Dẫn tụi nhỏ đi ăn ở Làng Tôm Nha Trang,2025-09-01,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,383000.0,income,Em zai giả tiền đi chơi Nha Trang,2025-09-01,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Nhận lại nợ,763000.0,income,Bé Ty & chị Quỳnh giả tiền chơi Nha Trang,2025-09-01,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,500000.0,expense,Cho ín tiền đi tiêm uốn ván ở VNVC,2025-09-03,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-09-03,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Hoạt động thể thao,70000.0,expense,Đánh cầu vãng lai,2025-09-03,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,126000.0,expense,Ăn McDonald với team đánh cầu,2025-09-03,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,36000.0,income,Vĩ giả lại tiền ăn McDonald,2025-09-03,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Nhận lại nợ,65000.0,income,Chị Nhi giả lại tiền ăn McDonald,2025-09-03,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,15000.0,expense,Mua Revive Chanh muối ,2025-09-03,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,3000000.0,income,Chú tí trả tiền 3tr cho mượn,2025-09-04,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Thưởng,100000.0,income,Nhà nước cho 100k tiền mừng Quốc Khánh,2025-09-03,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,500000.0,income,Ín giả lại tiền đi tiêm uốn ván,2025-09-04,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,51000.0,expense,Mua quà sn cho anh Hào,2025-09-04,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,47000.0,expense,Đánh cầu với nhóm của Long,2025-09-06,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ khác,580000.0,expense,Đi bliss với ín,2025-09-06,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 1,2025-09-07,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,183480.0,expense,Ăn Jolibee với ín,2025-09-07,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,39000.0,expense,Ăn trưa McDonald ở cty,2025-09-08,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,1548144.0,expense,Mua đồ shopee,2025-09-09,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,34237.0,expense,Ăn trưa mỳ ký gia,2025-09-08,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,76000.0,expense,Mua thỏi phấn mắt 3 màu,2025-09-09,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,13000.0,expense,Ăn hộp mỳ trộn của anh bâu,2025-09-09,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,44127.0,expense,Ăn trưa cơm xá xíu,2025-09-10,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,AI,389000.0,expense,Mua GPT từ anh Hiếu,2025-09-10,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-09-10,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,75000.0,expense,Đánh cầu vãng lai,2025-09-10,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,190000.0,expense,Chia tiền ăn Hương Bắc với bà ngọc với anh bâu,2025-09-10,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,1346960.0,expense,Thèn phúc mua đồ shopee,2025-09-09,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 2,2025-09-11,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,395404.0,income,Thèn phúc giả lại tiền mua đồ shopee,2025-09-11,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Thưởng,1000000.0,income,FPT thưởng 1 tr ngày Quốc Khánh,2025-09-12,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,1000000.0,expense,Cho ín 1tr,2025-09-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,15000.0,expense,Mua cà phê,2025-09-12,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua sắm đồ cá nhân,50000.0,expense,Đi đo độ cận kính,2025-09-13,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,126000.0,expense,Đi ăn phở trộn dới ín,2025-09-13,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ khác,125928.0,expense,Đi chơi Nintendo Joystation,2025-09-13,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Điện thoại,45000.0,expense,Nạp tiền điện thoại,2025-09-13,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,20000.0,expense,Gửi xe civic ở Landmark 6,2025-09-14,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 3,2025-09-15,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Lương chính,13255300.0,income,Lương tháng 8-9,2025-09-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,7000000.0,expense,Cho mẹ tiền hằng tháng,2025-09-15,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Crypto,2000000.0,NULL,Mua 2tr ETH,2025-09-15,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Tiết kiệm,6000000.0,NULL,Nộp 6tr vào Zalopay nhận lãi ngày,2025-09-15,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,41000.0,expense,Trả Vĩ tiền ăn nem nướng đi đánh cầu,2025-09-15,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,1000000.0,expense,Cho ín 1tr đi Vũng Tàu,2025-09-16,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,2500000.0,expense,Chuyển tiền định kỳ cho mẹ,2025-09-15,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,2950000.0,income,Mẹ trả lại tiền (nhưng bị trừ 50k do chuyển nhầm vào ACB),2025-09-16,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,291280.0,expense,Phúc mua balo shopee,2025-09-17,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Người thân cho tiền,500000.0,income,Em zai góp tiền cho ba ,2025-09-17,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,3000000.0,expense,Cho ba quà sinh nhật,2025-09-18,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,70000.0,expense,Đổ xăng lần 4,2025-09-19,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,500000.0,expense,Cho ín tiền đi nhậu,2025-09-19,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,800000.0,income,Em zai giả tiền mua balo,2025-09-19,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Sửa thiết bị,1700000.0,expense,Sửa laptop,2025-09-20,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,796131.0,income,Rút tiền ShopeePay về,2025-09-19,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,150000.0,expense,Ăn hủ tíu Pi Thái với ín,2025-09-21,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-09-21,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,40000.0,expense,Đánh cầu vãng lai với nhóm của Nam,2025-09-21,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,2100000.0,income,Ín cho tiền,2025-09-21,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,100000.0,expense,Cho lại ín tiền mua Bơ sữa dừa ở katinat,2025-09-21,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,4000000.0,expense,Cho lại ín tiền đi chơi,2025-09-21,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Điện thoại,48000.0,expense,Nạp tiền điện thoại,2025-09-22,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,57000.0,expense,Mua ly cf + hộp kẹo,2025-09-22,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,47000.0,expense,Mua quà sn cho bé Vĩ,2025-09-23,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 5,2025-09-24,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,3000.0,expense,Mua ly đá,2025-09-24,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,25000.0,expense,Uống bạc xĩu để chờ ín,2025-09-25,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,100000.0,income,Em zai giả tiền apple music,2025-09-23,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,69000.0,income,Em zai chia đôi tiền ba cho,2025-09-24,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,200000.0,expense,Cho ín tiền mua bánh tam giác,2025-09-21,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nghe nhạc,65000.0,expense,Ứng trước tiền Youtube Premium cho tui và ín,2025-09-28,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Bảo trì bảo dưỡng,5000.0,expense,Bơm lốp xe,2025-09-27,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,1420592.0,expense,Bao cả nhà đi ăn Lẩu bò Triều châu Tian Long,2025-09-27,NULL,NULL,NULL,Bạn bè,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,1500000.0,income,Mẹ giả lại tiền đi ăng,2025-09-27,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,134800.0,expense,Mua van nước cho ba trên shopee,2025-09-28,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,65000.0,expense,Đổ xăng lần 6,2025-09-24,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,550000.0,income,Ín cho tiền,2025-09-29,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,240000.0,expense,Ăn Domino Pizza với ín,2025-09-30,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 1,2025-10-02,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,86000.0,expense,Đánh cầu với nhóm của chị Thuý,2025-10-02,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,50000.0,expense,Thua kèo cá độ uống yakult uống sau khi uống thuốc,2025-10-04,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-10-06,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Cho mượn tiền,50000.0,expense,Cho anh Tấn mượn 50k đổ xăng,2025-10-06,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Trả nợ,50000.0,expense,Anh Tấn trả lại 50k đổ xăng,2025-10-07,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Thu nhập phụ,2000000.0,income,anh Bảo ứng trước tiền job PETROVIETNAM (đã cho anh bâu 1tr),2025-10-09,NULL,NULL,NULL,Đối tác,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 2,2025-10-09,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Bảo trì bảo dưỡng,185000.0,expense,Thay nhớt máy tại km số 419000,2025-10-11,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,289440.0,expense,Ăn cơm niêu thiên lý với ín,2025-10-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,66000.0,expense,Mua đồ ăn ở Ministop cho ín,2025-10-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,68000.0,expense,Đổ xăng lần 3,2025-10-12,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,201520.0,expense,Mua lăn nách trên shopee,2025-10-13,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,200000.0,income,Ín cho tìn đi đếc,2025-10-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ khác,670000.0,expense,Đi bliss với ín,2025-10-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,340000.0,income,Ín gửi tiền mua dùm ín x2 bình đun siêu tốc,2025-10-14,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,161000.0,expense,Chuyển tiền mua quà chị Mai cho chị Hằng,2025-10-14,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Lương chính,13805300.0,income,Lương tháng 9-10,2025-10-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,2500000.0,expense,Cho mẹ tiền hằng tháng,2025-10-15,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Tiết kiệm,3000000.0,NULL,Nộp 6tr vào Zalopay nhận lãi ngày,2025-10-15,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,175000.0,expense,Mua quà cho dì Nguyệt chuyển tiền cho má,2025-10-15,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,15000.0,expense,Mua cà phê bụi,2025-10-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,50000.0,expense,Góp tiền mua quà chung cty cho dì Nguyệt,2025-10-15,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 4,2025-10-16,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,659072.0,expense,Mua đồ trên shopee,2025-10-18,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,22000.0,expense,Đánh cầu với nhóm của Long,2025-10-19,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,76500.0,expense,Ăn mì trộn tên lửa với ín,2025-10-19,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,30000.0,expense,Mùa trà sữa cho ín,2025-10-19,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,40000.0,expense,Mua 2 chai nước sâm ,2025-10-19,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,15000.0,expense,Mua cà phê bụi,2025-10-21,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,128059.0,expense,Mua 6 bàn chải trên shopee,2025-10-20,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 5,2025-10-22,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,AI,139000.0,expense,Mua GPT từ anh Hiếu,2025-10-22,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,130000.0,expense,Ăn sinh nhật dì Nguyệt,2025-10-21,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,1000000.0,expense,Cho ín tiền nhổ răng khôn,2025-09-22,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,30000.0,expense,Đổ xăng lần 6,2025-10-26,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,140000.0,expense,Mua Jolibee về nhà ăn,2025-10-25,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,384480.0,expense,Ăn Unatoto với em zai,2025-10-25,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Người thân cho tiền,380000.0,income,Em zai zả lại tiền ăn Unatoto,2025-10-25,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,113000.0,expense,Ăn bò bít tết 100g với ín,2025-10-26,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,500349.0,expense,Em zai mua đồ đi nvqs,2025-10-26,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,132845.0,income,Rút tiền ShopeePay về,2025-10-26,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,20000.0,expense,Mua cà phê gs25,2025-10-27,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,1000000.0,expense,Cho ín 1tr đi nhổ răng,2025-10-27,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nghe nhạc,32500.0,expense,Ứng trước tiền Youtube Premium của chú tí,2025-10-27,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,10000.0,expense,Mua nước suối ở sân cầu lông,2025-10-27,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-10-27,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,45000.0,expense,Đánh cầu nhóm chị Thuý,2025-10-27,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,60000.0,expense,Ăn bún chả hà nội với Vĩ,2025-10-28,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,59000.0,expense,Đổ xăng lần 7,2025-10-28,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho mượn tiền,3000000.0,expense,Cho chú tí mượn 3tr,2025-10-28,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,39000.0,expense,Trả anh bâu kìm bóp tay,2025-10-29,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,70000.0,expense,Đổ xăng lần 1,2025-11-01,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,49000.0,expense,Ăn thử cơm gà mới trên Grab,2025-11-01,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,255000.0,expense,Ăn lẩu cá với em zai,2025-11-01,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,321840.0,expense,Ăn Kokoria với em zai,2025-11-02,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,130000.0,expense,Ăn cơm phủ trứng với ín,2025-11-02,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,9000.0,expense,Mua bánh ngọt Otto cho em zai,2025-11-02,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,30000.0,expense,Ún soda với ín,2025-11-02,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,76000.0,expense,Mua quà cho chị Hằng và chị Trúc,2025-11-04,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Thu nhập phụ,3500000.0,income,anh Bảo trả nốt tiền còn lại của Petro,2025-11-06,NULL,NULL,NULL,Đối tác,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 2,2025-11-05,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Phí qua BOT,1000000.0,expense,Gửi ba tiền qua trạm thu phí,2025-11-07,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,40000.0,expense,Ăn cơm Jolibee,2025-11-07,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Điện thoại,49000.0,expense,Nạp tiền điện thoại,2025-11-07,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Thu nhập phụ,1000000.0,income,Mẹ đưa 1tr để mua chả cá của bà nội,2025-11-07,NULL,NULL,NULL,Đối tác,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Tour,2150000.0,expense,Cọc combo 3n2đ ở Phú Quốc,2025-11-07,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,566000.0,income,Rút quỹ đi chơi,2025-11-07,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Tour,2450000.0,expense,Trả phần còn lại combo 3n2đ ở Phú Quốc,2025-11-08,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Nhận lại nợ,1000000.0,income,Chú tí rút giùm 1tr cấn qua nợ của chú tí,2025-11-08,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Người thân cho tiền,1000000.0,income,Cô Lan (bạn cô sáu) cho tiền,2025-11-08,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Trả nợ,1000000.0,expense,Đưa cô hai tiền mua chả cá,2025-11-08,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,201000.0,expense,Trả chú tí tiền ăn Phở Hiền,2025-11-09,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,8000.0,expense,Gửi civic ở sân bay cam ranh,2025-11-09,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Người thân cho tiền,1000000.0,income,Ông ngoại cho tiền,2025-11-09,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Người thân cho tiền,500000.0,income,Bà nội cho tiền đổ xăng,2025-11-09,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,219000.0,expense,Mua starbuck cho anh bâu với chị Ngọc,2025-11-10,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,58000.0,expense,Đổ xăng lần 3,2025-11-11,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,1349628.0,expense,Mua đồ trên shopee,2025-11-11,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,178000.0,expense,Ăn Texas với ín,2025-11-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,180000.0,income,Ín giả tiền ăn Texas,2025-11-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Bảo trì bảo dưỡng,3000.0,expense,Bơm lốp,2025-11-11,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Vé xe,1040000.0,expense,Mua vé xe khứ hồi choa 2 đứa,2025-11-11,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Khách sạn/Homestay,400000.0,expense,Chuyển phần còn lại của Khách sạn Thành Vinh,2025-11-11,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,2000000.0,income,Chú tí trả tiền 3tr cho mượn,2025-11-13,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,450000.0,expense,Mua máy phun tinh dầu cho chú tí,2025-11-13,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Khách sạn/Homestay,400000.0,expense,Chuyển phần cọc Khách sạn Thành Vinh cho ín,2025-11-13,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Khách sạn/Homestay,600000.0,expense,Chuyển phần ks Kalia cho ín,2025-11-13,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Vé tàu,720000.0,expense,Chuyển tiền vé tàu cho ín,2025-11-13,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Lương chính,12870763.0,income,Lương tháng 9-10,2025-11-14,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,2500000.0,expense,Cho mẹ tiền hằng tháng,2025-11-14,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Tiết kiệm,3000000.0,NULL,Nộp 6tr vào Zalopay nhận lãi ngày,2025-11-14,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,63000.0,expense,Mua đồ mì với thèn phúc,2025-11-13,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,18000.0,expense,Bao anh Tấn uống nước,2025-11-14,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,3000.0,expense,Mua ly đá,2025-11-14,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Điện thoại,100000.0,expense,Nạp tiền vài ShopeePay để nạp điện thoại,2025-11-16,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Ăn sang,60000.0,expense,Ăn mì gói gõ với ín,2025-11-16,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Ăn sang,12000.0,expense,Mua xúc xích cho ín,2025-11-16,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,6000.0,expense,Gửi xe Vạn Hạnh Mall,2025-11-16,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,65000.0,expense,Mua kẹo ngậm Starbuck với ín,2025-11-16,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,18000.0,expense,Mua nước ở Cotti,2025-11-17,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 4,2025-11-18,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,58799.0,expense,Mua dây kháng lực,2025-11-18,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Nhận lại nợ,500000.0,income,Chú tí trả tiền 500k mua máy phun tinh dầu,2025-11-19,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,25905.0,expense,Mua nước với bà cô hàng xóm,2025-11-20,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Tool công việc,650000.0,expense,Mua gói trọn đời Eagle,2025-11-21,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Chuyển tiền,3500000.0,NULL,Nộp tiền vào ngân hàng,2025-11-21,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 5,2025-11-21,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Đầu tư,4150000.0,income,Rút tiền đầu tư crypto về,2025-11-22,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe sân cầu lông,2025-11-23,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Hoạt động thể thao,50000.0,expense,Đánh cầu vãng lai với nhóm của Nam,2025-11-23,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ khác,172800.0,expense,Đi chidori với ín,2025-11-23,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,118000.0,expense,Ăn bít tết 100g với ín,2025-11-23,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,120000.0,income,Ín giả lại tiền ăn,2025-11-23,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Vé máy bay,3364000.0,expense,Mua vé máy bay đi Phú Quốc qua app Sun Phu Quoc,2025-11-23,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Từ thiện,700000.0,expense,Góp tiền ủng hộ đồng bào lũ lụt,2025-11-24,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,300000.0,income,Ín góp tiền ủng hộ đồng bào lũ lụt,2025-11-24,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,200000.0,income,Em zai góp tiền ủng hộ đồng bào lũ lụt,2025-11-24,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,AI,132000.0,expense,Mua GPT Go,2025-11-24,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Nhận lại nợ,936000.0,income,Hoàn vé xe Phương Trang đi Hà Tiên,2025-11-24,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Chuyển tiền,900000.0,NULL,Em zai đổi tiền ngân hàng,2025-11-24,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,226000.0,expense,Mua đồ trên shopee,2025-11-24,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,576000.0,income,Hoàn vé tàu cao tốc,2025-11-25,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 6,2025-11-25,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nghe nhạc,65000.0,expense,Ứng trước tiền Youtube Premium của chú tí,2025-11-27,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,808120.0,expense,Mua đồ trên shopee,2025-11-11,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,58000.0,expense,Đổ xăng lần 6,2025-11-29,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,3000.0,expense,Gửi xe ĐH Bách Khoa,2025-11-29,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,53000.0,expense,Ăn bún chả hà nội,2025-11-29,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,40000.0,expense,Mua bánh kẹp tam giác cho ín,2025-11-30,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,40000.0,income,Ín giả lại tiền mua bánh kẹp,2025-11-30,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mạng 4G,12000.0,expense,Mua 4G từ ShoppePay,2025-11-30,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,105760.0,expense,Mua đồ trên lazada,2025-11-30,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,345000.0,expense,Trả tìn đi ăn lẩu với ún Koi Thé cho mq,2025-11-30,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,245649.0,expense,Mua kem chống nén trên shopee,2025-11-30,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,39000.0,expense,Mua khăn tắm cho ín,2025-12-02,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 1,2025-12-02,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,39000.0,expense,Ăn mcdonald với cty,2025-12-04,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,60000.0,expense,Ăn hủ tíu khô 1m,2025-12-04,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,16195.0,expense,Mua khóa mini để đi du lịch,2025-12-05,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,200000.0,expense,Chia nửa tiền đi ăn gà lá é,2025-12-05,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Cho tiền người thân,10000.0,expense,Anh bâu xin tiền gửi xe,2025-12-05,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,50000.0,expense,Cho ín tiền mua thuốc sổ giun,2025-12-06,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Xăng xe,550809.0,expense,Đổ xăng civic,2025-12-06,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,101000.0,expense,ăn mì muối ớt với ín,2025-12-06,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Thuốc,22000.0,expense,Mua thuốc sổ giun,2025-12-05,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Thuốc,22000.0,expense,Mua thuốc sổ giun cho ín,2025-12-06,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,69000.0,expense,Đổ xăng lần 2,2025-12-06,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Điện thoại,48000.0,expense,Nạp tiền điện thoại,2025-12-06,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Đầu tư,300000.0,income,Rút tiền từ Atlas về,2025-12-06,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,1097000.0,expense,Mua đồ mặc đi chơi cho ínnn,2025-12-07,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Cho tiền người thân,25000.0,expense,Mua cây cọ cho ín,2025-12-07,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,25000.0,expense,Mua trà sữa kem trứng chảy cho ín,2025-12-08,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,40000.0,expense,Cho ín tiền ship đồ,2025-12-08,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chuyển tiền,500000.0,NULL,Rút 500k ra để tiêu lặt vặt đi chơi,2025-12-08,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,3000000.0,income,Em zai cho mượn tiền đi chơi,2025-12-08,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,30000.0,expense,Mua bánh Karo cho ín ăn sáng,2025-12-10,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Khám chữa bệnh,7000.0,expense,Mua thuốc khó tiêu để dành,2025-12-10,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,204850.0,expense,Mua sữa tắm Cocoon cho em zai,2025-12-10,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,500000.0,expense,Đưa ba 500k thay nhớt 44000km dùm,2025-12-10,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Ăn uống,50000.0,expense,Mua lốc yakult 40k + 2 chai nước Aquafina,2025-12-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Taxi,161000.0,expense,Đi Grab đến nhà ga T3,2025-12-11,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Taxi,118000.0,expense,Đi Grab đến nhà ga T3,2025-12-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn uống,45000.0,expense,Mua lon cà phê Highland cho ín,2025-12-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Taxi,63000.0,expense,Đi từ sân bay phú quốc về ks kalia hotel 2,2025-12-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn uống,225000.0,expense,Ăn trưa ở quán gần ks,2025-12-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Taxi,32000.0,expense,Đi Grab đến khu chợ đêm,2025-12-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn uống,140000.0,expense,"Ăn tại chợ đêm, khá dở, quán tên Mr Nhật",2025-12-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Taxi,33000.0,expense,Đi Grab từ khu chợ đêm về ks,2025-12-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Taxi,343000.0,expense,Đi Grab từ khu bãi trường đến VinHoliday Fiesta,2025-12-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn uống,45000.0,expense,Mua cà phê sữa cho ín,2025-12-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn uống,330000.0,expense,Ăn trưa ở quán Flamingo trong Safari Phú Quốc,2025-12-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ vui chơi,200000.0,expense,Mua 2 vé Zoo Tram,2025-12-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn uống,138000.0,expense,Ăn mỳ kí gia ở Grand World,2025-12-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Quà,180000.0,expense,Mua quà lưu niệm cho ín,2025-12-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn uống,145000.0,expense,Mua 2 ly nước ngồi coi show Sắc màu Venice,2025-12-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Thuê xe,50000.0,expense,Thuê xe máy điện đi vòng vòng Grand World,2025-12-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Taxi,44000.0,expense,Đi Grab từ VinHoliday Fiesta đến VinWonders,2025-12-13,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ vui chơi,240000.0,expense,Mua 2 vé TukTuk đi vòng vòng khu VinWonders,2025-12-13,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn uống,370000.0,expense,Ăn trưa ở quán ăn Vikings,2025-12-13,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn uống,20000.0,expense,"Mua chai nước suối 1,5L",2025-12-13,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Taxi,48000.0,expense,Đi Grab từ VinWonders đến Quán quen,2025-12-13,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn uống,376000.0,expense,Ăn tối ở Quán quen,2025-12-13,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Taxi,72000.0,expense,Đi Grab từ Quán quen đến VinHolidays,2025-12-13,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Taxi,460000.0,expense,Đi Grab từ VinHolidays đến Thành Vinh Hotel,2025-12-14,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Taxi,40000.0,expense,Đi nhầm địa chỉ nên bắt taxi của ông chú khác,2025-12-14,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ vui chơi,300000.0,expense,Gói đi xe điện vòng quanh khu Địa Trung Hải,2025-12-14,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Taxi,73000.0,expense,Đi Xanh SM đến chỗ đi ăn và đi mua đồ và trở về,2025-12-14,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn uống,140000.0,expense,Bún quậy kiến xây,2025-12-14,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Quà,756000.0,expense,Mua quà về SG,2025-12-14,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Taxi,147000.0,expense,Đi grab từ ks lên sân bay,2025-12-15,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Taxi,80000.0,expense,Bắt grab từ Tân Sân Nhất cho ín về nhà,2025-12-15,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Taxi,156000.0,expense,Đi grab từ Tân Sân Nhất về nhà,2025-12-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Lương chính,13692337.0,income,Lương tháng 11-12,2025-12-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,2500000.0,expense,Cho mẹ tiền hằng tháng,2025-12-15,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Tiết kiệm,5000000.0,NULL,Nộp 5tr vào Zalopay nhận lãi ngày,2025-12-15,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Trả nợ,3333333.0,expense,Trả nợ em zai cho mượn tiền đi Phú Quốc,2025-12-15,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,105000.0,expense,Mua 3 hộp cơm gà ăn với em zai,2025-12-15,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,6000000.0,income,Ín giả lại tiền đi chơi Phú Quốc,2025-12-15,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 3,2025-12-18,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,19600.0,expense,Mua chai nước sâm,2025-12-21,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,60000.0,expense,Mua KOI THÉ cho ín,2025-12-21,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,76000.0,expense,Mua bọt cạo râu,2025-12-21,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,AI,550501.0,expense,Mua gói pro plan AI Claude,2025-12-22,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,550000.0,income,Em zai zả tiền mua AI,2025-12-22,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,AI,132000.0,expense,Gia hạn GPT Go,2025-12-20,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 4,2025-12-23,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,80000.0,income,Ín giả lại tiền nước sâm & KOI Thé,2025-12-23,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,946585.0,expense,Mua quà giáng sinh choa ín,2025-12-24,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,30000.0,expense,Thuê túi quà noel từ bà Ngọc,2025-12-25,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nghe nhạc,65000.0,expense,Mua Youtube Premium cho mình và ín,2025-12-26,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,197767.0,expense,Mua quà Secret Santa cho anh Quốc,2025-12-25,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,318000.0,expense,Bao anh bâu bà ngọc ăn lẩu gà nướng,2025-12-26,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,NULL,Chuyển tiền,17000000.0,NULL,Rút tiết kiệm từ zalopay về vì Zalopay bị phốt,2025-12-26,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Lãi suất,123736.0,income,Lãi từ việc để tiền trong Zalopay,2025-12-26,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,55000.0,expense,Đổ xăng lần 4,2025-12-27,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,63000.0,expense,Ăn jolibee 1m,2025-12-27,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,6000.0,expense,Gửi xe ở Lê Thánh Tôn cho em zai,2025-12-28,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,176000.0,expense,Mua quà đi tốt nghiệp cho ín,2025-12-28,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,50000.0,expense,Ăn sáng phở,2025-12-28,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,20000.0,expense,Mua cf gs25,2025-12-29,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 5,2025-12-30,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,64000.0,expense,Ăn Tokyo Deli với mn trên cty,2025-12-31,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,48000.0,expense,Mua Pocari & kẹo dưa hấu cho em zai,2026-01-01,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,20000.0,expense,Gửi civic dưới Cresent Mall,2026-01-01,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ khác,680000.0,expense,Đi hum tây với ínn,2026-01-02,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,100000.0,expense,Ăn gà lá é với anh bâu,2026-01-02,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cộng đồng,100000.0,expense,Góp ít trứng vào cộng đồng eggalumni,2026-01-02,NULL,NULL,NULL,Đối tác,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,538329.0,expense,Em zai mua xịt khử mùi + wax tóc,2026-01-03,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,500000.0,income,Em zai zả lại tiền mua đồ cá nhân,2026-01-03,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,300000.0,income,Ín giả tiền mua iCloud,2026-01-04,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,118200.0,expense,Ăn gà Popeyes với ín,2026-01-04,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Xăng xe,50000.0,expense,Đổ xăng lần 1 bằng Apple Pay,2026-01-04,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,144000.0,expense,Ăn cơm gà với chị Quỳnh,2026-01-05,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,60000.0,expense,Mua nước cho chị Quỳnh,2026-01-05,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,422220.0,expense,Mua đai giảm mỡ + bạt phủ ô tô,2026-01-06,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 2,2026-01-08,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,16000.0,expense,Mua Highland Coffee,2026-01-08,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,NULL,NULL,,NULL,NULL,,NULL,NULL,NULL,NULL,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chứng khoáng,2000000.0,NULL,Nạp vào VPBS,2026-01-09,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,450000.0,expense,Góp tiền mua quà cho Mai Hương,2026-01-10,NULL,NULL,NULL,Bạn bè,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,141000.0,expense,Ăn mỳ gà quay san san với ín,2026-01-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,28000.0,expense,Uống nước muji với ín,2026-01-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,82000.0,expense,Mua dđồ Muji cho ín,2026-01-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Xăng xe,50000.0,expense,Đổ xăng lần 3,2026-01-11,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,6000.0,expense,Gửi xe Vincom Thảo Điền,2026-01-11,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,32000.0,expense,Mua nước ở Homies,2026-01-13,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,65000.0,expense,Mua kẹo ngậm Starbuck ,2026-01-13,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,96000.0,expense,Bao anh bâu bà ngọc ăn mcdonald,2026-01-13,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Cho tiền người thân,17000.0,expense,Cho anh bâu tiền gửi xe,2026-01-13,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,NULL,NULL,,NULL,NULL,,NULL,NULL,NULL,NULL,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chứng khoáng,2000000.0,NULL,Nạp vào VPBS,2026-01-12,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,3000000.0,income,Em zai nhờ đầu tư CK dùm,2026-01-14,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chứng khoáng,3000000.0,NULL,Nạp vào VPBS cho em zai,2026-01-14,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,449000.0,expense,Trả tiền dùm chú tí đồ chơi xe hơi cho bác ba,2026-01-14,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Đầu tư,500000.0,income,Mẹ trả lại tiền mua đồ,2026-01-14,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Khách sạn/Homestay,500000.0,expense,Ứng trước 500k đi Vũng Tàu cho Long,2026-01-13,NULL,NULL,NULL,Bạn bè,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chuyển tiền,70000.0,NULL,Rút 700k tiêu bth,2026-01-14,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Xăng xe,50000.0,expense,Đổ xăng lần 4,2026-01-14,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,150000.0,expense,Mua 3 bịch phở,2026-01-14,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,35000.0,expense,Mua gà xối mỡ,2026-01-14,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,1599383.0,expense,Mua máy phun tinh dầu cho bác ba + dầu gội + sữa rửa mặt,2026-01-14,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,200000.0,income,Mẹ trả lại tiền mua đồ ăn,2026-01-14,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Lương chính,13428000.0,income,Lương tháng 12-1,2026-01-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,2000000.0,expense,Cho mẹ tiền hằng tháng,2026-01-15,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,2000000.0,expense,Cho mẹ thêm,2026-01-14,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Thưởng,166000.0,income,Thưởng dự án Ecom Focus,2026-01-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,NULL,Trả nợ,4000000.0,expense,Update tình hình crypto đã bị lỗ,2026-01-15,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,NULL,Đầu tư,15000000.0,income,Update ví đầu tư vàng,2026-01-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,15000.0,expense,Mua 3 bịch phở,2026-01-16,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chuyển tiền,17000000.0,NULL,Chuyển số dư nhàn rỗi vào Zalopay lấy lãi,2026-01-16,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,200000.0,expense,Ăn lẩu cá với bà Ngọc anh Bâu,2026-01-16,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Điện thoại,49500.0,expense,Nạp tiền điện thoại,2026-01-16,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,60000.0,expense,Đổ xăng lần 5,2026-01-18,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,5000.0,expense,Gửi xe Sư Vạn Hạnh,2026-01-18,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,435740.0,expense,Ăn WOW Yakiniku,2026-01-18,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,165000.0,expense,Mua cho ín quà doraemon để tặng chị đồng nghiệp,2026-01-18,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,1000000.0,expense,Cho ín tiền mua quà thôi nôi em bé,2026-01-18,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,59769.0,expense,Mua 2 tô cơm gà Jolibee ăn trên cty,2026-01-22,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,AI,130000.0,expense,Mua GPT Go,2026-01-22,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 6,2026-01-22,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,AI,549352.0,expense,Mua gói pro plan AI Claude,2026-01-22,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,200000.0,expense,Cho ín tiền đi grab,2026-01-22,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,1200000.0,income,Ín giả lại tiền,2026-01-23,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,700000.0,expense,Cho lại ín tiền,2026-01-23,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,25050.0,expense,Mua cơm chay ăn,2026-01-23,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,76000.0,expense,Mua đậu phộng cho ba,2026-01-23,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,13500.0,expense,Mua pocari,2026-01-23,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn uống,500000.0,expense,Nộp 500k cho tiền ăn,2026-01-23,NULL,NULL,NULL,Bạn bè,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,30000.0,expense,Gửi xe civic tượng chúa Kitô,2026-01-24,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,45000.0,expense,Mua 3 cây kem vani,2026-01-25,NULL,NULL,NULL,Bạn bè,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,1000000.0,expense,Cho ba 1tr mượn xe đi VT,2026-01-24,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Xăng xe,515045.0,expense,Đổ xăng civic ở VT,2026-01-24,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,35000.0,expense,Mua 1 hộp bông lan trứng muối cho ín mà ín hong ăn nên pass lại cho Nhi,2026-01-25,NULL,NULL,NULL,Bạn bè,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,20000.0,expense,"Mua nước suối cho nhóm long, minh,...",2026-01-24,NULL,NULL,NULL,Bạn bè,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,690000.0,income,Nhóm c2 trả lại tiền đi xe để đi VT,2026-01-25,NULL,NULL,NULL,Bạn bè,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,6000.0,expense,Mua 2 ly đá,2026-01-27,NULL,NULL,NULL,Bạn bè,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 7,2026-01-27,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,24000.0,expense,Mì trộn từ anh Tấn + Xiên 7-elveven,2026-01-27,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,39000.0,expense,Ăn mcdonald,2026-01-29,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,309100.0,expense,Ăn VeeAyy với ín,2026-01-29,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,90000.0,expense,Mua gấu bông ip17 cho ín,2026-01-29,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 8,2026-01-30,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua quà,1045000.0,expense,Mua đồ tết cho ín,2026-02-01,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,786160.0,expense,Ăn lẩu bò Triều Châu,2026-02-01,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ khác,820000.0,expense,Đi hum tây với ínn,2026-02-01,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,NULL,Chứng khoáng,7000000.0,NULL,Nộp thêm 7tr vào CK,2026-02-02,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,1130000.0,expense,Ăn đồ hấp với anh bâu bà ngọc,2026-02-02,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nhận lại nợ,700000.0,income,Anh bâu trả lại tiền ăn đồ hấp,2026-02-02,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Vệ sinh giày,60000.0,expense,Gửi em zai tiền vệ sinh giày Sketcher,2026-02-02,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 1,2026-02-03,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,118800.0,expense,Em zai mua vở,2026-02-04,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,500000.0,expense,Cho ín tiền đi ăn Hadilao,2026-02-05,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Thưởng,61790000.0,income,Công ty FRT trả thưởng,2026-02-06,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chuyển tiền,22030000.0,NULL,Đổi tiền lì xì với em zai,2026-02-06,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 2,2026-02-07,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,39000.0,expense,Ăn mcdonald,2026-02-07,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Từ thiện,20000.0,expense,Cho cô qua đường ở cây xăng,2026-02-07,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,90000.0,expense,Mua bao lì xì ở Fahasa,2026-02-07,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Rửa xe,50000.0,expense,Rửa xe gần chỗ hớt tóc,2026-02-07,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,27280.0,expense,Mua nước súc miệng,2026-02-07,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Xăng xe,342924.0,expense,Đổ xăng civic cbi về quê,2026-02-08,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,39000.0,expense,Bao anh Tấn ăn mcdonald vì nhờ anh mod dùm bàn phím,2026-02-09,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,130000.0,expense,Mua kẹo & 1 hộp cho bà má NgocNN5,2026-02-10,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chuyển tiền,10000000.0,NULL,Đổi tiền lì xì với anh bâu,2026-02-10,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,139000.0,expense,Ăn popeyes với ín,2026-02-11,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Cho tiền người thân,10000000.0,expense,Lì xì cục cưngggg ín iuuuuuuu,2026-02-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,11000.0,expense,Gửi xe ở Estella & Vincom Lê Văn Việt,2026-02-11,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,2116800.0,expense,Bao ba mẹ đi ăn Haidilao,2026-02-11,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ mặc,784000.0,expense,Mua quần cho em zai,2026-02-11,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Xăng xe,50000.0,expense,Đổ xăng lần 3,2026-02-11,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Người thân cho tiền,640000.0,income,Ín nhờ giữ dùm tiền,2026-02-08,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,1000000.0,income,Ín cho tiền mua bàn phím,2026-02-11,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Cho tiền người thân,20830000.0,expense,Lì xì cho mọi người,2026-02-11,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,500000.0,income,Em zai cho tiền quà sn mẹ,2026-02-11,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,2026000.0,expense,Cho mẹ quà sinh nhật,2026-02-11,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chuyển tiền,15000000.0,NULL,Chuyển số dư nhàn rỗi vào Zalopay lấy lãi,2026-02-12,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Lương chính,14013540.0,income,Lương tháng 1-2,2026-02-12,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,2500000.0,expense,Cho mẹ tiền hằng tháng,2026-02-12,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,2000000.0,expense,Cho ín mua đồ tết,2026-02-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,2000000.0,income,Ín cho tiền mua kibo,2026-02-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chuyển tiền,12000000.0,NULL,Chuyển số dư nhàn rỗi vào Zalopay lấy lãi,2026-02-12,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Đánh bài,8000.0,expense,Đánh bài làm cái thua mấy đứa em,2026-02-13,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Cho tiền người thân,220000.0,expense,Mua cho ông ngoại 2 chậu bông,2026-02-13,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,75000.0,expense,Ăn mì gói gõ với em zai,2026-02-13,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,75000.0,expense,Ăn sáng với em zai,2026-02-14,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,NULL,Chuyển tiền,37000000.0,NULL,Rút tiền về cho ba mượn,2026-02-14,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho mượn tiền,40000000.0,expense,Cho ba mượn 40tr,2026-02-14,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,2000000.0,income,Ín cho tiền mua kibo lần 2,2026-02-12,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Xăng xe,480000.0,expense,Đổ xăng civic về lại SG,2026-02-14,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,187000.0,expense,Bao nước tụi em họ đi chơi bài,2026-02-14,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,140000.0,expense,Ăn sáng với cả nhà trước khi về quê,2026-02-15,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Uống nước,20000.0,expense,Mua cà hê,2026-02-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Điện thoại,48000.0,expense,Nạp tiền điện thoại,2026-02-15,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,225000.0,expense,Trả tiền chị Hằng ăn Lẩu bò Triều Châu,2026-02-15,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chuyển tiền,3000000.0,NULL,Rút 3tr tiền mặt để phụ bác ba sửa xe,2026-02-16,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Ăn sang,1356480.0,expense,Ăn D'Maris với ín,2026-02-16,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,1400000.0,income,Ín giả lại tiền ăn D'Maris,2026-02-16,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Gửi xe,5000.0,expense,Gửi xe ăn D'Maris,2026-02-16,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Người thân cho tiền,5000000.0,income,Mẹ lì xì năm mới,2026-02-17,NULL,NULL,NULL,Mẹ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,4512000.0,income,Ín tặng quà var lung tung,2026-02-17,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,6868000.0,income,Ín lì xì năm mới,2026-02-17,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Mua đồ ăn,360000.0,expense,Ăn trưa ở trạm dừng cao tốc,2026-02-17,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,220000.0,expense,Bao tụi nhỏ đi ăn sáng ở Năm Dần,2026-02-18,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Đánh bài,50000.0,expense,Thua kèo nhanh với thèn phúc,2026-02-18,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Người thân cho tiền,500000.0,income,Em zai lì xì năm mới,2026-02-19,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Xăng xe,350000.0,expense,Đổ xăng civic về lại SG,2026-02-21,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Uống nước,191000.0,expense,Bao nước tụi em họ đi chơi bài,2026-02-21,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chuyển tiền,50000.0,NULL,Đổi tiền mặt chơi bài với bé Thư,2026-02-21,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Cho tiền người thân,2000000.0,expense,Cho bác ba tiền sửa xe mazda,2026-02-21,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chuyển tiền,11380000.0,NULL,Chuyển tiền lì xì của ín vào zalopay,2026-02-22,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Người thân cho tiền,1000000.0,income,Ba lì xì năm mới,2026-02-17,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Đánh bài,50000.0,expense,Đánh bài thua ở công ty,2026-02-23,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Thưởng,420000.0,income,Công ty lì xì,2026-02-23,NULL,NULL,NULL,Đồng nghiệp,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,39000.0,expense,Ăn mcdonald,2026-02-23,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Cho tiền người thân,200000.0,expense,Lì xì cho ba mẹ ín,2026-02-23,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,AI,132000.0,expense,Mua GPT Go,2026-02-22,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,39000.0,expense,Ăn mcdonald,2026-02-24,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,249175.0,expense,Mua giá đỡ điện thoại chân không xài cho xe,2026-02-25,NULL,NULL,NULL,Ba,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua đồ ăn,214000.0,expense,Ăn mcdonald,2026-02-24,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Dịch vụ khác,128520.0,expense,ĐI chidori với ín,2026-02-24,NULL,NULL,NULL,Ín,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Thưởng,200000.0,income,Ba của ín lì xì,2026-02-24,NULL,NULL,NULL,Người trong nhà,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Mua sắm đồ cá nhân,247000.0,expense,Mua toner để sẵn phòng hờ da khô bong tróc,2026-02-25,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Nghe nhạc,65000.0,expense,Mua Youtube Premium cho mình và ín,2026-02-26,NULL,NULL,NULL,Dịch vụ,NULL,NULL,NULL
+,,b441e1dc-f1fa-4fb8-a122-2b4d98468cdf,Chuyển tiền,7000000.0,NULL,Nạp tiền mặt vào tài khoản để mua CK,2026-02-26,NULL,NULL,NULL,Cá nhân,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Đầu tư,2000000.0,income,Em zai nhờ đầu tư CK dùm,2026-02-26,NULL,NULL,NULL,Em zai,NULL,NULL,NULL
+,,1446f45d-e885-4d1c-b577-5d2517a48106,Chuyển tiền,2000000.0,NULL,Nạp tiền vào CK cho em zai,2026-02-26,NULL,NULL,NULL,Em zai,NULL,NULL,NULL

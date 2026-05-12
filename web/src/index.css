@@ -1,0 +1,67 @@
+@import "tailwindcss";
+@plugin "./hero.ts";
+@source "../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}";
+
+@custom-variant dark (.dark &);
+
+@theme {
+  --chart-grid: #f1f5f9;
+  --chart-tick: #94a3b8;
+  --chart-tooltip-bg: #fff;
+  --chart-tooltip-border: #e5e7eb;
+  --chart-tooltip-text: #000;
+}
+
+@variant dark {
+  --chart-grid: #262626;
+  --chart-tick: #525252;
+  --chart-tooltip-bg: #171717;
+  --chart-tooltip-border: #262626;
+  --chart-tooltip-text: #fff;
+}
+
+:root {
+  --color-primary-base: #FF5722;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  @apply bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-50 antialiased;
+}
+
+/* ── Glassmorphic card helper ──────────────────────────────────────
+   Use className="glass-card backdrop-blur-xl rounded-3xl p-6 shadow-sm"
+   instead of bg-white/60 dark:bg-neutral-900/60 for reliable dark mode
+   ─────────────────────────────────────────────────────────────────── */
+.glass-card {
+  @apply bg-white/65 border border-white/45 dark:bg-neutral-900/65 dark:border-neutral-800/65;
+}
+
+/* ── Modal / Toast glass ─────────────────────────────────────────── */
+.glass-modal {
+  @apply bg-white/92 border border-white/25 dark:bg-neutral-900/92 dark:border-neutral-800/45;
+}
+
+/* ── Recharts Tooltip theme-aware colors ────────────────────────── */
+:root {
+  --tooltip-bg: rgba(255, 255, 255, 0.97);
+  --tooltip-border: rgba(229, 231, 235, 0.8);
+}
+:is(.dark, [data-theme="dark"]) {
+  --tooltip-bg: rgba(23, 23, 23, 0.97);
+  --tooltip-border: rgba(38, 38, 38, 0.8);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 9999px; }
+.dark ::-webkit-scrollbar-thumb { background: #334155; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
