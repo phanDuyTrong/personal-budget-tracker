@@ -20,7 +20,7 @@ import {
     TableCell, 
     Input, 
     Select, 
- 
+    Autocomplete, AutocompleteItem,
     Button, 
     Pagination,
     Chip,
@@ -28,6 +28,7 @@ import {
 
 import { useTransactions, useTransactionMutations, useWallets, useCategories, useContacts } from '@/hooks/useApi';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { viFilter } from '@/lib/filters';
 import { 
     Modal, 
     AmountInput, 
@@ -138,53 +139,57 @@ export function TransactionModal({ open, onClose, transaction }) {
                         <CustomDatePicker value={form.date} onChange={(val) => handleFormChange('date', val)} />
                     </Field>
                     <Field label="Wallet">
-                        <Select 
-                            placeholder="Select wallet"
-                            selectedKeys={form.walletId ? [form.walletId] : []}
-                            onSelectionChange={(keys) => handleFormChange('walletId', Array.from(keys)[0])}
+                        <Autocomplete 
+                            placeholder="Search wallet..."
+                            defaultFilter={viFilter}
+                            selectedKey={form.walletId || null}
+                            onSelectionChange={(key) => handleFormChange('walletId', key || '')}
                             variant="flat"
-                            required
+                            isRequired
                         >
-                            {wallets.map(a => <SelectItem key={a.id} textValue={a.name}>{a.name}</SelectItem>)}
-                        </Select>
+                            {wallets.map(a => <AutocompleteItem key={a.id} textValue={a.name}>{a.name}</AutocompleteItem>)}
+                        </Autocomplete>
                     </Field>
                 </div>
                 {form.type === 'transfer' && (
                     <Field label="To Wallet">
-                        <Select 
-                            placeholder="Select destination"
-                            selectedKeys={form.toWalletId ? [form.toWalletId] : []}
-                            onSelectionChange={(keys) => handleFormChange('toWalletId', Array.from(keys)[0])}
+                        <Autocomplete 
+                            placeholder="Search destination..."
+                            defaultFilter={viFilter}
+                            selectedKey={form.toWalletId || null}
+                            onSelectionChange={(key) => handleFormChange('toWalletId', key || '')}
                             variant="flat"
-                            required
+                            isRequired
                         >
-                            {wallets.filter(a => a.id !== form.walletId).map(a => <SelectItem key={a.id} textValue={a.name}>{a.name}</SelectItem>)}
-                        </Select>
+                            {wallets.filter(a => a.id !== form.walletId).map(a => <AutocompleteItem key={a.id} textValue={a.name}>{a.name}</AutocompleteItem>)}
+                        </Autocomplete>
                     </Field>
                 )}
                 <Field label="Category">
-                    <Select 
-                        placeholder="No category"
-                        selectedKeys={form.categoryId ? [form.categoryId] : []}
-                        onSelectionChange={(keys) => handleFormChange('categoryId', Array.from(keys)[0])}
+                    <Autocomplete 
+                        placeholder="Search category..."
+                        defaultFilter={viFilter}
+                        selectedKey={form.categoryId || null}
+                        onSelectionChange={(key) => handleFormChange('categoryId', key || '')}
                         variant="flat"
                     >
                         {flatCats.map(cat => (
-                            <SelectItem key={cat.id} textValue={cat.name}>
+                            <AutocompleteItem key={cat.id} textValue={cat.name}>
                                 {cat.label}
-                            </SelectItem>
+                            </AutocompleteItem>
                         ))}
-                    </Select>
+                    </Autocomplete>
                 </Field>
                 <Field label="For Who (Contact)">
-                    <Select 
-                        placeholder="No one"
-                        selectedKeys={form.contactId ? [form.contactId] : []}
-                        onSelectionChange={(keys) => handleFormChange('contactId', Array.from(keys)[0])}
+                    <Autocomplete 
+                        placeholder="Search contact..."
+                        defaultFilter={viFilter}
+                        selectedKey={form.contactId || null}
+                        onSelectionChange={(key) => handleFormChange('contactId', key || '')}
                         variant="flat"
                     >
-                        {contacts.map(c => <SelectItem key={c.id} textValue={c.name}>{c.name}</SelectItem>)}
-                    </Select>
+                        {contacts.map(c => <AutocompleteItem key={c.id} textValue={c.name}>{c.name}</AutocompleteItem>)}
+                    </Autocomplete>
                     {form.contactId && (
                         <div className="flex items-center gap-2 mt-2">
                             <input type="checkbox" id="isDebt" checked={form.isDebt} onChange={e => handleFormChange('isDebt', e.target.checked)} className="rounded border-neutral-300 dark:border-neutral-700 bg-transparent text-primary focus:ring-primary" />
@@ -206,20 +211,21 @@ export function TransactionModal({ open, onClose, transaction }) {
                         <p className="text-xs font-medium text-neutral-500 mb-2">Splits (must sum to total)</p>
                         {splits.map((s, i) => (
                             <div key={i} className="flex gap-2 items-center">
-                                <Select 
+                                <Autocomplete 
                                     className="flex-1" 
-                                    placeholder="Category"
-                                    selectedKeys={s.categoryId ? [s.categoryId] : []}
-                                    onSelectionChange={keys => {
+                                    placeholder="Search category..."
+                                    defaultFilter={viFilter}
+                                    selectedKey={s.categoryId || null}
+                                    onSelectionChange={key => {
                                         const n = [...splits];
-                                        n[i].categoryId = Array.from(keys)[0];
+                                        n[i].categoryId = key || '';
                                         setSplits(n);
                                     }}
                                     variant="flat"
                                     size="sm"
                                 >
-                                    {flatCats.map(c => <SelectItem key={c.id} textValue={c.name}>{c.label}</SelectItem>)}
-                                </Select>
+                                    {flatCats.map(c => <AutocompleteItem key={c.id} textValue={c.name}>{c.label}</AutocompleteItem>)}
+                                </Autocomplete>
                                 <AmountInput 
                                     className="w-32" 
                                     placeholder="0.00" 
@@ -421,33 +427,36 @@ export function Transactions() {
                     </Select>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Select 
-                        placeholder="All Wallets"
-                        selectedKeys={[filters.walletId]}
-                        onSelectionChange={keys => updateFilter('walletId', Array.from(keys)[0])}
+                    <Autocomplete 
+                        placeholder="Search Wallets..."
+                        defaultFilter={viFilter}
+                        selectedKey={filters.walletId === 'all' ? null : filters.walletId}
+                        onSelectionChange={key => updateFilter('walletId', key || 'all')}
                         variant="flat"
                     >
-                        <SelectItem key="all">All Wallets</SelectItem>
-                        {wallets.map(w => <SelectItem key={w.id} textValue={w.name}>{w.name}</SelectItem>)}
-                    </Select>
-                    <Select 
-                        placeholder="All Categories"
-                        selectedKeys={[filters.categoryId]}
-                        onSelectionChange={keys => updateFilter('categoryId', Array.from(keys)[0])}
+                        <AutocompleteItem key="all" textValue="All Wallets">All Wallets</AutocompleteItem>
+                        {wallets.map(w => <AutocompleteItem key={w.id} textValue={w.name}>{w.name}</AutocompleteItem>)}
+                    </Autocomplete>
+                    <Autocomplete 
+                        placeholder="Search Categories..."
+                        defaultFilter={viFilter}
+                        selectedKey={filters.categoryId === 'all' ? null : filters.categoryId}
+                        onSelectionChange={key => updateFilter('categoryId', key || 'all')}
                         variant="flat"
                     >
-                        <SelectItem key="all">All Categories</SelectItem>
-                        {flatCats.map(cat => <SelectItem key={cat.id} textValue={cat.name}>{cat.label}</SelectItem>)}
-                    </Select>
-                    <Select 
-                        placeholder="All Contacts"
-                        selectedKeys={[filters.contactId]}
-                        onSelectionChange={keys => updateFilter('contactId', Array.from(keys)[0])}
+                        <AutocompleteItem key="all" textValue="All Categories">All Categories</AutocompleteItem>
+                        {flatCats.map(cat => <AutocompleteItem key={cat.id} textValue={cat.name}>{cat.label}</AutocompleteItem>)}
+                    </Autocomplete>
+                    <Autocomplete 
+                        placeholder="Search Contacts..."
+                        defaultFilter={viFilter}
+                        selectedKey={filters.contactId === 'all' ? null : filters.contactId}
+                        onSelectionChange={key => updateFilter('contactId', key || 'all')}
                         variant="flat"
                     >
-                        <SelectItem key="all">All Contacts</SelectItem>
-                        {contacts.map(c => <SelectItem key={c.id} textValue={c.name}>{c.name}</SelectItem>)}
-                    </Select>
+                        <AutocompleteItem key="all" textValue="All Contacts">All Contacts</AutocompleteItem>
+                        {contacts.map(c => <AutocompleteItem key={c.id} textValue={c.name}>{c.name}</AutocompleteItem>)}
+                    </Autocomplete>
                 </div>
             </div>
 
