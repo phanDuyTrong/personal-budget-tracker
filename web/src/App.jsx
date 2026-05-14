@@ -5,7 +5,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { useSettingsStore, applyTheme, applyAccentColor } from '@/stores/settingsStore';
 import { ToastProvider, ErrorBoundary } from '@/components/ui';
 import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/stores/authStore';
+import { devMockSession, devMockUser, isDevMockAuthEnabled, useAuthStore } from '@/stores/authStore';
 import { Login, Register } from '@/pages/Auth';
 import { HeroUIProvider } from "@heroui/system";
 
@@ -43,14 +43,11 @@ function AuthInitializer() {
     const { setAuth, clearAuth } = useAuthStore();
     
     React.useEffect(() => {
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
         const handleSession = (session) => {
             if (session) {
                 setAuth(session.user, session);
-            } else if (isLocalhost) {
-                // Auto mock session on localhost to bypass login
-                setAuth({ id: 'local-dev-user', email: 'dev@localhost' }, { access_token: 'mock-token' });
+            } else if (isDevMockAuthEnabled) {
+                setAuth(devMockUser, devMockSession);
             } else {
                 clearAuth();
             }

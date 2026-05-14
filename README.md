@@ -1,16 +1,59 @@
-# React + Vite
+# Budget Manager
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Personal budget tracker web app built with React, Vite, HeroUI, TanStack Query, Zustand, and Supabase Auth/Postgres. The shipping frontend lives in `web/`; older experiments are archived under `archive/`.
 
-Currently, two official plugins are available:
+## Local setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+1. Install frontend dependencies:
 
-## React Compiler
+   ```bash
+   cd web
+   npm ci
+   ```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+2. Create `web/.env` from `web/.env.example` and fill in your Supabase values:
 
-## Expanding the ESLint configuration
+   ```bash
+   cp web/.env.example web/.env
+   ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+3. Run the app:
+
+   ```bash
+   npm run dev
+   ```
+
+## Environment flags
+
+- `VITE_SUPABASE_URL`: Supabase project URL.
+- `VITE_SUPABASE_ANON_KEY`: Supabase anon/public key used by the browser app.
+- `VITE_GEMINI_API_KEY`: Optional key for AI transaction parsing.
+- `VITE_DEV_MOCK_AUTH`: Defaults to `false`. Set to `true` only when you intentionally want local development to bypass Supabase login with a mock user.
+
+## Quality checks
+
+Run these before opening a PR:
+
+```bash
+cd web
+npm run lint
+npm run build
+```
+
+CI runs the same lint and build checks on pull requests and pushes to `main`.
+
+## Supabase RLS smoke test
+
+After applying migrations, create two confirmed Supabase auth test users and run:
+
+```bash
+SUPABASE_URL="https://your-project-ref.supabase.co" \
+SUPABASE_ANON_KEY="your-anon-key" \
+RLS_USER_A_EMAIL="user-a@example.com" \
+RLS_USER_A_PASSWORD="password-a" \
+RLS_USER_B_EMAIL="user-b@example.com" \
+RLS_USER_B_PASSWORD="password-b" \
+node scripts/test-rls.mjs
+```
+
+The script signs in as user B, creates a wallet, signs in as user A, and verifies user A cannot read user B's wallet.

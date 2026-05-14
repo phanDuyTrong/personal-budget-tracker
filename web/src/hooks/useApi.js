@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // ── Helpers ───────────────────────────────────────────────────────
-const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const useDevMockData = import.meta.env.VITE_DEV_MOCK_AUTH === 'true';
 
 function buildTree(categories) {
     const map = {};
@@ -30,7 +30,7 @@ export const useWallets = () => useQuery({
 export const useCalculatedWallets = () => useQuery({
     queryKey: ['calculated-wallets'],
     queryFn: async () => {
-        if (isLocalhost) {
+        if (useDevMockData) {
             return [
                 { id: 'w1', name: 'Main Checking', type: 'checking', liveBalance: 5500, balance: 5500, color: '#3b82f6' },
                 { id: 'w2', name: 'Savings Account', type: 'savings', liveBalance: 6000, balance: 6000, color: '#10b981' },
@@ -367,7 +367,7 @@ function dateRange(query) {
 export const useDashboardKPIs = (params = {}) => useQuery({
     queryKey: ['dashboard', 'kpis', params],
     queryFn: async () => {
-        if (isLocalhost) {
+        if (useDevMockData) {
             return { totalBalance: 10000, monthlyIncome: 4500, monthlyExpenses: 2800, savingsRate: 37.8, deltas: { income: 5.2, expenses: -2.1, savingsRate: 1.5 } };
         }
         const { from, to } = dateRange(params);
@@ -427,7 +427,7 @@ export const useNetWorth = () => useQuery({
 export const useTrend = (period = 'month') => useQuery({
     queryKey: ['dashboard', 'trend', period],
     queryFn: async () => {
-        if (isLocalhost) {
+        if (useDevMockData) {
             return [
                 { label: 'Jan', income: 3000, expense: 2000, netWorth: 5000, dateForSort: new Date(2026, 0, 1) },
                 { label: 'Feb', income: 3200, expense: 2100, netWorth: 6100, dateForSort: new Date(2026, 1, 1) },
@@ -476,7 +476,7 @@ export const useSpendingByCategory = (params = {}) => useQuery({
 export const useBudgetHealth = (params = {}) => useQuery({
     queryKey: ['dashboard', 'budget-health', params],
     queryFn: async () => {
-        if (isLocalhost) {
+        if (useDevMockData) {
             return [
                 { id: 'b1', amount: 500, spent: 450, percentage: 90, status: 'warning', category: { name: 'Food', icon: 'ShoppingCartIcon', color: '#f59e0b' } },
                 { id: 'b2', amount: 300, spent: 150, percentage: 50, status: 'ok', category: { name: 'Transport', icon: 'TruckIcon', color: '#3b82f6' } },
@@ -553,7 +553,7 @@ export const useDailySpend = (params = {}) => useQuery({
 export const useTopCategories = (params = {}) => useQuery({
     queryKey: ['dashboard', 'top-categories', params],
     queryFn: async () => {
-        if (isLocalhost) {
+        if (useDevMockData) {
             const limit = params.limit || 5;
             const mockCats = [
                 { id: 'c1', name: 'Food & Dining', icon: 'ShoppingCartIcon', color: '#f59e0b', total: 850, sparkline: [700, 800, 850] },

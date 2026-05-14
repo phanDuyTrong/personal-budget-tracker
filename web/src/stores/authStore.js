@@ -1,14 +1,14 @@
 import { create } from 'zustand';
 
-const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const mockUser = isLocalhost ? { id: 'local-dev-user', email: 'dev@localhost' } : null;
-const mockSession = isLocalhost ? { access_token: 'mock-token' } : null;
+export const isDevMockAuthEnabled = import.meta.env.VITE_DEV_MOCK_AUTH === 'true';
+export const devMockUser = isDevMockAuthEnabled ? { id: 'local-dev-user', email: 'dev@localhost' } : null;
+export const devMockSession = isDevMockAuthEnabled ? { access_token: 'mock-token' } : null;
 
-// clearAuth just resets local state — does NOT call supabase.auth.signOut()
-// signOut must be called explicitly in the UI before clearing
+// clearAuth just resets local state - it does NOT call supabase.auth.signOut().
+// signOut must be called explicitly in the UI before clearing.
 export const useAuthStore = create((set) => ({
-    user: mockUser,
-    session: mockSession,
+    user: devMockUser,
+    session: devMockSession,
     setAuth: (user, session) => set({ user, session }),
-    clearAuth: () => set({ user: mockUser, session: mockSession }),
+    clearAuth: () => set({ user: devMockUser, session: devMockSession }),
 }));
