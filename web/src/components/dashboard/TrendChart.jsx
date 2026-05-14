@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useTrend } from '@/hooks/useApi';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useFormatAmount } from '@/hooks/useTranslation';

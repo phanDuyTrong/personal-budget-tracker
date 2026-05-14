@@ -1,26 +1,26 @@
 import { Progress as HeroProgress } from "@heroui/react";
 import React, { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { 
-    useDashboardKPIs, 
-    useBudgetHealth, 
-    useTopCategories, 
-    useCalculatedWallets 
+import { motion as Motion } from 'framer-motion';
+import {
+    useDashboardKPIs,
+    useBudgetHealth,
+    useTopCategories,
+    useCalculatedWallets
 } from '@/hooks/useApi';
-import { useFormatAmount, useT } from '@/hooks/useTranslation';
+import { useFormatAmount } from '@/hooks/useTranslation';
 import { AmountDisplay, CategoryBadge , GlassCard } from '@/components/ui';
-import { 
-    Skeleton, 
- 
-    Select, 
+import {
+    Skeleton,
+
+    Select,
 
     Chip,
     Card, SelectItem } from "@heroui/react";
-import { 
-    WalletIcon, 
-    ArrowTrendingUpIcon, 
-    ArrowTrendingDownIcon, 
-    BanknotesIcon, 
+import {
+    WalletIcon,
+    ArrowTrendingUpIcon,
+    ArrowTrendingDownIcon,
+    BanknotesIcon,
     ChartPieIcon,
     CalendarIcon,
     CreditCardIcon,
@@ -29,6 +29,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { TrendChart } from '@/components/dashboard/TrendChart';
+
+const PREDEFINED_WALLET_ORDER = ["Tài khoản", "Tiền mặt", "Tiết kiệm", "Vàng", "Chứng khoán", "Crypto", "Trading"];
 
 // Framer Motion Variants
 const containerVariants = {
@@ -45,10 +47,9 @@ const itemVariants = {
 };
 
 export function Dashboard() {
-    const t = useT();
     const fmt = useFormatAmount();
     const { hideBalances } = useSettingsStore();
-    
+
     const [dashMonth, setDashMonth] = useState(new Date().getMonth());
     const [dashYear, setDashYear] = useState(new Date().getFullYear());
 
@@ -64,12 +65,11 @@ export function Dashboard() {
     const { data: topCats, isLoading: tcLoading } = useTopCategories({ ...dateFilter, limit: Number(topCatLimit) });
     const { data: walletsRaw, isLoading: accLoading } = useCalculatedWallets();
 
-    const PREDEFINED_ORDER = ["Tài khoản", "Tiền mặt", "Tiết kiệm", "Vàng", "Chứng khoán", "Crypto", "Trading"];
     const wallets = useMemo(() => {
         const raw = walletsRaw || [];
         return [...raw].sort((a, b) => {
-            const idxA = PREDEFINED_ORDER.indexOf(a.name);
-            const idxB = PREDEFINED_ORDER.indexOf(b.name);
+            const idxA = PREDEFINED_WALLET_ORDER.indexOf(a.name);
+            const idxB = PREDEFINED_WALLET_ORDER.indexOf(b.name);
             if (idxA !== -1 && idxB !== -1) return idxA - idxB;
             if (idxA !== -1) return -1;
             if (idxB !== -1) return 1;
@@ -88,24 +88,24 @@ export function Dashboard() {
     const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
 
     return (
-        <motion.div 
+        <Motion.div
             className="p-4 md:p-8 space-y-8 max-w-[1400px] mx-auto animate-in fade-in duration-500"
             variants={containerVariants}
             initial="hidden"
             animate="show"
         >
             {/* Header & Filters */}
-            <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <Motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
                     <h1 className="text-4xl font-black tracking-tight text-neutral-900 dark:text-white">Overview</h1>
                     <p className="text-neutral-500">Your financial snapshot for this month</p>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
-                    <Select 
+                    <Select
                         aria-label="Select month"
-                        className="w-40" 
-                        selectedKeys={[`${dashMonth}`]} 
+                        className="w-40"
+                        selectedKeys={[`${dashMonth}`]}
                         onSelectionChange={(keys) => setDashMonth(Number(Array.from(keys)[0]))}
                         variant="flat"
                         startContent={<CalendarIcon className="w-4 h-4 text-neutral-400" />}
@@ -114,10 +114,10 @@ export function Dashboard() {
                             <SelectItem key={`${i}`} textValue={m}>{m}</SelectItem>
                         ))}
                     </Select>
-                    <Select 
+                    <Select
                         aria-label="Select year"
-                        className="w-32" 
-                        selectedKeys={[`${dashYear}`]} 
+                        className="w-32"
+                        selectedKeys={[`${dashYear}`]}
                         onSelectionChange={(keys) => setDashYear(Number(Array.from(keys)[0]))}
                         variant="flat"
                     >
@@ -126,7 +126,7 @@ export function Dashboard() {
                         ))}
                     </Select>
                 </div>
-            </motion.div>
+            </Motion.div>
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -196,9 +196,9 @@ export function Dashboard() {
                                     {(kpis?.savingsRate || 0).toFixed(1)}%
                                 </p>
                                 {typeof kpis?.deltas?.savingsRate === 'number' && (
-                                    <Chip 
-                                        size="sm" 
-                                        color={kpis.deltas.savingsRate > 0 ? "success" : "danger"} 
+                                    <Chip
+                                        size="sm"
+                                        color={kpis.deltas.savingsRate > 0 ? "success" : "danger"}
                                         variant="flat"
                                         startContent={kpis.deltas.savingsRate > 0 ? <ArrowUpIcon className="w-3 h-3" /> : <ArrowDownIcon className="w-3 h-3" />}
                                         className="h-6 font-black"
@@ -217,7 +217,7 @@ export function Dashboard() {
 
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                
+
                 {/* Budget Health */}
                 <GlassCard className="xl:col-span-2 !p-0 flex flex-col overflow-hidden">
                     <div className="p-6 border-b border-white/20 dark:border-neutral-800/20 flex items-center gap-3">
@@ -248,8 +248,8 @@ export function Dashboard() {
                                     else if (b.percentage > 75) barColor = "warning";
 
                                     return (
-                                        <motion.div 
-                                            key={b.id} 
+                                        <Motion.div
+                                            key={b.id}
                                             initial={{ opacity: 0, x: -20 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: i * 0.1 }}
@@ -265,14 +265,14 @@ export function Dashboard() {
                                                     <span className="text-xs font-bold text-neutral-500">{fmtMasked(b.amount)}</span>
                                                 </div>
                                             </div>
-                                            <HeroProgress 
+                                            <HeroProgress
                                                 size="md"
-                                                value={percent} 
+                                                value={percent}
                                                 color={barColor}
                                                 aria-label={`${b.category?.name} budget`}
                                                 className="shadow-sm"
                                             />
-                                        </motion.div>
+                                        </Motion.div>
                                     );
                                 })}
                             </div>
@@ -282,14 +282,14 @@ export function Dashboard() {
 
                 {/* Sidebar: Top Expenses & Wallets */}
                 <div className="space-y-8 flex flex-col">
-                    
+
                     {/* Top Expenses */}
                     <GlassCard className="!p-0 flex flex-col h-fit overflow-hidden">
                         <div className="p-6 border-b border-white/20 dark:border-neutral-800/20 flex items-center justify-between">
                             <h2 className="text-xl font-black text-neutral-900 dark:text-white tracking-tight">Top Expenses</h2>
-                            <Select 
-                                className="w-28" 
-                                selectedKeys={[topCatLimit]} 
+                            <Select
+                                className="w-28"
+                                selectedKeys={[topCatLimit]}
                                 onSelectionChange={(keys) => setTopCatLimit(Array.from(keys)[0])}
                                 variant="flat"
                                 size="sm"
@@ -310,8 +310,8 @@ export function Dashboard() {
                             ) : (
                                 <div className="space-y-2">
                                     {topCats.slice(0, Number(topCatLimit)).map((cat, i) => (
-                                        <div 
-                                            key={cat.id || i} 
+                                        <div
+                                            key={cat.id || i}
                                             className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/40 dark:hover:bg-white/5 transition-all group"
                                         >
                                             <div className="flex items-center gap-3">
@@ -351,13 +351,13 @@ export function Dashboard() {
                                             'from-fuchsia-500 to-purple-600'
                                         ];
                                         const grad = gradients[i % gradients.length];
-                                        
+
                                         return (
-                                            <motion.div 
+                                            <Motion.div
                                                 initial={{ opacity: 0, scale: 0.95 }}
                                                 animate={{ opacity: 1, scale: 1 }}
                                                 transition={{ delay: i * 0.1 }}
-                                                key={acc.id} 
+                                                key={acc.id}
                                                 className={`relative overflow-hidden rounded-[1.5rem] p-5 text-white shadow-lg bg-gradient-to-br ${grad} hover:scale-[1.02] transition-transform`}
                                             >
                                                 <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-xl" />
@@ -371,7 +371,7 @@ export function Dashboard() {
                                                     </p>
                                                     <p className="text-[10px] font-bold opacity-60 uppercase mt-1 tracking-wider">{acc.type}</p>
                                                 </div>
-                                            </motion.div>
+                                            </Motion.div>
                                         )
                                     })}
                                 </div>
@@ -381,6 +381,6 @@ export function Dashboard() {
 
                 </div>
             </div>
-        </motion.div>
+        </Motion.div>
     );
 }

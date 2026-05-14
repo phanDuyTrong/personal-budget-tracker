@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink } from 'react-router-dom';
 
 import { useT } from '@/hooks/useTranslation';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -39,7 +39,6 @@ const navItems = [
 
 export function AppShell() {
     const t = useT();
-    const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { theme, setTheme } = useSettingsStore();
     const { user, clearAuth } = useAuthStore();

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useCalculatedWallets, useWalletMutations } from '@/hooks/useApi';
 import { useFormatAmount } from '@/hooks/useTranslation';
 import { TermBox, TermInputPrompt, TermButton } from '@/components/terminal';

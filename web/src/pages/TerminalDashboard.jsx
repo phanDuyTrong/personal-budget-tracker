@@ -1,19 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
     useDashboardKPIs,
     useBudgetHealth,
     useTopCategories,
     useCalculatedWallets
 } from '@/hooks/useApi';
-import { useFormatAmount, useT } from '@/hooks/useTranslation';
+import { useFormatAmount } from '@/hooks/useTranslation';
 import { TermBox, TermInputPrompt, AsciiProgressBar, AsciiSparkline } from '@/components/terminal';
 
 export function TerminalDashboard() {
-    const t = useT();
     const fmt = useFormatAmount();
     
-    const [dashMonth, setDashMonth] = useState(new Date().getMonth());
-    const [dashYear, setDashYear] = useState(new Date().getFullYear());
+    const dashMonth = new Date().getMonth();
+    const dashYear = new Date().getFullYear();
 
     const dateFilter = React.useMemo(() => {
         const from = new Date(dashYear, dashMonth, 1).toISOString().split('T')[0];

@@ -12,7 +12,9 @@ function parseValue(value) {
         const s = value.split('T')[0];
         const [y, m, d] = s.split('-').map(Number);
         if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return { year: y, month: m - 1, day: d };
-    } catch {}
+    } catch {
+        return null;
+    }
     return null;
 }
 

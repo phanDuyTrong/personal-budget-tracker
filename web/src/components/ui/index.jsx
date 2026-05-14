@@ -1,4 +1,3 @@
-import { useDisclosure } from "@heroui/use-disclosure";
 // ── UI Bridge: wraps HeroUI v3 compound components with familiar APIs ──
 import React, { createContext, useContext, useState, useCallback } from 'react';
 export { DatePicker } from './DatePicker';

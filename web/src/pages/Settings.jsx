@@ -24,12 +24,13 @@ import {
 import { useSettingsStore, ACCENT_COLORS } from '@/stores/settingsStore';
 import { useT } from '@/hooks/useTranslation';
 
-function Section({ icon: Icon, title, description, children }) {
+function Section({ icon, title, description, children }) {
+    const SectionIcon = icon;
     return (
         <div className="space-y-6">
             <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary shadow-inner">
-                    <Icon className="h-6 w-6" />
+                    <SectionIcon className="h-6 w-6" />
                 </div>
                 <div>
                     <h2 className="text-xl font-black text-neutral-900 dark:text-white tracking-tight">{title}</h2>

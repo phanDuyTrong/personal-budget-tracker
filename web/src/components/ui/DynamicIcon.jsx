@@ -70,7 +70,7 @@ const emojiMap = {
     '✨': 'SparklesIcon',
 };
 
-export function DynamicIcon({ name, outline = true, className = "h-5 w-5", ...props }) {
+export function DynamicIcon({ name, className = "h-5 w-5", ...props }) {
     if (!name) return <CubeIcon className={className} {...props} />;
 
     let mappedName = String(name);

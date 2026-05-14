@@ -24,7 +24,7 @@ export function AsciiSparkline({ data = [] }) {
     
     const chars = ['_', '.', '-', '=', '+', '*', '#'];
     
-    return data.map((val, i) => {
+    return data.map((val) => {
         if (range === 0) return '-';
         const percent = (val - min) / range;
         const index = Math.min(chars.length - 1, Math.floor(percent * chars.length));
