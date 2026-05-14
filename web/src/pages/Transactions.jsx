@@ -26,7 +26,7 @@ import {
     Chip,
     Tooltip, SelectItem } from "@heroui/react";
 
-import { useTransactions, useTransactionMutations, useWallets, useCategories, useContacts } from '@/hooks/useApi';
+import { useTransactions, useTransactionMutations, useWallets, useCategories, useContacts, useTrips } from '@/hooks/useApi';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { viFilter } from '@/lib/filters';
 import { 
@@ -48,6 +48,7 @@ const getEmptyForm = () => ({
     walletId: '', 
     categoryId: '', 
     contactId: '', 
+    tripId: '',
     description: '', 
     date: format(new Date(), 'yyyy-MM-dd'), 
     isRecurring: false, 
@@ -80,7 +81,27 @@ export function TransactionModal({ open, onClose, transaction }) {
     const { data: wallets = [] } = useWallets();
     const { data: categoryTree = [] } = useCategories();
     const { data: contacts = [] } = useContacts();
+    const { data: trips = [] } = useTrips();
     const toast = useToast();
+
+    // Detect if selected category belongs to "Du lịch" tree
+    const isTravelCategory = useMemo(() => {
+        if (!form.categoryId) return false;
+        const findTravelRoot = (nodes) => {
+            for (const node of nodes) {
+                if (node.name.toLowerCase().includes('du lịch') || node.name.toLowerCase().includes('travel')) {
+                    const ids = new Set();
+                    const collect = (n) => { ids.add(n.id); if (n.children) n.children.forEach(collect); };
+                    collect(node);
+                    return ids;
+                }
+                if (node.children) { const r = findTravelRoot(node.children); if (r) return r; }
+            }
+            return null;
+        };
+        const travelIds = findTravelRoot(categoryTree);
+        return travelIds ? travelIds.has(form.categoryId) : false;
+    }, [form.categoryId, categoryTree]);
 
     const flatCats = useMemo(() => {
         const flat = [];
@@ -180,6 +201,23 @@ export function TransactionModal({ open, onClose, transaction }) {
                         ))}
                     </Autocomplete>
                 </Field>
+                {isTravelCategory && (
+                    <Field label="Chuyến đi 🗺">
+                        <Autocomplete
+                            placeholder="Chọn chuyến đi..."
+                            defaultFilter={viFilter}
+                            selectedKey={form.tripId || null}
+                            onSelectionChange={(key) => handleFormChange('tripId', key || '')}
+                            variant="flat"
+                        >
+                            {trips.map(trip => (
+                                <AutocompleteItem key={trip.id} textValue={trip.name}>
+                                    {trip.name}
+                                </AutocompleteItem>
+                            ))}
+                        </Autocomplete>
+                    </Field>
+                )}
                 <Field label="For Who (Contact)">
                     <Autocomplete 
                         placeholder="Search contact..."
@@ -461,11 +499,11 @@ export function Transactions() {
             </div>
 
             {/* Table Section */}
-            <div className="glass-card backdrop-blur-md rounded-3xl overflow-hidden shadow-xl">
+            <div className="glass-card backdrop-blur-md rounded-3xl overflow-hidden shadow-xl overflow-x-auto">
                 <Table 
                     aria-label="Transactions table"
                     removeWrapper
-                    className="bg-transparent"
+                    className="bg-transparent min-w-[700px]"
                 >
                     <TableHeader columns={columns}>
                         {(column) => (

@@ -31,33 +31,42 @@ export function ToastProvider({ children }) {
         setToasts(t => [...t, { id, message, type }]);
         setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), duration);
     }, []);
-    const remove = (id) => setToasts(t => setToasts(prev => prev.filter(x => x.id !== id)));
-    
-    const colorMap = { success: 'success', error: 'danger', info: 'primary' };
+    // FIX: was setToasts(t => setToasts(...)) — double nesting corrupted state
+    const remove = (id) => setToasts(prev => prev.filter(x => x.id !== id));
+
+    const iconColorMap = {
+        success: { bg: 'rgba(34,197,94,0.12)', color: '#22c55e' },
+        error:   { bg: 'rgba(239,68,68,0.12)',  color: '#ef4444' },
+        info:    { bg: 'rgba(59,130,246,0.12)', color: '#3b82f6' },
+    };
     const icons = { 
         success: <CheckCircleIcon className="h-5 w-5" />, 
         error: <ExclamationCircleIcon className="h-5 w-5" />, 
-        info: <InformationCircleIcon className="h-5 w-5" /> 
+        info: <InformationCircleIcon className="h-5 w-5" />,
     };
 
     return (
         <ToastCtx.Provider value={add}>
             {children}
             <div className="fixed bottom-6 right-6 z-[100] space-y-3 max-w-sm w-full pointer-events-none">
-                {toasts.map(t => (
-                    <div 
-                        key={t.id} 
-                        className="pointer-events-auto flex items-center gap-4 p-4 rounded-[1.5rem] shadow-2xl glass-modal backdrop-blur-2xl animate-in slide-in-from-right-full duration-300"
-                    >
-                        <div className={`p-2 rounded-xl bg-${colorMap[t.type]}/10 text-${colorMap[t.type]}`}>
-                            {icons[t.type]}
+                {toasts.map(t => {
+                    const { bg, color } = iconColorMap[t.type] || iconColorMap.info;
+                    return (
+                        <div 
+                            key={t.id} 
+                            className="pointer-events-auto flex items-center gap-4 p-4 rounded-[1.5rem] shadow-2xl glass-modal backdrop-blur-2xl animate-in slide-in-from-right-full duration-300"
+                        >
+                            {/* FIX: use inline style instead of dynamic Tailwind class (not compiled in v4) */}
+                            <div style={{ background: bg, color }} className="p-2 rounded-xl shrink-0">
+                                {icons[t.type]}
+                            </div>
+                            <span className="flex-1 font-bold text-sm text-neutral-900 dark:text-white tracking-tight">{t.message}</span>
+                            <button onClick={() => remove(t.id)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors shrink-0">
+                                <XMarkIcon className="h-5 w-5" />
+                            </button>
                         </div>
-                        <span className="flex-1 font-bold text-sm text-neutral-900 dark:text-white tracking-tight">{t.message}</span>
-                        <button onClick={() => remove(t.id)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors">
-                            <XMarkIcon className="h-5 w-5" />
-                        </button>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </ToastCtx.Provider>
     );

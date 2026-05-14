@@ -22,7 +22,7 @@ import {
     Chip,
     Card, SelectItem } from "@heroui/react";
 import { useGoals, useGoalMutations, useWallets } from '@/hooks/useApi';
-import { Modal, AmountInput, Field, EmptyState, ConfirmModal, useToast , GlassCard } from '@/components/ui';
+import { Modal, AmountInput, Field, EmptyState, ConfirmModal, useToast, GlassCard, DatePicker as CustomDatePicker } from '@/components/ui';
 import { useFormatAmount } from '@/hooks/useTranslation';
 
 function GoalModal({ open, onClose, goal }) {
@@ -67,11 +67,9 @@ function GoalModal({ open, onClose, goal }) {
                 
                 <div className="grid grid-cols-2 gap-4">
                     <Field label="Deadline">
-                        <HeroInput 
-                            type="date"
-                            value={form.deadline} 
-                            onChange={e => handleFormChange('deadline', e.target.value)} 
-                            variant="flat"
+                        <CustomDatePicker
+                            value={form.deadline}
+                            onChange={(val) => handleFormChange('deadline', val || '')}
                         />
                     </Field>
                     <HeroSelect 
