@@ -6,7 +6,7 @@ import { enrichGoal } from '@/features/goals/hooks';
 import { getDashboardDateRange, getMonthRange, getPreviousMonthRange, getShiftedMonthRange, monthLabel, toISODate } from '@/lib/date';
 
 // ── Dashboard ─────────────────────────────────────────────────────
-export const useDashboardKPIs = (params = {}) => useQuery({
+export const useDashboardKPIs = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['dashboard', 'kpis', params],
     queryFn: async () => {
         if (useDevMockData) {
@@ -98,18 +98,18 @@ export const useTrend = (period = 'month') => useQuery({
     },
 });
 
-export const useSpendingByCategory = (params = {}) => useQuery({
+export const useSpendingByCategory = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['dashboard', 'spending-by-category', params],
     queryFn: async () => {
         const { from, to } = getDashboardDateRange(params);
         const { data: txs } = await supabase.from('transactions').select('amount,category_id,category:categories(id,name,icon,color,parent_id)').eq('type', 'expense').gte('date', from).lte('date', to);
-        const grouped = {};
+        const grouped: Record<string, any> = {};
         (txs || []).forEach(tx => { const key = tx.category_id || '__none__'; if (!grouped[key]) grouped[key] = { id: key, name: tx.category?.name || 'Uncategorized', icon: tx.category?.icon || 'CubeIcon', color: tx.category?.color || '#94a3b8', amount: 0 }; grouped[key].amount += Number(tx.amount); });
         return Object.values(grouped).sort((a, b) => b.amount - a.amount);
     },
 });
 
-export const useBudgetHealth = (params = {}) => useQuery({
+export const useBudgetHealth = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['dashboard', 'budget-health', params],
     queryFn: async () => {
         if (useDevMockData) {
@@ -129,18 +129,18 @@ export const useBudgetHealth = (params = {}) => useQuery({
     },
 });
 
-export const useTopPayees = (params = {}) => useQuery({
+export const useTopPayees = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['dashboard', 'top-payees', params],
     queryFn: async () => {
         const { from, to } = getDashboardDateRange(params);
         const { data: txs } = await supabase.from('transactions').select('amount,contact:contacts(id,name)').eq('type', 'expense').gte('date', from).lte('date', to);
-        const grouped = {};
+        const grouped: Record<string, any> = {};
         (txs || []).forEach(tx => { if (!tx.contact) return; const key = tx.contact.id; if (!grouped[key]) grouped[key] = { id: key, name: tx.contact.name, amount: 0 }; grouped[key].amount += Number(tx.amount); });
         return Object.values(grouped).sort((a, b) => b.amount - a.amount).slice(0, 5);
     },
 });
 
-export const useCashFlowWaterfall = (params = {}) => useQuery({
+export const useCashFlowWaterfall = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['dashboard', 'cashflow-waterfall', params],
     queryFn: async () => {
         const { from, to } = getDashboardDateRange(params);
@@ -167,7 +167,7 @@ export const useCashFlowWaterfall = (params = {}) => useQuery({
     },
 });
 
-export const useDailySpend = (params = {}) => useQuery({
+export const useDailySpend = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['dashboard', 'daily-spend', params],
     queryFn: async () => {
         const { from, to, end } = getMonthRange();
@@ -179,7 +179,7 @@ export const useDailySpend = (params = {}) => useQuery({
     },
 });
 
-export const useTopCategories = (params = {}) => useQuery({
+export const useTopCategories = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['dashboard', 'top-categories', params],
     queryFn: async () => {
         if (useDevMockData) {
@@ -196,7 +196,7 @@ export const useTopCategories = (params = {}) => useQuery({
         const limit = params.limit || 5;
         const { from, to } = getDashboardDateRange(params), refDate = new Date(from);
         const { data: txs } = await supabase.from('transactions').select('amount,category_id,category:categories(id,name,icon,color,parent_id)').eq('type', 'expense').gte('date', from).lte('date', to);
-        const grouped = {}; (txs || []).forEach(tx => { if (!tx.category_id) return; if (!grouped[tx.category_id]) grouped[tx.category_id] = { ...tx.category, total: 0, sparkline: [] }; grouped[tx.category_id].total += Number(tx.amount); });
+        const grouped: Record<string, any> = {}; (txs || []).forEach(tx => { if (!tx.category_id) return; if (!grouped[tx.category_id]) grouped[tx.category_id] = { ...tx.category, total: 0, sparkline: [] }; grouped[tx.category_id].total += Number(tx.amount); });
         const topItems = Object.values(grouped).sort((a, b) => b.total - a.total).slice(0, limit);
         return Promise.all(topItems.map(async (cat) => {
             const sparkline = await Promise.all(Array.from({ length: 3 }, async (_, i) => {

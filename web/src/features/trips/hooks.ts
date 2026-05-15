@@ -22,7 +22,7 @@ export const useTripsWithCost = () => useQuery({
             .select('trip_id, amount')
             .in('trip_id', tripIds)
             .eq('type', 'expense');
-        const costMap = {};
+        const costMap: Record<string, number> = {};
         (txs || []).forEach(tx => {
             costMap[tx.trip_id] = (costMap[tx.trip_id] || 0) + Number(tx.amount);
         });
@@ -30,7 +30,7 @@ export const useTripsWithCost = () => useQuery({
     },
 });
 
-export const useTripTransactions = (tripId) => useQuery({
+export const useTripTransactions = (tripId: string | null | undefined) => useQuery({
     queryKey: ['transactions', 'trip', tripId],
     enabled: !!tripId,
     queryFn: async () => {
@@ -50,7 +50,7 @@ export const useTripMutations = () => {
         qc.invalidateQueries({ queryKey: ['transactions'] });
     };
     const create = useMutation({
-        mutationFn: async (d) => {
+        mutationFn: async (d: any) => {
             const { data: { user } } = await supabase.auth.getUser();
             const { data, error } = await supabase.from('trips').insert({ 
                 user_id: user.id, 
@@ -63,7 +63,7 @@ export const useTripMutations = () => {
         }, onSuccess: inv,
     });
     const update = useMutation({
-        mutationFn: async ({ id, ...d }) => {
+        mutationFn: async ({ id, ...d }: any) => {
             const { data, error } = await supabase.from('trips').update({
                 name: d.name,
                 destination: d.destination || null,
@@ -74,7 +74,7 @@ export const useTripMutations = () => {
         }, onSuccess: inv,
     });
     const remove = useMutation({
-        mutationFn: async (id) => {
+        mutationFn: async (id: string) => {
             // Unlink transactions before deleting trip
             await supabase.from('transactions').update({ trip_id: null }).eq('trip_id', id);
             const { error } = await supabase.from('trips').delete().eq('id', id);

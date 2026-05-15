@@ -39,20 +39,20 @@ export const useWalletMutations = () => {
         qc.invalidateQueries({ queryKey: ['dashboard'] });
     };
     const create = useMutation({
-        mutationFn: async (d) => {
+        mutationFn: async (d: any) => {
             const { data: { user } } = await supabase.auth.getUser();
             const { data, error } = await supabase.from('wallets').insert({ user_id: user.id, name: d.name, type: d.type || 'checking', balance: parseFloat(d.balance) || 0 }).select().single();
             if (error) throw error; return data;
         }, onSuccess: inv,
     });
     const update = useMutation({
-        mutationFn: async ({ id, ...d }) => {
+        mutationFn: async ({ id, ...d }: any) => {
             const { data, error } = await supabase.from('wallets').update({ name: d.name, type: d.type || 'checking', updated_at: nowISO() }).eq('id', id).select().single();
             if (error) throw error; return data;
         }, onSuccess: inv,
     });
     const remove = useMutation({
-        mutationFn: async (id) => { const { error } = await supabase.from('wallets').update({ deleted_at: nowISO() }).eq('id', id); if (error) throw error; },
+        mutationFn: async (id: string) => { const { error } = await supabase.from('wallets').update({ deleted_at: nowISO() }).eq('id', id); if (error) throw error; },
         onSuccess: inv,
     });
     return { create, update, remove };

@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { nowISO } from '@/features/shared/api';
 
 // ── Transactions ─────────────────────────────────────────────────
-export const useTransactions = (params = {}) => useQuery({
+export const useTransactions = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['transactions', params],
     queryFn: async () => {
         let query = supabase.from('transactions').select('*, wallet:wallets!wallet_id(id,name), to_wallet:wallets!to_wallet_id(id,name), category:categories(id,name,icon,color,parent_id), splits:transaction_splits(*, category:categories(id,name,icon,color)), contact:contacts(id,name)', { count: 'exact' });
@@ -28,7 +28,7 @@ export const useTransactions = (params = {}) => useQuery({
     },
 });
 
-export const useAllTransactions = (params = {}) => useQuery({
+export const useAllTransactions = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['all-transactions', params],
     queryFn: async () => {
         let query = supabase.from('transactions').select('*, category:categories(id,name,icon,color,parent_id)').order('date', { ascending: false });
@@ -51,7 +51,7 @@ export const useTransactionMutations = () => {
         qc.invalidateQueries({ queryKey: ['dashboard'] });
     };
     const create = useMutation({
-        mutationFn: async (d) => {
+        mutationFn: async (d: any) => {
             const { data: { user } } = await supabase.auth.getUser();
             const amt = parseFloat(d.amount);
             const { data: tx, error } = await supabase.from('transactions').insert({ user_id: user.id, wallet_id: d.walletId || null, category_id: d.categoryId || null, contact_id: d.contactId || null, trip_id: d.tripId || null, amount: amt, type: d.type, description: d.description || null, date: d.date, is_recurring: !!d.isRecurring, is_debt: !!d.isDebt, to_wallet_id: d.type === 'transfer' ? (d.toWalletId || null) : null }).select().single();
@@ -59,7 +59,7 @@ export const useTransactionMutations = () => {
         }, onSuccess: invAll,
     });
     const update = useMutation({
-        mutationFn: async ({ id, ...d }) => {
+        mutationFn: async ({ id, ...d }: any) => {
             const { data: existing } = await supabase.from('transactions').select('*').eq('id', id).single();
             const amt = d.amount !== undefined ? parseFloat(d.amount) : Number(existing.amount);
             const newType = d.type || existing.type;
@@ -68,17 +68,17 @@ export const useTransactionMutations = () => {
         }, onSuccess: invAll,
     });
     const remove = useMutation({
-        mutationFn: async (id) => { const { error } = await supabase.from('transactions').delete().eq('id', id); if (error) throw error; },
+        mutationFn: async (id: string) => { const { error } = await supabase.from('transactions').delete().eq('id', id); if (error) throw error; },
         onSuccess: invAll,
     });
     const setSplits = useMutation({
-        mutationFn: async ({ id, splits }) => {
+        mutationFn: async ({ id, splits }: any) => {
             await supabase.from('transaction_splits').delete().eq('transaction_id', id);
-            if (splits.length > 0) { const { error } = await supabase.from('transaction_splits').insert(splits.map(s => ({ transaction_id: id, category_id: s.categoryId || null, amount: parseFloat(s.amount), note: s.note || null }))); if (error) throw error; }
+            if (splits.length > 0) { const { error } = await supabase.from('transaction_splits').insert(splits.map((s: any) => ({ transaction_id: id, category_id: s.categoryId || null, amount: parseFloat(s.amount), note: s.note || null }))); if (error) throw error; }
         }, onSuccess: invAll,
     });
     const toggleReview = useMutation({
-        mutationFn: async (id) => {
+        mutationFn: async (id: string) => {
             const { data: tx } = await supabase.from('transactions').select('is_reviewed').eq('id', id).single();
             const { error } = await supabase.from('transactions').update({ is_reviewed: !tx.is_reviewed }).eq('id', id);
             if (error) throw error;

@@ -16,28 +16,28 @@ export const useCategoryMutations = () => {
     const qc = useQueryClient();
     const inv = () => qc.invalidateQueries({ queryKey: ['categories'] });
     const create = useMutation({
-        mutationFn: async (d) => {
+        mutationFn: async (d: any) => {
             const { data: { user } } = await supabase.auth.getUser();
             const { data, error } = await supabase.from('categories').insert({ user_id: user.id, name: d.name, icon: d.icon || null, color: d.color || null, type: d.type, parent_id: d.parentId || null }).select().single();
             if (error) throw error; return data;
         }, onSuccess: inv,
     });
     const update = useMutation({
-        mutationFn: async ({ id, parentId, ...d }) => {
+        mutationFn: async ({ id, parentId, ...d }: any) => {
             const { data, error } = await supabase.from('categories').update({ name: d.name, icon: d.icon || null, color: d.color || null, type: d.type, parent_id: parentId || null, updated_at: nowISO() }).eq('id', id).select().single();
             if (error) throw error; return data;
         }, onSuccess: inv,
     });
     const remove = useMutation({
-        mutationFn: async (id) => {
+        mutationFn: async (id: string) => {
             const { count } = await supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('category_id', id);
-            if (count > 0) { const err = new Error(`${count} transaction(s) linked. Reassign before deleting.`); err.code = 'LINKED_TRANSACTIONS'; err.linkedCount = count; throw err; }
+            if (count > 0) { const err = Object.assign(new Error(`${count} transaction(s) linked. Reassign before deleting.`), { code: 'LINKED_TRANSACTIONS', linkedCount: count }); throw err; }
             const { error } = await supabase.from('categories').delete().eq('id', id);
             if (error) throw error;
         }, onSuccess: inv,
     });
     const reassign = useMutation({
-        mutationFn: async ({ id, newCategoryId }) => {
+        mutationFn: async ({ id, newCategoryId }: any) => {
             await supabase.from('transactions').update({ category_id: newCategoryId || null }).eq('category_id', id);
             await supabase.from('transaction_splits').update({ category_id: newCategoryId || null }).eq('category_id', id);
         }, onSuccess: inv,

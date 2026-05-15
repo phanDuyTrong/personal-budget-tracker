@@ -19,7 +19,7 @@ export const useDebts = () => useQuery({
         if (contactError) throw contactError;
         const { data: txs, error: txError } = await supabase.from('transactions').select('amount, type, contact_id, date').eq('is_debt', true);
         if (txError) throw txError;
-        const balances = {};
+        const balances: Record<string, any> = {};
         contacts.forEach(c => { balances[c.id] = { ...c, balance: 0, debtTxs: [] }; });
         (txs || []).forEach(tx => {
             if (!tx.contact_id || !balances[tx.contact_id]) return;
@@ -36,20 +36,20 @@ export const useContactMutations = () => {
     const qc = useQueryClient();
     const inv = () => qc.invalidateQueries({ queryKey: ['contacts'] });
     const create = useMutation({
-        mutationFn: async (d) => {
+        mutationFn: async (d: any) => {
             const { data: { user } } = await supabase.auth.getUser();
             const { data, error } = await supabase.from('contacts').insert({ user_id: user.id, name: d.name, email: d.email || null, phone: d.phone || null }).select().single();
             if (error) throw error; return data;
         }, onSuccess: inv,
     });
     const update = useMutation({
-        mutationFn: async ({ id, ...d }) => {
+        mutationFn: async ({ id, ...d }: any) => {
             const { data, error } = await supabase.from('contacts').update({ name: d.name, email: d.email || null, phone: d.phone || null, updated_at: nowISO() }).eq('id', id).select().single();
             if (error) throw error; return data;
         }, onSuccess: inv,
     });
     const remove = useMutation({
-        mutationFn: async (id) => {
+        mutationFn: async (id: string) => {
             await supabase.from('transactions').update({ contact_id: null }).eq('contact_id', id);
             const { error } = await supabase.from('contacts').delete().eq('id', id);
             if (error) throw error; return true;
