@@ -57,3 +57,38 @@ node scripts/test-rls.mjs
 ```
 
 The script signs in as user B, creates a wallet, signs in as user A, and verifies user A cannot read user B's wallet.
+
+## Telegram bot setup
+
+The Telegram bot runs as Supabase Edge Functions and writes directly to the existing Supabase tables after a user links their Telegram account in Settings.
+
+1. Create a bot in Telegram with BotFather and copy the bot token.
+2. Apply the migration in `supabase/migrations/20260515090000_add_telegram_bot_integration.sql`.
+3. Set Supabase Edge Function secrets:
+
+   ```bash
+   supabase secrets set TELEGRAM_BOT_TOKEN="your-telegram-bot-token"
+   supabase secrets set TELEGRAM_WEBHOOK_SECRET="$(openssl rand -hex 32)"
+   supabase secrets set SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
+   supabase secrets set WEB_APP_URL="https://your-app.web.app"
+   supabase secrets set BOT_TIME_ZONE="Asia/Ho_Chi_Minh"
+   ```
+
+4. Deploy the functions:
+
+   ```bash
+   supabase functions deploy telegram-config
+   supabase functions deploy telegram-webhook --no-verify-jwt
+   ```
+
+5. Register the Telegram webhook, replacing values with your project ref and secret:
+
+   ```bash
+   curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+     -H "Content-Type: application/json" \
+     -d '{"url":"https://YOUR_PROJECT_REF.supabase.co/functions/v1/telegram-webhook","secret_token":"YOUR_TELEGRAM_WEBHOOK_SECRET"}'
+   ```
+
+6. In the web app, open Settings → Telegram Bot, choose a default wallet, generate a code, then send `/link 123456` to the bot.
+
+The v1 parser is local and free. It supports Vietnamese and English examples like `ăn trưa 85k bằng tiền mặt`, `lunch 85k from cash`, `nhận lương 20tr vào Techcombank`, and `transfer 2m from cash to savings`.
