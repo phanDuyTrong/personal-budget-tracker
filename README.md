@@ -37,10 +37,11 @@ Run these before opening a PR:
 ```bash
 cd web
 npm run lint
+npm test
 npm run build
 ```
 
-CI runs the same lint and build checks on pull requests and pushes to `main`.
+CI runs lint, tests, and build checks on pull requests and pushes to `main`.
 
 ## Supabase RLS smoke test
 
@@ -57,3 +58,11 @@ node scripts/test-rls.mjs
 ```
 
 The script signs in as user B, creates a wallet, signs in as user A, and verifies user A cannot read user B's wallet.
+
+## Production deploy
+
+Pushes to `main` deploy `web/dist` to Firebase Hosting project `budget-manager-a4482`. The deploy workflow expects this GitHub repository secret:
+
+- `FIREBASE_SERVICE_ACCOUNT`: the full Firebase service account JSON for the Firebase project. In Firebase Console, create it from Project settings -> Service accounts -> Generate new private key, then paste the whole JSON as the secret value in GitHub Settings -> Secrets and variables -> Actions.
+
+The workflow runs `npm ci`, `npm run lint`, `npm test`, and `npm run build` in `web/` before deploying.
