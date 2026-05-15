@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon, UsersIcon, EnvelopeIcon, PhoneIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { useContacts, useContactMutations } from '@/hooks/useApi';
+import { useContacts, useContactMutations } from '@/features/contacts/hooks';
 import { Modal, Button, Input, Field, Skeleton, EmptyState, ConfirmModal, useToast } from '@/components/ui';
 
 function ContactModal({ open, onClose, contact }) {

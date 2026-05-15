@@ -22,7 +22,7 @@ import {
     ModalHeader,
     ModalBody,
     ModalFooter, SelectItem } from "@heroui/react";
-import { useCalculatedWallets, useWalletMutations } from '@/hooks/useApi';
+import { useCalculatedWallets, useWalletMutations } from '@/features/wallets/hooks';
 import { 
     Modal, 
     AmountInput, 
@@ -55,9 +55,9 @@ function WalletModal({ open, onClose, wallet }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const payload = { ...form, balance: parseFloat(form.balance) || 0 };
+            const payload = { name: form.name, type: form.type };
             if (isEdit) await update.mutateAsync({ id: wallet.id, ...payload });
-            else await create.mutateAsync(payload);
+            else await create.mutateAsync({ ...payload, balance: parseFloat(form.balance) || 0 });
             toast(`Wallet ${isEdit ? 'updated' : 'created'}!`, 'success');
             onClose();
         } catch (err) { toast(err.message || 'Error', 'error'); }
@@ -84,8 +84,18 @@ function WalletModal({ open, onClose, wallet }) {
                     {WALLET_TYPES.map(t => <SelectItem key={t.value} textValue={t.label}>{t.label}</SelectItem>)}
                 </HeroSelect>
 
-                <Field label={isEdit ? 'Balance' : 'Starting Balance'}>
-                    <AmountInput value={form.balance} onChange={e => setForm(f => ({ ...f, balance: e.target.value }))} required />
+                <Field label="Opening Balance">
+                    <AmountInput
+                        value={form.balance}
+                        onChange={e => setForm(f => ({ ...f, balance: e.target.value }))}
+                        isDisabled={isEdit}
+                        required={!isEdit}
+                    />
+                    {isEdit && (
+                        <p className="mt-2 text-xs font-medium text-neutral-500">
+                            Opening balance is locked after creation; live balance comes from transactions.
+                        </p>
+                    )}
                 </Field>
 
                 <div className="flex gap-2 justify-end pt-4 border-t border-neutral-100 dark:border-neutral-800">

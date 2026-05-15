@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCalculatedWallets, useWalletMutations } from '@/hooks/useApi';
+import { useCalculatedWallets, useWalletMutations } from '@/features/wallets/hooks';
 import { useFormatAmount } from '@/hooks/useTranslation';
 import { TermBox, TermInputPrompt, TermButton } from '@/components/terminal';
 

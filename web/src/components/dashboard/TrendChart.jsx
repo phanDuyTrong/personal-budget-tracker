@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useTrend } from '@/hooks/useApi';
+import { useTrend } from '@/features/dashboard/hooks';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useFormatAmount } from '@/hooks/useTranslation';
 import { Skeleton } from '@/components/ui';

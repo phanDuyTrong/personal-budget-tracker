@@ -17,7 +17,7 @@ import {
     ModalFooter,
 
  SelectItem } from "@heroui/react";
-import { useCategories, useCategoryMutations } from '@/hooks/useApi';
+import { useCategories, useCategoryMutations } from '@/features/categories/hooks';
 import { Modal, Field, EmptyState, ConfirmModal, useToast, DynamicIcon , GlassCard } from '@/components/ui';
 
 const ICONS = [

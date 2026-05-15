@@ -2,9 +2,9 @@ import React from 'react';
 import {
     useDashboardKPIs,
     useBudgetHealth,
-    useTopCategories,
-    useCalculatedWallets
-} from '@/hooks/useApi';
+    useTopCategories
+} from '@/features/dashboard/hooks';
+import { useCalculatedWallets } from '@/features/wallets/hooks';
 import { useFormatAmount } from '@/hooks/useTranslation';
 import { TermBox, TermInputPrompt, AsciiProgressBar, AsciiSparkline } from '@/components/terminal';
 

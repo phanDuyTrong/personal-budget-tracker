@@ -26,7 +26,11 @@ import {
     Chip,
     Tooltip, SelectItem } from "@heroui/react";
 
-import { useTransactions, useTransactionMutations, useWallets, useCategories, useContacts, useTrips } from '@/hooks/useApi';
+import { useTransactions, useTransactionMutations } from '@/features/transactions/hooks';
+import { useWallets } from '@/features/wallets/hooks';
+import { useCategories } from '@/features/categories/hooks';
+import { useContacts } from '@/features/contacts/hooks';
+import { useTrips } from '@/features/trips/hooks';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { viFilter } from '@/lib/filters';
 import { 

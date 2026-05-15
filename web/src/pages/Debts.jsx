@@ -1,5 +1,5 @@
 import React from 'react';
-import { useDebts } from '@/hooks/useApi';
+import { useDebts } from '@/features/contacts/hooks';
 import { EmptyState, AmountDisplay , GlassCard } from '@/components/ui';
 import { UsersIcon, ExclamationCircleIcon, ArrowUpRightIcon, ArrowDownLeftIcon } from '@heroicons/react/24/outline';
 import { useSettingsStore } from '@/stores/settingsStore';

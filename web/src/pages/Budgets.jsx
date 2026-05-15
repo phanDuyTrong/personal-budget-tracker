@@ -22,7 +22,8 @@ import {
     Tab,
 
     Chip, SelectItem } from "@heroui/react";
-import { useBudgets, useBudgetMutations, useCategories } from '@/hooks/useApi';
+import { useBudgets, useBudgetMutations } from '@/features/budgets/hooks';
+import { useCategories } from '@/features/categories/hooks';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Modal, AmountInput, Field, EmptyState, ConfirmModal, useToast, DatePicker as CustomDatePicker , GlassCard } from '@/components/ui';
 import { useFormatAmount } from '@/hooks/useTranslation';

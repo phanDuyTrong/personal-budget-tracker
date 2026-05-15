@@ -21,7 +21,8 @@ import {
 
     Chip,
     Card, SelectItem } from "@heroui/react";
-import { useGoals, useGoalMutations, useWallets } from '@/hooks/useApi';
+import { useGoals, useGoalMutations } from '@/features/goals/hooks';
+import { useWallets } from '@/features/wallets/hooks';
 import { Modal, AmountInput, Field, EmptyState, ConfirmModal, useToast, GlassCard, DatePicker as CustomDatePicker } from '@/components/ui';
 import { useFormatAmount } from '@/hooks/useTranslation';
 

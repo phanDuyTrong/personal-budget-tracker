@@ -1,6 +1,6 @@
 import { useDisclosure } from "@heroui/use-disclosure";
 import React, { useState, useMemo } from 'react';
-import { useTripsWithCost, useTripTransactions, useTripMutations } from '@/hooks/useApi';
+import { useTripsWithCost, useTripTransactions, useTripMutations } from '@/features/trips/hooks';
 import { useFormatAmount } from '@/hooks/useTranslation';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { 
