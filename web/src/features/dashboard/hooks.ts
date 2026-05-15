@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useDevMockData } from '@/features/shared/api';
 import { calculateLiveBalance } from '@/features/wallets/balance';
-import { enrichGoal } from '@/features/goals/hooks';
+import { calculateDashboardKPIs } from './money';
+import { enrichGoal } from '@/features/goals/money';
 import { getDashboardDateRange, getMonthRange, getPreviousMonthRange, getShiftedMonthRange, monthLabel, toISODate } from '@/lib/date';
 
 // ── Dashboard ─────────────────────────────────────────────────────
@@ -20,14 +21,12 @@ export const useDashboardKPIs = (params: Record<string, any> = {}) => useQuery({
             supabase.from('transactions').select('amount,type').gte('date', from).lte('date', to),
             supabase.from('transactions').select('amount,type').gte('date', prevFrom).lte('date', prevTo),
         ]);
-        const liveBalance = calculateLiveBalance(accs || [], allTxs || []);
-        const income = (curTxs || []).filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
-        const expenses = (curTxs || []).filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
-        const pIncome = (prevTxs || []).filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
-        const pExpenses = (prevTxs || []).filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
-        const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0;
-        const prevSavingsRate = pIncome > 0 ? ((pIncome - pExpenses) / pIncome) * 100 : 0;
-        return { totalBalance: liveBalance, monthlyIncome: income, monthlyExpenses: expenses, savingsRate: Math.round(savingsRate * 10) / 10, deltas: { income: pIncome > 0 ? ((income - pIncome) / pIncome) * 100 : null, expenses: pExpenses > 0 ? ((expenses - pExpenses) / pExpenses) * 100 : null, savingsRate: prevSavingsRate !== 0 ? savingsRate - prevSavingsRate : null } };
+        return calculateDashboardKPIs({
+            wallets: accs || [],
+            allTransactions: allTxs || [],
+            currentTransactions: curTxs || [],
+            previousTransactions: prevTxs || [],
+        });
     },
 });
 
