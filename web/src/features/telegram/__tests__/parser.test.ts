@@ -15,7 +15,7 @@ const context = {
     { id: "wallet-default", name: "Default wallet" },
   ],
   categories: [
-    { id: "cat-food", name: "Ăn uống", type: "expense" },
+    { id: "cat-food", name: "Mua đồ ăn", type: "expense" },
     { id: "cat-salary", name: "Salary", type: "income" },
   ],
   contacts: [{ id: "contact-minh", name: "Minh" }],
@@ -32,7 +32,9 @@ describe("parseTelegramTransaction", () => {
     expect(result.type).toBe("expense");
     expect(result.amount).toBe(85000);
     expect(result.walletId).toBe("wallet-cash");
+    expect(result.categoryId).toBe("cat-food");
     expect(result.description).toBe("ăn trưa");
+    expect(result.unmatched).not.toContain("contact");
   });
 
   it("parses English expenses", () => {
@@ -41,7 +43,20 @@ describe("parseTelegramTransaction", () => {
     if (!result.ok) return;
     expect(result.type).toBe("expense");
     expect(result.amount).toBe(85000);
+    expect(result.categoryId).toBe("cat-food");
     expect(result.description).toBe("lunch");
+  });
+
+  it("matches food merchants and food words to the food category", () => {
+    const result = parseTelegramTransaction(
+      "ăn kem tại jolibee 121k tài khoản",
+      context,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.walletId).toBe("wallet-default");
+    expect(result.categoryId).toBe("cat-food");
+    expect(result.description).toBe("ăn kem tại jolibee tài khoản");
   });
 
   it("parses Vietnamese and English income shorthand", () => {
