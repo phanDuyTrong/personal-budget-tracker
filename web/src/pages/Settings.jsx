@@ -53,6 +53,17 @@ function Section({ icon, title, description, children }) {
   );
 }
 
+const NO_DEFAULT_WALLET = "__none__";
+
+function walletSelectionKey(walletId) {
+  return walletId || NO_DEFAULT_WALLET;
+}
+
+function selectedWalletValue(keys) {
+  const key = Array.from(keys)[0] || NO_DEFAULT_WALLET;
+  return key === NO_DEFAULT_WALLET ? "" : key;
+}
+
 function TelegramBotSettings() {
   const toast = useToast();
   const { data: wallets = [] } = useWallets();
@@ -77,16 +88,7 @@ function TelegramBotSettings() {
     });
   }, []);
 
-  useEffect(() => {
-    if (!selectedWalletId && wallets.length > 0)
-      setSelectedWalletId(wallets[0].id);
-  }, [selectedWalletId, wallets]);
-
   const handleGenerate = async () => {
-    if (!selectedWalletId) {
-      toast("Choose a default wallet first.", "error");
-      return;
-    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke(
@@ -94,7 +96,7 @@ function TelegramBotSettings() {
         {
           body: {
             action: "create_link_code",
-            defaultWalletId: selectedWalletId,
+            defaultWalletId: selectedWalletId || null,
           },
         },
       );
@@ -114,12 +116,12 @@ function TelegramBotSettings() {
       const { error } = await supabase.functions.invoke("telegram-config", {
         body: {
           action: "update_default_wallet",
-          defaultWalletId: selectedWalletId,
+          defaultWalletId: selectedWalletId || null,
         },
       });
       if (error) throw error;
       await loadStatus();
-      toast("Default Telegram wallet updated.", "success");
+      toast("Telegram wallet fallback updated.", "success");
     } catch (error) {
       toast(error.message || "Could not update default wallet.", "error");
     } finally {
@@ -172,15 +174,18 @@ function TelegramBotSettings() {
         </div>
 
         <HeroSelect
-          label="Default wallet"
-          description="Used when your Telegram message does not mention a wallet."
-          selectedKeys={selectedWalletId ? [selectedWalletId] : []}
+          label="Fallback wallet"
+          description="Optional. If empty, Telegram messages must mention a wallet."
+          selectedKeys={[walletSelectionKey(selectedWalletId)]}
           onSelectionChange={(keys) =>
-            setSelectedWalletId(Array.from(keys)[0] || "")
+            setSelectedWalletId(selectedWalletValue(keys))
           }
           variant="flat"
           isDisabled={wallets.length === 0}
         >
+          <SelectItem key={NO_DEFAULT_WALLET} textValue="No fallback wallet">
+            No fallback wallet
+          </SelectItem>
           {wallets.map((wallet) => (
             <SelectItem key={wallet.id} textValue={wallet.name}>
               {wallet.name}
@@ -218,7 +223,7 @@ function TelegramBotSettings() {
                 onClick={handleUpdateWallet}
                 isLoading={loading}
               >
-                Update Default Wallet
+                Update Fallback Wallet
               </Button>
               <Button
                 color="danger"

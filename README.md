@@ -63,7 +63,7 @@ The script signs in as user B, creates a wallet, signs in as user A, and verifie
 The Telegram bot runs as Supabase Edge Functions and writes directly to the existing Supabase tables after a user links their Telegram account in Settings.
 
 1. Create a bot in Telegram with BotFather and copy the bot token.
-2. Apply the migration in `supabase/migrations/20260515090000_add_telegram_bot_integration.sql`.
+2. Apply the Telegram migrations in `supabase/migrations/`.
 3. Set Supabase Edge Function secrets:
 
    ```bash
@@ -89,6 +89,6 @@ The Telegram bot runs as Supabase Edge Functions and writes directly to the exis
      -d '{"url":"https://YOUR_PROJECT_REF.supabase.co/functions/v1/telegram-webhook","secret_token":"YOUR_TELEGRAM_WEBHOOK_SECRET"}'
    ```
 
-6. In the web app, open Settings → Telegram Bot, choose a default wallet, generate a code, then send `/link 123456` to the bot.
+6. In the web app, open Settings → Telegram Bot, generate a code, optionally choose a fallback wallet, then send `/link 123456` to the bot.
 
 The v1 parser is local and free. It supports Vietnamese and English examples like `ăn trưa 85k bằng tiền mặt`, `lunch 85k from cash`, `nhận lương 20tr vào Techcombank`, and `transfer 2m from cash to savings`.
