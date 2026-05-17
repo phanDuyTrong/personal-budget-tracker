@@ -92,3 +92,11 @@ The Telegram bot runs as Supabase Edge Functions and writes directly to the exis
 6. In the web app, open Settings → Telegram Bot, generate a code, optionally choose a fallback wallet, then send `/link 123456` to the bot.
 
 The v1 parser is local and free. It supports Vietnamese and English examples like `ăn trưa 85k bằng tiền mặt`, `lunch 85k from cash`, `nhận lương 20tr vào Techcombank`, and `transfer 2m from cash to savings`.
+
+Telegram templates let one message create multiple transactions. Create or replace a template from Telegram with:
+
+```text
+/template add Nhận lương tháng => nhận lương 20tr vào Techcombank; cho mẹ 5tr từ tài khoản
+```
+
+Then send `Nhận lương tháng` to run the template. Use `/templates` to list templates and `/template delete 1` or `/template delete Nhận lương tháng` to remove one. Templates also appear in Settings → Telegram Bot so they can be reviewed and deleted from the web app.

@@ -70,6 +70,7 @@ function TelegramBotSettings() {
   const [status, setStatus] = useState(null);
   const [selectedWalletId, setSelectedWalletId] = useState("");
   const [linkCode, setLinkCode] = useState(null);
+  const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const loadStatus = async () => {
@@ -82,9 +83,30 @@ function TelegramBotSettings() {
       setSelectedWalletId(data.link.default_wallet_id);
   };
 
+  const loadTemplates = async () => {
+    const { data, error } = await supabase
+      .from("telegram_transaction_templates")
+      .select(
+        "id,name,trigger_text,is_active,created_at,items:telegram_transaction_template_items(id,type,amount,description,sort_order,wallet:wallets!wallet_id(id,name),to_wallet:wallets!to_wallet_id(id,name),category:categories(id,name))",
+      )
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    setTemplates(
+      (data || []).map((template) => ({
+        ...template,
+        items: [...(template.items || [])].sort(
+          (a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0),
+        ),
+      })),
+    );
+  };
+
   useEffect(() => {
     loadStatus().catch(() => {
       setStatus(null);
+    });
+    loadTemplates().catch(() => {
+      setTemplates([]);
     });
   }, []);
 
@@ -146,7 +168,35 @@ function TelegramBotSettings() {
     }
   };
 
+  const handleDeleteTemplate = async (templateId) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("telegram_transaction_templates")
+        .delete()
+        .eq("id", templateId);
+      if (error) throw error;
+      await loadTemplates();
+      toast("Telegram template deleted.", "success");
+    } catch (error) {
+      toast(error.message || "Could not delete template.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const linkCommand = linkCode ? "/link " + linkCode.code : "";
+  const templateCommand =
+    "/template add Nhận lương tháng => nhận lương 20tr vào Techcombank; cho mẹ 5tr từ tài khoản";
+
+  const formatTemplateAmount = (amount) =>
+    Number(amount || 0).toLocaleString("vi-VN") + "₫";
+
+  const templateItemLabel = (item) => {
+    const wallet = item.wallet?.name ? " · " + item.wallet.name : "";
+    const category = item.category?.name ? " · " + item.category.name : "";
+    return `${item.type} ${formatTemplateAmount(item.amount)}${wallet}${category}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -236,6 +286,85 @@ function TelegramBotSettings() {
             </>
           )}
         </div>
+      </div>
+
+      <div className="rounded-[2rem] border border-neutral-200/70 dark:border-neutral-800/70 bg-neutral-100/50 dark:bg-neutral-800/50 p-6 space-y-5">
+        <div>
+          <p className="text-sm font-black text-neutral-900 dark:text-white">
+            Transaction Templates
+          </p>
+          <p className="text-xs font-medium text-neutral-500 mt-1">
+            Create routines in Telegram, then trigger many transactions with one
+            message. Example: <span className="font-mono">Nhận lương tháng</span>.
+          </p>
+        </div>
+
+        <div className="rounded-2xl bg-white/70 dark:bg-neutral-950/50 border border-neutral-200 dark:border-neutral-800 p-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">
+            Create from Telegram
+          </p>
+          <p className="mt-2 font-mono text-xs md:text-sm font-bold text-primary break-words">
+            {templateCommand}
+          </p>
+          <p className="mt-2 text-xs text-neutral-500">
+            Then send <span className="font-mono">Nhận lương tháng</span> anytime
+            to create both transactions. Use <span className="font-mono">/templates</span>
+            to list or <span className="font-mono">/template delete 1</span> to delete
+            from Telegram.
+          </p>
+        </div>
+
+        {templates.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 p-5 text-sm text-neutral-500">
+            No templates yet. Create your first one from Telegram.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {templates.map((template) => (
+              <div
+                key={template.id}
+                className="rounded-2xl bg-white/70 dark:bg-neutral-950/50 border border-neutral-200 dark:border-neutral-800 p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-black text-neutral-900 dark:text-white">
+                      {template.name}
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      Trigger: <span className="font-mono">{template.trigger_text}</span>
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    color="danger"
+                    variant="light"
+                    onClick={() => handleDeleteTemplate(template.id)}
+                    isLoading={loading}
+                  >
+                    Delete
+                  </Button>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {(template.items || []).map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-xl bg-neutral-100/70 dark:bg-neutral-900/70 px-3 py-2"
+                    >
+                      <p className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                        {templateItemLabel(item)}
+                      </p>
+                      {item.description && (
+                        <p className="text-xs text-neutral-500 mt-0.5">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
