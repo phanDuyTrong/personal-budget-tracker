@@ -47,11 +47,32 @@ type TransactionTemplate = {
   items?: TemplateItem[];
 };
 
+type AiParsedTransaction = {
+  type?: "expense" | "income" | "transfer";
+  amount?: number;
+  walletName?: string | null;
+  toWalletName?: string | null;
+  categoryName?: string | null;
+  contactName?: string | null;
+  description?: string | null;
+  date?: string | null;
+  confidence?: number;
+  reason?: string | null;
+};
+
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const telegramToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const webhookSecret = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") || "";
 const timeZone = Deno.env.get("BOT_TIME_ZONE") || "Asia/Ho_Chi_Minh";
+const aiParseApiKey = Deno.env.get("AI_PARSE_API_KEY") || "";
+const aiParseBaseUrl =
+  Deno.env.get("AI_PARSE_BASE_URL") ||
+  "https://openrouter.ai/api/v1/chat/completions";
+const aiParseModel = Deno.env.get("AI_PARSE_MODEL") || "openrouter/free";
+const aiParseMode = Deno.env.get("AI_PARSE_MODE") || "assist";
+const webAppUrl =
+  Deno.env.get("WEB_APP_URL") || "https://budget-manager-a4482.web.app";
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
 
@@ -167,6 +188,178 @@ async function loadTemplates(userId: string) {
       (a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0),
     ),
   }));
+}
+
+async function loadAiMemories(userId: string) {
+  const { data, error } = await supabase
+    .from("telegram_ai_parse_memories")
+    .select("source_text,parser,parsed_payload,created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(12);
+  if (error) return [];
+  return data || [];
+}
+
+async function rememberParse(
+  userId: string,
+  sourceText: string,
+  parser: "local" | "ai" | "template",
+  parsedPayload: Record<string, unknown>,
+  transactionId?: string | null,
+) {
+  await supabase.from("telegram_ai_parse_memories").insert({
+    user_id: userId,
+    source_text: sourceText,
+    normalized_text: normalizeText(sourceText),
+    parser,
+    parsed_payload: parsedPayload,
+    transaction_id: transactionId || null,
+  });
+}
+
+function compactItems(items: Array<{ name?: string | null; type?: string | null }>) {
+  return items.map((item) => item.type ? `${item.name} (${item.type})` : item.name).filter(Boolean);
+}
+
+function findByName<T extends { name?: string | null }>(items: T[], name?: string | null) {
+  const normalized = normalizeText(name || "");
+  if (!normalized) return null;
+  return (
+    items.find((item) => normalizeText(item.name || "") === normalized) ||
+    items.find((item) => {
+      const itemName = normalizeText(item.name || "");
+      return itemName && (normalized.includes(itemName) || itemName.includes(normalized));
+    }) ||
+    null
+  );
+}
+
+function extractJsonObject(value: string) {
+  const fenced = value.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const raw = fenced?.[1] || value;
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start < 0 || end < start) return null;
+  try {
+    return JSON.parse(raw.slice(start, end + 1));
+  } catch (_error) {
+    return null;
+  }
+}
+
+function aiToParsedTransaction(
+  ai: AiParsedTransaction,
+  text: string,
+  context: Awaited<ReturnType<typeof loadContext>>,
+) {
+  const requestedType = ai.type || "expense";
+  const type = ["expense", "income", "transfer"].includes(requestedType)
+    ? requestedType
+    : "expense";
+  const amount = Number(ai.amount || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { ok: false as const, reason: "AI could not detect a valid amount." };
+  }
+
+  const wallet = findByName(context.wallets, ai.walletName) || null;
+  const toWallet = type === "transfer" ? findByName(context.wallets, ai.toWalletName) : null;
+  const walletId = wallet?.id || context.defaultWalletId || null;
+  if (!walletId) {
+    return {
+      ok: false as const,
+      reason: "I could not match a wallet. Please mention one, like “bằng tiền mặt”, “vào Techcombank”, or “from cash”.",
+    };
+  }
+  if (type === "transfer" && !toWallet) {
+    return {
+      ok: false as const,
+      reason: "Transfer needs a destination wallet. Please resend with “from wallet A to wallet B” or “từ ví A sang ví B”.",
+    };
+  }
+
+  const category = type === "transfer" ? null : findByName(context.categories, ai.categoryName);
+  const contact = findByName(context.contacts, ai.contactName);
+  const today = todayInTimeZone();
+  const date = /^20\d{2}-\d{2}-\d{2}$/.test(ai.date || "") ? ai.date! : today;
+
+  return {
+    ok: true as const,
+    type,
+    amount: Math.round(amount * 100) / 100,
+    date,
+    description: (ai.description || text).trim(),
+    walletId,
+    toWalletId: toWallet?.id || null,
+    categoryId: category?.id || null,
+    contactId: contact?.id || null,
+    unmatched: [
+      !category && type !== "transfer" ? "category" : null,
+    ].filter(Boolean) as string[],
+  };
+}
+
+async function parseTransactionWithAi(
+  text: string,
+  context: Awaited<ReturnType<typeof loadContext>>,
+  memories: any[],
+) {
+  if (!aiParseApiKey) return null;
+
+  const prompt = {
+    task: "Parse one personal finance Telegram message into one transaction JSON. Preserve the user's language in description. Infer category from meaning and prior examples. Do not invent wallets/categories/contacts outside provided lists. Return JSON only.",
+    message: text,
+    today: todayInTimeZone(),
+    allowedTypes: ["expense", "income", "transfer"],
+    wallets: compactItems(context.wallets),
+    categories: compactItems(context.categories),
+    contacts: compactItems(context.contacts),
+    recentUserExamples: memories.map((memory) => ({
+      text: memory.source_text,
+      parsed: memory.parsed_payload,
+    })),
+    outputSchema: {
+      type: "expense|income|transfer",
+      amount: "number in the transaction currency",
+      walletName: "source wallet name from provided wallets",
+      toWalletName: "destination wallet name for transfer, else null",
+      categoryName: "category name from provided categories or null",
+      contactName: "contact name from provided contacts or null",
+      description: "short natural description, same language as user",
+      date: "YYYY-MM-DD or null",
+      confidence: "0 to 1",
+      reason: "short reason",
+    },
+  };
+
+  const response = await fetch(aiParseBaseUrl, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${aiParseApiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": webAppUrl,
+      "X-Title": "Budget Manager Telegram Bot",
+    },
+    body: JSON.stringify({
+      model: aiParseModel,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a precise bilingual Vietnamese/English finance parser. Output valid compact JSON only. Never add markdown.",
+        },
+        { role: "user", content: JSON.stringify(prompt) },
+      ],
+      temperature: 0.1,
+    }),
+  });
+
+  if (!response.ok) return null;
+  const payload = await response.json().catch(() => null);
+  const content = payload?.choices?.[0]?.message?.content || "";
+  const json = extractJsonObject(content) as AiParsedTransaction | null;
+  if (!json || Number(json.confidence || 0) < 0.45) return null;
+  return aiToParsedTransaction(json, text, context);
 }
 
 async function handleLink(message: TelegramMessage, code: string) {
@@ -523,6 +716,28 @@ async function runTemplate(
       transaction_id: tx.id,
     })),
   );
+
+  await Promise.all(
+    (transactions || []).map((tx: any, index: number) =>
+      rememberParse(
+        link.user_id,
+        `${template.name} #${index + 1}`,
+        "template",
+        {
+          template_id: template.id,
+          type: tx.type,
+          amount: tx.amount,
+          wallet_id: tx.wallet_id,
+          to_wallet_id: tx.to_wallet_id,
+          category_id: tx.category_id,
+          contact_id: tx.contact_id,
+          description: tx.description,
+          date: tx.date,
+        },
+        tx.id,
+      ),
+    ),
+  );
 }
 
 async function handleTemplateCommand(message: TelegramMessage, link: any, text: string) {
@@ -635,8 +850,20 @@ async function handleTransaction(
 ) {
   const chatId = asText(message.chat.id);
   const context = await loadContext(link.user_id, link.default_wallet_id);
-  const parsed = parseTelegramTransaction(text, context);
+  const localParsed = parseTelegramTransaction(text, context);
+  const memories = await loadAiMemories(link.user_id);
+  const shouldAskAi =
+    Boolean(aiParseApiKey) &&
+    (aiParseMode === "always" ||
+      !localParsed.ok ||
+      (localParsed.ok && localParsed.unmatched.includes("category")));
+  const aiParsed = shouldAskAi
+    ? await parseTransactionWithAi(text, context, memories)
+    : null;
+  const parsed = aiParsed?.ok ? aiParsed : localParsed;
+  const parser: "local" | "ai" = aiParsed?.ok ? "ai" : "local";
   const languageIsVietnamese = detectVietnamese(text);
+
   if (!parsed.ok) {
     await sendMessage(chatId, parsed.reason, asText(message.message_id));
     return;
@@ -660,6 +887,23 @@ async function handleTransaction(
     .select()
     .single();
   if (error) throw error;
+
+  await rememberParse(
+    link.user_id,
+    text,
+    parser,
+    {
+      type: parsed.type,
+      amount: parsed.amount,
+      wallet_id: parsed.walletId,
+      to_wallet_id: parsed.toWalletId,
+      category_id: parsed.categoryId,
+      contact_id: parsed.contactId,
+      description: parsed.description,
+      date: parsed.date,
+    },
+    tx.id,
+  );
 
   const reply = await sendMessage(
     chatId,
