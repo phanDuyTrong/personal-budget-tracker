@@ -182,7 +182,38 @@ function aliasesForItem(item: TelegramItem) {
   const aliases = [item.name];
   if (normalized.includes("tien mat")) aliases.push("cash");
   if (normalized.includes("tiet kiem")) aliases.push("savings", "saving");
-  if (normalized.includes("ngan hang")) aliases.push("bank");
+  if (normalized.includes("ngan hang")) aliases.push("bank", "tai khoan", "account");
+
+  const looksLikeFoodCategory =
+    normalized.includes("an uong") ||
+    normalized.includes("do an") ||
+    normalized.includes("mua do an") ||
+    normalized.includes("food") ||
+    normalized.includes("restaurant");
+  if (looksLikeFoodCategory)
+    aliases.push(
+      "an kem",
+      "an sang",
+      "an trua",
+      "an toi",
+      "do an",
+      "mua do an",
+      "jolibee",
+      "jollibee",
+      "kfc",
+      "mcdonald",
+      "mcdonalds",
+      "highlands",
+      "phuc long",
+      "cafe",
+      "coffee",
+      "food",
+      "lunch",
+      "dinner",
+      "breakfast",
+      "restaurant",
+    );
+
   return aliases;
 }
 
@@ -318,12 +349,10 @@ export function parseTelegramTransaction(
   const description = cleanDescription(input, amount.raw, [
     fromWallet,
     toWallet,
-    category,
     contact,
   ]);
   const unmatched: string[] = [];
   if (!category && type !== "transfer") unmatched.push("category");
-  if (!contact) unmatched.push("contact");
 
   return {
     ok: true,
