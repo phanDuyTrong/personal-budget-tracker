@@ -11,7 +11,8 @@ export const useTransactions = (params: Record<string, any> = {}) => useQuery({
         else query = query.order('date', { ascending: false }).order('created_at', { ascending: false });
         if (params.date_from) query = query.gte('date', params.date_from);
         if (params.date_to) query = query.lte('date', params.date_to);
-        if (params.category_id) query = query.eq('category_id', params.category_id);
+        if (params.category_ids?.length) query = query.in('category_id', params.category_ids);
+        else if (params.category_id) query = query.eq('category_id', params.category_id);
         if (params.wallet_id) query = query.eq('wallet_id', params.wallet_id);
         if (params.to_wallet_id) query = query.eq('to_wallet_id', params.to_wallet_id);
         if (params.contact_id) query = query.eq('contact_id', params.contact_id);
