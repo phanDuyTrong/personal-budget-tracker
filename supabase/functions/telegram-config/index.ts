@@ -31,9 +31,9 @@ async function getUser(req: Request) {
 async function assertWalletOwner(
   serviceClient: any,
   userId: string,
-  walletId?: string,
+  walletId?: string | null,
 ) {
-  if (!walletId) throw new Error("Default wallet is required.");
+  if (!walletId) return null;
   const { data, error } = await serviceClient
     .from("wallets")
     .select("id, name")
@@ -43,7 +43,7 @@ async function assertWalletOwner(
     .single();
 
   if (error || !data)
-    throw new Error("Default wallet not found for this user.");
+    throw new Error("Fallback wallet not found for this user.");
   return data;
 }
 
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
           .from("telegram_link_codes")
           .insert({
             user_id: user.id,
-            default_wallet_id: wallet.id,
+            default_wallet_id: wallet?.id || null,
             code,
             expires_at: expiresAt,
           })
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
       const { error } = await serviceClient
         .from("telegram_user_links")
         .update({
-          default_wallet_id: wallet.id,
+          default_wallet_id: wallet?.id || null,
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", user.id);

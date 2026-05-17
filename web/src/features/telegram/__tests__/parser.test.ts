@@ -82,6 +82,21 @@ describe("parseTelegramTransaction", () => {
     expect(vi.ok && vi.date).toBe("2026-05-14");
     expect(en.ok && en.date).toBe("2026-05-14");
   });
+
+  it("requires a wallet when no fallback wallet is configured", () => {
+    const contextWithoutDefault = { ...context, defaultWalletId: null };
+    const mentionedWallet = parseTelegramTransaction(
+      "ăn trưa 85k bằng tiền mặt",
+      contextWithoutDefault,
+    );
+    const missingWallet = parseTelegramTransaction(
+      "ăn trưa 85k",
+      contextWithoutDefault,
+    );
+
+    expect(mentionedWallet.ok && mentionedWallet.walletId).toBe("wallet-cash");
+    expect(missingWallet.ok).toBe(false);
+  });
 });
 
 describe("parseTelegramEdit", () => {

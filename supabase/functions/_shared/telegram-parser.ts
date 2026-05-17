@@ -28,7 +28,7 @@ type ParseContext = {
   wallets: TelegramItem[];
   categories: TelegramItem[];
   contacts: TelegramItem[];
-  defaultWalletId: string;
+  defaultWalletId?: string | null;
   now?: Date;
   timeZone?: string;
 };
@@ -307,7 +307,14 @@ export function parseTelegramTransaction(
 
   const category = type === "transfer" ? null : findBest(categories, input, 55);
   const contact = findBest(contacts, input, 60);
-  const walletId = fromWallet?.item.id || context.defaultWalletId;
+  const walletId = fromWallet?.item.id || context.defaultWalletId || null;
+  if (!walletId) {
+    return {
+      ok: false,
+      reason:
+        "I could not match a wallet. Please mention one, like “bằng tiền mặt”, “vào Techcombank”, or “from cash”.",
+    };
+  }
   const description = cleanDescription(input, amount.raw, [
     fromWallet,
     toWallet,

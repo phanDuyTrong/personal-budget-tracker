@@ -78,7 +78,7 @@ async function sendMessage(
   return payload.result as TelegramMessage;
 }
 
-async function loadContext(userId: string, defaultWalletId: string) {
+async function loadContext(userId: string, defaultWalletId?: string | null) {
   const [
     { data: wallets, error: walletError },
     { data: categories, error: categoryError },
@@ -146,7 +146,7 @@ async function handleLink(message: TelegramMessage, code: string) {
       username: message.from?.username || null,
       first_name: message.from?.first_name || null,
       last_name: message.from?.last_name || null,
-      default_wallet_id: linkCode.default_wallet_id,
+      default_wallet_id: linkCode.default_wallet_id || null,
     });
   if (insertError) throw insertError;
 
