@@ -534,6 +534,27 @@ export function TransactionModal({ open, onClose, transaction }) {
   );
 }
 
+function collectCategoryAndDescendantIds(categories, selectedId) {
+  if (!selectedId || selectedId === "all") return [];
+
+  const findNode = (nodes) => {
+    for (const node of nodes || []) {
+      if (node.id === selectedId) return node;
+      const childMatch = findNode(node.children);
+      if (childMatch) return childMatch;
+    }
+    return null;
+  };
+
+  const collectIds = (node) => [
+    node.id,
+    ...((node.children || []).flatMap((child) => collectIds(child))),
+  ];
+
+  const selectedNode = findNode(categories);
+  return selectedNode ? collectIds(selectedNode) : [selectedId];
+}
+
 export function Transactions() {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({
@@ -554,22 +575,28 @@ export function Transactions() {
     setPage(1);
   };
 
+  const { remove } = useTransactionMutations();
+  const { data: wallets = [] } = useWallets();
+  const { data: categoryTree = [] } = useCategories();
+  const { data: contacts = [] } = useContacts();
+
+  const selectedCategoryIds = useMemo(
+    () => collectCategoryAndDescendantIds(categoryTree, filters.categoryId),
+    [categoryTree, filters.categoryId],
+  );
+
   const params = {
     page,
     limit: 50,
     ...(filters.type !== "all" && { type: filters.type }),
     ...(filters.search && { search: filters.search }),
     ...(filters.walletId !== "all" && { wallet_id: filters.walletId }),
-    ...(filters.categoryId !== "all" && { category_id: filters.categoryId }),
+    ...(selectedCategoryIds.length > 0 && { category_ids: selectedCategoryIds }),
     ...(filters.contactId !== "all" && { contact_id: filters.contactId }),
     sortDate: filters.sortDate,
   };
 
   const { data, isLoading } = useTransactions(params);
-  const { remove } = useTransactionMutations();
-  const { data: wallets = [] } = useWallets();
-  const { data: categoryTree = [] } = useCategories();
-  const { data: contacts = [] } = useContacts();
 
   const txs = data?.data || [];
   const totalPages = data?.totalPages || 1;
