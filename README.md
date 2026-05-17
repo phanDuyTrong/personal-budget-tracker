@@ -72,6 +72,12 @@ The Telegram bot runs as Supabase Edge Functions and writes directly to the exis
    supabase secrets set SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
    supabase secrets set WEB_APP_URL="https://your-app.web.app"
    supabase secrets set BOT_TIME_ZONE="Asia/Ho_Chi_Minh"
+
+   # Optional AI fallback, server-side only. OpenRouter supports OpenAI-compatible chat completions.
+   supabase secrets set AI_PARSE_API_KEY="your-openrouter-or-compatible-api-key"
+   supabase secrets set AI_PARSE_BASE_URL="https://openrouter.ai/api/v1/chat/completions"
+   supabase secrets set AI_PARSE_MODEL="openrouter/free"
+   supabase secrets set AI_PARSE_MODE="assist"
    ```
 
 4. Deploy the functions:
@@ -91,7 +97,7 @@ The Telegram bot runs as Supabase Edge Functions and writes directly to the exis
 
 6. In the web app, open Settings → Telegram Bot, generate a code, optionally choose a fallback wallet, then send `/link 123456` to the bot.
 
-The v1 parser is local and free. It supports Vietnamese and English examples like `ăn trưa 85k bằng tiền mặt`, `lunch 85k from cash`, `nhận lương 20tr vào Techcombank`, and `transfer 2m from cash to savings`.
+The parser is hybrid. It tries templates first, then local parsing, then optional server-side AI when local parsing fails or leaves the category uncertain. The AI key is stored only in Supabase Edge Function secrets, never in the browser. Successful parses are stored as per-user examples in `telegram_ai_parse_memories`, so future AI calls can follow that user's wording and categorization style. Without `AI_PARSE_API_KEY`, the bot still works with the free local parser. It supports Vietnamese and English examples like `ăn trưa 85k bằng tiền mặt`, `lunch 85k from cash`, `nhận lương 20tr vào Techcombank`, and `transfer 2m from cash to savings`.
 
 Telegram templates let one message create multiple transactions. Create or replace a template from Telegram with:
 
