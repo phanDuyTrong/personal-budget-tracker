@@ -56,6 +56,16 @@ import {
 import { viFilter } from '@/lib/filters';
 
 const CHART_COLORS = ['#FF5722', '#10b981', '#6366f1', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6'];
+const TAU = Math.PI * 2;
+
+const normalizeSearchText = (value = '') =>
+    String(value)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .toLowerCase()
+        .trim();
 
 function flattenCategories(categories) {
     const flat = [];
@@ -77,18 +87,58 @@ function flattenCategories(categories) {
     return flat;
 }
 
+function collectCategoryAndDescendantIds(categories, selectedId) {
+    if (!selectedId || selectedId === 'all') return [];
+
+    const findNode = (nodes) => {
+        for (const node of nodes || []) {
+            if (node.id === selectedId) return node;
+            const childMatch = findNode(node.children);
+            if (childMatch) return childMatch;
+        }
+        return null;
+    };
+
+    const collectIds = (node) => [
+        node.id,
+        ...((node.children || []).flatMap((child) => collectIds(child))),
+    ];
+
+    const selectedNode = findNode(categories);
+    return selectedNode ? collectIds(selectedNode) : [selectedId];
+}
+
+function describeArc(cx, cy, radius, startAngle, endAngle) {
+    const start = {
+        x: cx + radius * Math.cos(startAngle),
+        y: cy + radius * Math.sin(startAngle),
+    };
+    const end = {
+        x: cx + radius * Math.cos(endAngle),
+        y: cy + radius * Math.sin(endAngle),
+    };
+    const largeArcFlag = endAngle - startAngle > Math.PI ? 1 : 0;
+
+    return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
+}
+
 function DonutChart({ data, total, formatAmount }) {
     const [activeIndex, setActiveIndex] = useState(0);
     const activeItem = data[activeIndex] || data[0];
-    const gradient = data.reduce((acc, item) => {
+    const segments = data.reduce((acc, item) => {
         const start = acc.cursor;
-        const size = total > 0 ? (item.value / total) * 360 : 0;
+        const size = total > 0 ? (item.value / total) * TAU : 0;
         const end = start + size;
         return {
             cursor: end,
-            parts: [...acc.parts, `${item.color} ${start}deg ${end}deg`],
+            parts: [...acc.parts, {
+                ...item,
+                start,
+                end,
+                midpoint: start + size / 2,
+            }],
         };
-    }, { cursor: 0, parts: [] }).parts.join(', ');
+    }, { cursor: -Math.PI / 2, parts: [] }).parts;
 
     if (data.length === 0) {
         return <EmptyState icon={GlobeAmericasIcon} title="Chưa có chi tiêu" description="Thêm giao dịch và gắn với chuyến đi này." />;
@@ -97,12 +147,33 @@ function DonutChart({ data, total, formatAmount }) {
     return (
         <div className="flex flex-col items-center gap-5">
             <div className="relative flex h-64 w-64 items-center justify-center">
-                <div
-                    className="absolute inset-0 rounded-full shadow-inner transition-all"
-                    style={{ background: `conic-gradient(${gradient})` }}
-                />
-                <div className="absolute inset-7 rounded-full bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:bg-neutral-950 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" />
-                <div className="relative z-10 max-w-[150px] text-center">
+                <svg viewBox="0 0 240 240" className="absolute inset-0 h-full w-full overflow-visible">
+                    <circle
+                        cx="120"
+                        cy="120"
+                        r="82"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="26"
+                        className="text-neutral-200 dark:text-neutral-800"
+                    />
+                    {segments.map((item, index) => (
+                        <path
+                            key={item.name}
+                            d={describeArc(120, 120, 82, item.start, item.end)}
+                            fill="none"
+                            stroke={item.color}
+                            strokeWidth={activeIndex === index ? 30 : 26}
+                            strokeLinecap="round"
+                            className="cursor-pointer transition-all duration-200"
+                            onMouseEnter={() => setActiveIndex(index)}
+                            onFocus={() => setActiveIndex(index)}
+                            tabIndex={0}
+                        />
+                    ))}
+                </svg>
+                <div className="absolute h-32 w-32 rounded-full bg-neutral-50 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:bg-neutral-950 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" />
+                <div className="relative z-10 max-w-[130px] text-center">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">
                         {activeItem?.name || 'Tổng'}
                     </p>
@@ -110,18 +181,18 @@ function DonutChart({ data, total, formatAmount }) {
                         {formatAmount(activeItem?.value || total)}
                     </p>
                 </div>
-                <div className="absolute inset-0 rounded-full">
-                    {data.map((item, index) => (
+                <div className="absolute inset-0 rounded-full pointer-events-none">
+                    {segments.map((item, index) => (
                         <button
                             key={item.name}
                             type="button"
                             aria-label={item.name}
                             onMouseEnter={() => setActiveIndex(index)}
                             onFocus={() => setActiveIndex(index)}
-                            className="absolute left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-sm transition-transform hover:scale-125 focus:outline-none focus:ring-2 focus:ring-primary dark:border-neutral-950"
+                            className="pointer-events-auto absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-neutral-50 shadow-sm transition-transform hover:scale-125 focus:outline-none focus:ring-2 focus:ring-primary dark:border-neutral-950"
                             style={{
                                 backgroundColor: item.color,
-                                transform: `translate(-50%, -50%) rotate(${item.midpoint}deg) translateY(-118px)`,
+                                transform: `translate(-50%, -50%) translate(${Math.cos(item.midpoint) * 82}px, ${Math.sin(item.midpoint) * 82}px)`,
                             }}
                         />
                     ))}
@@ -174,23 +245,29 @@ function TripDetailView({ trip, onBack, formatAmount }) {
         flatCats.forEach((cat) => map.set(cat.id, cat));
         return map;
     }, [flatCats]);
+    const selectedCategoryIds = useMemo(
+        () => collectCategoryAndDescendantIds(categoryTree, filters.categoryId),
+        [categoryTree, filters.categoryId],
+    );
     const expenseTransactions = useMemo(
         () => transactions.filter((tx) => tx.type === 'expense'),
         [transactions],
     );
 
     const filteredTransactions = useMemo(() => {
-        const search = filters.search.trim().toLowerCase();
+        const search = normalizeSearchText(filters.search);
         const rows = expenseTransactions.filter((tx) => {
             const matchesSearch = !search || [
                 tx.description,
                 tx.category?.name,
                 tx.wallet?.name,
                 tx.contact?.name,
-            ].filter(Boolean).some((value) => value.toLowerCase().includes(search));
+                tx.amount,
+                tx.date,
+            ].filter(Boolean).some((value) => normalizeSearchText(value).includes(search));
             return (
                 matchesSearch &&
-                (filters.categoryId === 'all' || tx.category_id === filters.categoryId) &&
+                (selectedCategoryIds.length === 0 || selectedCategoryIds.includes(tx.category_id)) &&
                 (filters.walletId === 'all' || tx.wallet_id === filters.walletId) &&
                 (filters.contactId === 'all' || tx.contact_id === filters.contactId)
             );
@@ -199,7 +276,7 @@ function TripDetailView({ trip, onBack, formatAmount }) {
             const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
             return filters.sortDate === 'oldest' ? dateDiff : -dateDiff;
         });
-    }, [expenseTransactions, filters]);
+    }, [expenseTransactions, filters, selectedCategoryIds]);
 
     const kpis = useMemo(() => {
         const total = expenseTransactions.reduce((s, tx) => s + Number(tx.amount), 0);
