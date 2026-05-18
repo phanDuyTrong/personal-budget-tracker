@@ -73,6 +73,7 @@ const getEmptyForm = () => ({
 
 function SelectionBox({ isSelected, isIndeterminate = false, label, onChange }) {
   const active = isSelected || isIndeterminate;
+  const activeColor = "var(--color-primary-base, #FF5722)";
 
   return (
     <button
@@ -86,10 +87,8 @@ function SelectionBox({ isSelected, isIndeterminate = false, label, onChange }) 
         onChange?.(!isSelected || isIndeterminate);
       }}
       style={{
-        backgroundColor: active ? "var(--color-primary-base)" : "transparent",
-        borderColor: active
-          ? "var(--color-primary-base)"
-          : "rgba(115, 115, 115, 0.7)",
+        backgroundColor: active ? activeColor : "transparent",
+        borderColor: active ? activeColor : "rgba(115, 115, 115, 0.7)",
         color: active ? "#ffffff" : "transparent",
       }}
       className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition hover:border-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -1013,6 +1012,14 @@ export function Transactions() {
   const { data, isLoading } = useTransactions(params);
 
   const txs = useMemo(() => data?.data || [], [data?.data]);
+  const tableRows = useMemo(
+    () =>
+      txs.map((tx) => ({
+        ...tx,
+        isSelected: selectedRowKeys.has(tx.id),
+      })),
+    [selectedRowKeys, txs],
+  );
   const totalPages = data?.totalPages || 1;
 
   const selectedRows = useMemo(
@@ -1055,7 +1062,8 @@ export function Transactions() {
   const toggleRowSelection = React.useCallback((id, selected) => {
     setSelectedRowKeys((previous) => {
       const next = new Set(previous);
-      if (selected) next.add(id);
+      const shouldSelect = selected ?? !previous.has(id);
+      if (shouldSelect) next.add(id);
       else next.delete(id);
       return next;
     });
@@ -1158,8 +1166,8 @@ export function Transactions() {
         return (
           <SelectionBox
             label={`Select transaction ${tx.description || tx.id}`}
-            isSelected={selectedRowKeys.has(tx.id)}
-            onChange={(selected) => toggleRowSelection(tx.id, selected)}
+            isSelected={!!tx.isSelected}
+            onChange={() => toggleRowSelection(tx.id)}
           />
         );
       case "date":
@@ -1265,7 +1273,7 @@ export function Transactions() {
       default:
         return cellValue;
     }
-  }, [selectedRowKeys, toggleRowSelection]);
+  }, [toggleRowSelection]);
 
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-[1400px] mx-auto animate-in fade-in duration-500">
@@ -1472,7 +1480,7 @@ export function Transactions() {
             )}
           </TableHeader>
           <TableBody
-            items={txs}
+            items={tableRows}
             isLoading={isLoading}
             loadingContent={<TableSkeleton rows={10} cols={8} />}
             emptyContent={
@@ -1487,7 +1495,7 @@ export function Transactions() {
               <TableRow
                 key={item.id}
                 className={`border-b border-neutral-200 transition-colors dark:border-neutral-800 ${
-                  selectedRowKeys.has(item.id)
+                  item.isSelected
                     ? "bg-primary/5 dark:bg-primary/10"
                     : "hover:bg-neutral-100 dark:hover:bg-neutral-800/50"
                 }`}
