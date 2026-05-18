@@ -123,9 +123,9 @@ function DonutChart({ data, total, formatAmount }) {
 
     return (
         <div className="flex flex-col items-center gap-5">
-            <div className="relative flex h-64 w-64 items-center justify-center">
+            <div className="relative flex h-72 w-72 items-center justify-center overflow-visible [&_.recharts-surface]:!overflow-visible [&_.recharts-wrapper]:!overflow-visible">
                 <ResponsiveContainer width="100%" height="100%">
-                    <PieChart margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
+                    <PieChart margin={{ top: 24, right: 24, bottom: 24, left: 24 }}>
                         <Pie
                             data={data}
                             dataKey="value"
@@ -137,8 +137,9 @@ function DonutChart({ data, total, formatAmount }) {
                             paddingAngle={3}
                             cornerRadius={9}
                             stroke="none"
+                            activeIndex={activeIndex}
+                            activeOuterRadius={108}
                             onMouseEnter={(_, index) => setActiveIndex(index)}
-                            isAnimationActive={false}
                         >
                             {data.map((entry) => (
                                 <Cell key={entry.name} fill={entry.color} />
