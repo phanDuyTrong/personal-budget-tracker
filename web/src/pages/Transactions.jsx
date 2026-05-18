@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import {
+  CheckIcon,
   PlusIcon,
   PencilIcon,
   TrashIcon,
+  MinusIcon,
   MagnifyingGlassIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -28,7 +30,6 @@ import {
   Chip,
   Tooltip,
   SelectItem,
-  Checkbox,
 } from "@heroui/react";
 
 import {
@@ -68,6 +69,32 @@ const getEmptyForm = () => ({
   isDebt: false,
   toWalletId: "",
 });
+
+function SelectionBox({ isSelected, isIndeterminate = false, label, onChange }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={isSelected}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onChange?.(!isSelected || isIndeterminate);
+      }}
+      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
+        isSelected || isIndeterminate
+          ? "border-primary bg-primary text-white shadow-sm shadow-primary/20"
+          : "border-neutral-600/70 bg-transparent text-transparent hover:border-primary/70 hover:bg-primary/10"
+      }`}
+    >
+      {isIndeterminate ? (
+        <MinusIcon className="h-3.5 w-3.5" />
+      ) : (
+        <CheckIcon className="h-3.5 w-3.5" />
+      )}
+    </button>
+  );
+}
 
 function QuickAddModal({
   open,
@@ -751,10 +778,10 @@ export function Transactions() {
     switch (columnKey) {
       case "select":
         return (
-          <Checkbox
-            aria-label={`Select transaction ${tx.description || tx.id}`}
+          <SelectionBox
+            label={`Select transaction ${tx.description || tx.id}`}
             isSelected={selectedRowKeys.has(tx.id)}
-            onValueChange={(selected) => toggleRowSelection(tx.id, selected)}
+            onChange={(selected) => toggleRowSelection(tx.id, selected)}
           />
         );
       case "date":
@@ -992,8 +1019,8 @@ export function Transactions() {
       </div>
 
       {selectedCount > 0 && (
-        <div className="glass-card flex flex-col gap-4 rounded-3xl border border-primary/20 bg-primary/5 p-4 shadow-sm md:flex-row md:items-center md:justify-between">
-          <div>
+        <div className="glass-card grid grid-cols-1 gap-4 rounded-3xl border border-primary/20 bg-primary/5 p-4 shadow-sm xl:grid-cols-[1fr_auto] xl:items-center">
+          <div className="min-w-0">
             <p className="text-sm font-black text-neutral-900 dark:text-white">
               {selectedCount} transaction{selectedCount > 1 ? "s" : ""} selected
             </p>
@@ -1001,9 +1028,9 @@ export function Transactions() {
               Bulk edit category or delete these selected rows.
             </p>
           </div>
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(240px,320px)_auto_auto_auto] md:items-center">
             <Autocomplete
-              className="min-w-[240px]"
+              className="w-full"
               placeholder="Set category..."
               defaultFilter={viFilter}
               selectedKey={bulkCategoryId || null}
@@ -1021,22 +1048,28 @@ export function Transactions() {
             </Autocomplete>
             <Button
               color="primary"
+              className="w-full whitespace-nowrap px-5 font-bold md:w-auto"
               isDisabled={!bulkCategoryId}
               isLoading={bulkUpdateCategory.isPending}
-              onClick={handleBulkCategoryUpdate}
+              onPress={handleBulkCategoryUpdate}
             >
               Apply Category
             </Button>
             <Button
               color="danger"
               variant="flat"
+              className="w-full whitespace-nowrap px-5 font-bold md:w-auto"
               isLoading={bulkDelete.isPending}
               startContent={<TrashIcon className="h-4 w-4" />}
-              onClick={() => setConfirmBulkDel(true)}
+              onPress={() => setConfirmBulkDel(true)}
             >
               Delete Selected
             </Button>
-            <Button variant="light" onClick={clearBulkSelection}>
+            <Button
+              variant="light"
+              className="w-full whitespace-nowrap px-5 font-bold md:w-auto"
+              onPress={clearBulkSelection}
+            >
               Clear
             </Button>
           </div>
@@ -1048,22 +1081,24 @@ export function Transactions() {
         <Table
           aria-label="Transactions table"
           removeWrapper
-          className="bg-transparent min-w-[760px]"
+          className="bg-transparent min-w-[1120px]"
         >
           <TableHeader columns={columns}>
             {(column) => (
               <TableColumn
                 key={column.uid}
                 className={`bg-neutral-100/50 dark:bg-neutral-800/50 text-muted-foreground font-bold uppercase py-4 ${
-                  column.uid === "select" ? "w-12 px-4" : ""
+                  column.uid === "select"
+                    ? "w-[56px] min-w-[56px] max-w-[56px] px-4"
+                    : ""
                 }`}
               >
                 {column.uid === "select" ? (
-                  <Checkbox
-                    aria-label="Select all visible transactions"
+                  <SelectionBox
+                    label="Select all visible transactions"
                     isSelected={allVisibleSelected}
                     isIndeterminate={someVisibleSelected}
-                    onValueChange={toggleVisibleSelection}
+                    onChange={toggleVisibleSelection}
                   />
                 ) : (
                   column.name
@@ -1086,10 +1121,20 @@ export function Transactions() {
             {(item) => (
               <TableRow
                 key={item.id}
-                className="border-b border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800/50 transition-colors"
+                className={`border-b border-neutral-200 transition-colors dark:border-neutral-800 ${
+                  selectedRowKeys.has(item.id)
+                    ? "bg-primary/5 dark:bg-primary/10"
+                    : "hover:bg-neutral-100 dark:hover:bg-neutral-800/50"
+                }`}
               >
                 {(columnKey) => (
-                  <TableCell className="py-4">
+                  <TableCell
+                    className={`py-4 ${
+                      columnKey === "select"
+                        ? "w-[56px] min-w-[56px] max-w-[56px] px-4"
+                        : ""
+                    }`}
+                  >
                     {renderCell(item, columnKey)}
                   </TableCell>
                 )}
