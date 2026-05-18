@@ -82,6 +82,57 @@ export const useTransactionMutations = () => {
         },
         onSuccess: invAll,
     });
+    const bulkUpdate = useMutation({
+        mutationFn: async ({ ids, patch }: { ids: string[]; patch: Record<string, any> }) => {
+            if (ids.length === 0 || Object.keys(patch).length === 0) return;
+            const { error } = await supabase
+                .from('transactions')
+                .update({ ...patch, updated_at: nowISO() })
+                .in('id', ids);
+            if (error) throw error;
+        },
+        onSuccess: invAll,
+    });
+    const bulkDuplicate = useMutation({
+        mutationFn: async ({ transactions, date }: { transactions: any[]; date: string }) => {
+            if (transactions.length === 0) return;
+            const { data: { user } } = await supabase.auth.getUser();
+            const txRows = transactions.map((tx) => ({
+                user_id: user.id,
+                wallet_id: tx.wallet_id,
+                to_wallet_id: tx.to_wallet_id,
+                category_id: tx.category_id,
+                contact_id: tx.contact_id,
+                trip_id: tx.trip_id,
+                amount: tx.amount,
+                type: tx.type,
+                description: tx.description,
+                date,
+                is_recurring: !!tx.is_recurring,
+                is_reviewed: !!tx.is_reviewed,
+                is_debt: !!tx.is_debt,
+            }));
+            const { data: inserted, error: txError } = await supabase
+                .from('transactions')
+                .insert(txRows)
+                .select('id');
+            if (txError) throw txError;
+
+            const splitRows = transactions.flatMap((tx, index) =>
+                (tx.splits || []).map((split: any) => ({
+                    transaction_id: inserted?.[index]?.id,
+                    category_id: split.category_id,
+                    amount: split.amount,
+                    note: split.note,
+                })).filter((split: any) => split.transaction_id),
+            );
+            if (splitRows.length > 0) {
+                const { error: splitError } = await supabase.from('transaction_splits').insert(splitRows);
+                if (splitError) throw splitError;
+            }
+        },
+        onSuccess: invAll,
+    });
     const restoreCategories = useMutation({
         mutationFn: async (rows: Array<{ id: string; category_id: string | null; updated_at?: string | null }>) => {
             await Promise.all(rows.map(async (row) => {
@@ -154,5 +205,5 @@ export const useTransactionMutations = () => {
             if (error) throw error;
         }, onSuccess: invAll,
     });
-    return { create, update, remove, bulkUpdateCategory, restoreCategories, bulkDelete, restoreDeleted, setSplits, toggleReview };
+    return { create, update, remove, bulkUpdateCategory, restoreCategories, bulkUpdate, bulkDuplicate, bulkDelete, restoreDeleted, setSplits, toggleReview };
 };

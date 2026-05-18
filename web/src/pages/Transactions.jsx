@@ -583,10 +583,336 @@ function collectCategoryAndDescendantIds(categories, selectedId) {
   return selectedNode ? collectIds(selectedNode) : [selectedId];
 }
 
+const MIXED_VALUE = "__mixed__";
+const NONE_VALUE = "__none__";
+
+function getCommonValue(rows, getValue) {
+  if (rows.length === 0) return "";
+  const first = getValue(rows[0]) ?? "";
+  return rows.every((row) => (getValue(row) ?? "") === first)
+    ? String(first)
+    : MIXED_VALUE;
+}
+
+function BulkEditModal({
+  open,
+  onClose,
+  transactions,
+  wallets,
+  flatCats,
+  contacts,
+  trips,
+  onApply,
+  isSaving,
+}) {
+  const { currency } = useSettingsStore();
+  const sym = currency === "VND" ? "₫" : "$";
+  const [touchedFields, setTouchedFields] = useState(new Set([]));
+  const [form, setForm] = useState(() => ({
+    amount: getCommonValue(transactions, (tx) => tx.amount),
+    type: getCommonValue(transactions, (tx) => tx.type),
+    date: getCommonValue(transactions, (tx) => tx.date),
+    walletId: getCommonValue(transactions, (tx) => tx.wallet_id),
+    toWalletId: getCommonValue(transactions, (tx) => tx.to_wallet_id),
+    categoryId: getCommonValue(transactions, (tx) => tx.category_id),
+    contactId: getCommonValue(transactions, (tx) => tx.contact_id),
+    tripId: getCommonValue(transactions, (tx) => tx.trip_id),
+    description: getCommonValue(transactions, (tx) => tx.description),
+    isDebt: getCommonValue(transactions, (tx) => String(!!tx.is_debt)),
+  }));
+
+  const markTouched = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setTouchedFields((prev) => new Set(prev).add(field));
+  };
+
+  const getDisplayValue = (field) =>
+    form[field] === MIXED_VALUE && !touchedFields.has(field) ? "" : form[field];
+
+  const mixedHint = (field) =>
+    form[field] === MIXED_VALUE &&
+    !touchedFields.has(field) && (
+      <p className="mt-1 text-xs font-medium text-amber-500">
+        Mixed across selected rows. Choose a value to apply it to all.
+      </p>
+    );
+
+  const buildPatch = () => {
+    const patch = {};
+    if (touchedFields.has("amount") && form.amount !== "") {
+      patch.amount = parseFloat(form.amount);
+    }
+    if (touchedFields.has("type")) {
+      patch.type = form.type;
+      if (form.type !== "transfer") patch.to_wallet_id = null;
+    }
+    if (touchedFields.has("date") && form.date) patch.date = form.date;
+    if (touchedFields.has("walletId") && form.walletId) {
+      patch.wallet_id = form.walletId;
+    }
+    if (touchedFields.has("toWalletId")) {
+      patch.to_wallet_id =
+        form.toWalletId && form.toWalletId !== NONE_VALUE
+          ? form.toWalletId
+          : null;
+    }
+    if (touchedFields.has("categoryId")) {
+      patch.category_id =
+        form.categoryId && form.categoryId !== NONE_VALUE
+          ? form.categoryId
+          : null;
+    }
+    if (touchedFields.has("contactId")) {
+      patch.contact_id =
+        form.contactId && form.contactId !== NONE_VALUE ? form.contactId : null;
+    }
+    if (touchedFields.has("tripId")) {
+      patch.trip_id =
+        form.tripId && form.tripId !== NONE_VALUE ? form.tripId : null;
+    }
+    if (touchedFields.has("description")) {
+      patch.description = form.description || null;
+    }
+    if (touchedFields.has("isDebt")) {
+      patch.is_debt = form.isDebt === "true";
+    }
+    return patch;
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const patch = buildPatch();
+    if (Object.keys(patch).length === 0) return;
+    await onApply(patch);
+  };
+
+  const selectedType = getDisplayValue("type");
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={`Bulk Edit ${transactions.length} Transactions`}
+      size="lg"
+    >
+      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <div className="rounded-3xl border border-amber-400/20 bg-amber-400/10 p-4">
+          <p className="text-sm font-semibold text-neutral-900 dark:text-white">
+            Only fields you change here will be applied to all selected rows.
+          </p>
+          <p className="mt-1 text-sm text-neutral-500">
+            Matching fields show their shared value. Different fields show as
+            Mixed and stay unchanged unless you choose a new value.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Field label={`Amount (${sym})`}>
+            <AmountInput
+              placeholder={form.amount === MIXED_VALUE ? "Mixed" : "0"}
+              value={getDisplayValue("amount")}
+              onChange={(event) => markTouched("amount", event.target.value)}
+            />
+            {mixedHint("amount")}
+          </Field>
+          <Field label="Type">
+            <Select
+              placeholder="Mixed"
+              selectedKeys={form.type ? [form.type] : []}
+              disabledKeys={[MIXED_VALUE]}
+              onSelectionChange={(keys) =>
+                markTouched("type", Array.from(keys)[0])
+              }
+              variant="flat"
+            >
+              <SelectItem key={MIXED_VALUE}>Mixed</SelectItem>
+              <SelectItem key="expense">Expense</SelectItem>
+              <SelectItem key="income">Income</SelectItem>
+              <SelectItem key="transfer">Transfer</SelectItem>
+            </Select>
+            {mixedHint("type")}
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Field label="Date">
+            <CustomDatePicker
+              value={getDisplayValue("date")}
+              onChange={(value) => markTouched("date", value)}
+            />
+            {mixedHint("date")}
+          </Field>
+          <Field label="Wallet">
+            <Autocomplete
+              placeholder={form.walletId === MIXED_VALUE ? "Mixed" : "Search wallet..."}
+              defaultFilter={viFilter}
+              selectedKey={
+                form.walletId === MIXED_VALUE ? null : form.walletId || null
+              }
+              onSelectionChange={(key) => markTouched("walletId", key || "")}
+              variant="flat"
+            >
+              {wallets.map((wallet) => (
+                <AutocompleteItem key={wallet.id} textValue={wallet.name}>
+                  {wallet.name}
+                </AutocompleteItem>
+              ))}
+            </Autocomplete>
+            {mixedHint("walletId")}
+          </Field>
+        </div>
+
+        {(selectedType === "transfer" || form.toWalletId === MIXED_VALUE) && (
+          <Field label="To Wallet">
+            <Autocomplete
+              placeholder={
+                form.toWalletId === MIXED_VALUE ? "Mixed" : "Search destination..."
+              }
+              defaultFilter={viFilter}
+              selectedKey={
+                form.toWalletId === MIXED_VALUE ? null : form.toWalletId || null
+              }
+              onSelectionChange={(key) => markTouched("toWalletId", key || "")}
+              variant="flat"
+            >
+              <AutocompleteItem key={NONE_VALUE} textValue="No Destination">
+                No Destination
+              </AutocompleteItem>
+              {wallets.map((wallet) => (
+                <AutocompleteItem key={wallet.id} textValue={wallet.name}>
+                  {wallet.name}
+                </AutocompleteItem>
+              ))}
+            </Autocomplete>
+            {mixedHint("toWalletId")}
+          </Field>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Field label="Category">
+            <Autocomplete
+              placeholder={
+                form.categoryId === MIXED_VALUE ? "Mixed" : "Search category..."
+              }
+              defaultFilter={viFilter}
+              selectedKey={
+                form.categoryId === MIXED_VALUE ? null : form.categoryId || null
+              }
+              onSelectionChange={(key) =>
+                markTouched("categoryId", key || NONE_VALUE)
+              }
+              variant="flat"
+            >
+              <AutocompleteItem key={NONE_VALUE} textValue="No Category">
+                No Category
+              </AutocompleteItem>
+              {flatCats.map((cat) => (
+                <AutocompleteItem key={cat.id} textValue={cat.name}>
+                  {cat.label}
+                </AutocompleteItem>
+              ))}
+            </Autocomplete>
+            {mixedHint("categoryId")}
+          </Field>
+          <Field label="For Who (Contact)">
+            <Autocomplete
+              placeholder={
+                form.contactId === MIXED_VALUE ? "Mixed" : "Search contact..."
+              }
+              defaultFilter={viFilter}
+              selectedKey={
+                form.contactId === MIXED_VALUE ? null : form.contactId || null
+              }
+              onSelectionChange={(key) =>
+                markTouched("contactId", key || NONE_VALUE)
+              }
+              variant="flat"
+            >
+              <AutocompleteItem key={NONE_VALUE} textValue="No Contact">
+                No Contact
+              </AutocompleteItem>
+              {contacts.map((contact) => (
+                <AutocompleteItem key={contact.id} textValue={contact.name}>
+                  {contact.name}
+                </AutocompleteItem>
+              ))}
+            </Autocomplete>
+            {mixedHint("contactId")}
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Field label="Trip">
+            <Autocomplete
+              placeholder={form.tripId === MIXED_VALUE ? "Mixed" : "Search trip..."}
+              defaultFilter={viFilter}
+              selectedKey={form.tripId === MIXED_VALUE ? null : form.tripId || null}
+              onSelectionChange={(key) => markTouched("tripId", key || NONE_VALUE)}
+              variant="flat"
+            >
+              <AutocompleteItem key={NONE_VALUE} textValue="No Trip">
+                No Trip
+              </AutocompleteItem>
+              {trips.map((trip) => (
+                <AutocompleteItem key={trip.id} textValue={trip.name}>
+                  {trip.name}
+                </AutocompleteItem>
+              ))}
+            </Autocomplete>
+            {mixedHint("tripId")}
+          </Field>
+          <Field label="Debt Flag">
+            <Select
+              placeholder="Mixed"
+              selectedKeys={form.isDebt ? [form.isDebt] : []}
+              disabledKeys={[MIXED_VALUE]}
+              onSelectionChange={(keys) =>
+                markTouched("isDebt", Array.from(keys)[0])
+              }
+              variant="flat"
+            >
+              <SelectItem key={MIXED_VALUE}>Mixed</SelectItem>
+              <SelectItem key="false">Not debt</SelectItem>
+              <SelectItem key="true">Record as debt</SelectItem>
+            </Select>
+            {mixedHint("isDebt")}
+          </Field>
+        </div>
+
+        <Field label="Description">
+          <Textarea
+            rows={2}
+            placeholder={form.description === MIXED_VALUE ? "Mixed" : "Optional note..."}
+            value={getDisplayValue("description")}
+            onChange={(event) =>
+              markTouched("description", event.target.value)
+            }
+          />
+          {mixedHint("description")}
+        </Field>
+
+        <div className="flex justify-end gap-2 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+          <Button variant="light" onPress={onClose}>
+            Cancel
+          </Button>
+          <Button
+            color="primary"
+            type="submit"
+            isDisabled={touchedFields.size === 0}
+            isLoading={isSaving}
+          >
+            Apply to {transactions.length} Rows
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 export function Transactions() {
   const [page, setPage] = useState(1);
   const [selectedRowKeys, setSelectedRowKeys] = useState(new Set([]));
-  const [bulkCategoryId, setBulkCategoryId] = useState("");
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [filters, setFilters] = useState({
     type: "all",
     search: "",
@@ -608,14 +934,15 @@ export function Transactions() {
 
   const {
     remove,
-    bulkUpdateCategory,
-    restoreCategories,
+    bulkUpdate,
+    bulkDuplicate,
     bulkDelete,
     restoreDeleted,
   } = useTransactionMutations();
   const { data: wallets = [] } = useWallets();
   const { data: categoryTree = [] } = useCategories();
   const { data: contacts = [] } = useContacts();
+  const { data: trips = [] } = useTrips();
 
   const selectedCategoryIds = useMemo(
     () => collectCategoryAndDescendantIds(categoryTree, filters.categoryId),
@@ -673,7 +1000,6 @@ export function Transactions() {
 
   const clearBulkSelection = () => {
     setSelectedRowKeys(new Set([]));
-    setBulkCategoryId("");
   };
 
   const toggleRowSelection = React.useCallback((id, selected) => {
@@ -696,36 +1022,38 @@ export function Transactions() {
     });
   }, [visibleIds]);
 
-  const handleBulkCategoryUpdate = async () => {
-    if (!bulkCategoryId || selectedRows.length === 0) return;
-    const previousRows = selectedRows.map((tx) => ({
-      id: tx.id,
-      category_id: tx.category_id || null,
-      updated_at: tx.updated_at || null,
-    }));
+  const handleBulkUpdate = async (patch) => {
+    if (selectedRows.length === 0 || Object.keys(patch).length === 0) return;
     const ids = selectedRows.map((tx) => tx.id);
 
     try {
-      await bulkUpdateCategory.mutateAsync({
+      await bulkUpdate.mutateAsync({
         ids,
-        categoryId: bulkCategoryId === "__none__" ? null : bulkCategoryId,
+        patch,
+      });
+      const count = selectedRows.length;
+      setBulkEditOpen(false);
+      clearBulkSelection();
+      toast(`${count} transaction${count > 1 ? "s" : ""} updated`, "success");
+    } catch {
+      toast("Error updating selected transactions", "error");
+    }
+  };
+
+  const handleBulkDuplicate = async () => {
+    if (selectedRows.length === 0) return;
+    const rowsToDuplicate = JSON.parse(JSON.stringify(selectedRows));
+
+    try {
+      await bulkDuplicate.mutateAsync({
+        transactions: rowsToDuplicate,
+        date: format(new Date(), "yyyy-MM-dd"),
       });
       const count = selectedRows.length;
       clearBulkSelection();
-      toast(`${count} transaction${count > 1 ? "s" : ""} updated`, "success", {
-        duration: 9000,
-        actionLabel: "Undo",
-        onAction: async () => {
-          try {
-            await restoreCategories.mutateAsync(previousRows);
-            toast("Bulk category update undone", "success");
-          } catch {
-            toast("Could not undo bulk update", "error");
-          }
-        },
-      });
+      toast(`${count} transaction${count > 1 ? "s" : ""} duplicated`, "success");
     } catch {
-      toast("Error updating selected transactions", "error");
+      toast("Error duplicating selected transactions", "error");
     }
   };
 
@@ -1025,35 +1353,26 @@ export function Transactions() {
               {selectedCount} transaction{selectedCount > 1 ? "s" : ""} selected
             </p>
             <p className="text-xs font-medium text-neutral-500">
-              Bulk edit category or delete these selected rows.
+              Edit shared fields, duplicate them for today, or delete them.
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(240px,320px)_auto_auto_auto] md:items-center">
-            <Autocomplete
-              className="w-full"
-              placeholder="Set category..."
-              defaultFilter={viFilter}
-              selectedKey={bulkCategoryId || null}
-              onSelectionChange={(key) => setBulkCategoryId(key || "")}
-              variant="flat"
-            >
-              <AutocompleteItem key="__none__" textValue="No Category">
-                No Category
-              </AutocompleteItem>
-              {flatCats.map((cat) => (
-                <AutocompleteItem key={cat.id} textValue={cat.name}>
-                  {cat.label}
-                </AutocompleteItem>
-              ))}
-            </Autocomplete>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:items-center">
             <Button
               color="primary"
               className="w-full whitespace-nowrap px-5 font-bold md:w-auto"
-              isDisabled={!bulkCategoryId}
-              isLoading={bulkUpdateCategory.isPending}
-              onPress={handleBulkCategoryUpdate}
+              startContent={<PencilIcon className="h-4 w-4" />}
+              onPress={() => setBulkEditOpen(true)}
             >
-              Apply Category
+              Edit
+            </Button>
+            <Button
+              variant="bordered"
+              className="w-full whitespace-nowrap px-5 font-bold md:w-auto"
+              isLoading={bulkDuplicate.isPending}
+              startContent={<DocumentDuplicateIcon className="h-4 w-4" />}
+              onPress={handleBulkDuplicate}
+            >
+              Duplicate
             </Button>
             <Button
               color="danger"
@@ -1063,14 +1382,7 @@ export function Transactions() {
               startContent={<TrashIcon className="h-4 w-4" />}
               onPress={() => setConfirmBulkDel(true)}
             >
-              Delete Selected
-            </Button>
-            <Button
-              variant="light"
-              className="w-full whitespace-nowrap px-5 font-bold md:w-auto"
-              onPress={clearBulkSelection}
-            >
-              Clear
+              Delete
             </Button>
           </div>
         </div>
@@ -1181,6 +1493,19 @@ export function Transactions() {
           transaction={modal}
         />
       )}
+      {bulkEditOpen && selectedRows.length > 0 && (
+        <BulkEditModal
+          open
+          onClose={() => setBulkEditOpen(false)}
+          transactions={selectedRows}
+          wallets={wallets}
+          flatCats={flatCats}
+          contacts={contacts}
+          trips={trips}
+          onApply={handleBulkUpdate}
+          isSaving={bulkUpdate.isPending}
+        />
+      )}
       <ConfirmModal
         open={!!confirmDel}
         title="Delete Transaction"
@@ -1192,7 +1517,7 @@ export function Transactions() {
         open={confirmBulkDel}
         title="Delete Selected Transactions"
         description={`This will delete ${selectedCount} selected transaction${selectedCount > 1 ? "s" : ""}. You can undo from the success toast right after it completes.`}
-        confirmLabel="Delete Selected"
+        confirmLabel="Delete"
         onConfirm={handleBulkDelete}
         onCancel={() => setConfirmBulkDel(false)}
       />
