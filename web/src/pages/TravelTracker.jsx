@@ -21,6 +21,13 @@ import {
     MagnifyingGlassIcon,
     DocumentDuplicateIcon,
 } from '@heroicons/react/24/outline';
+import {
+    Cell,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip as RechartsTooltip,
+} from 'recharts';
 
 import { 
     Button,
@@ -56,7 +63,6 @@ import {
 import { viFilter } from '@/lib/filters';
 
 const CHART_COLORS = ['#FF5722', '#10b981', '#6366f1', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6'];
-const TAU = Math.PI * 2;
 
 const normalizeSearchText = (value = '') =>
     String(value)
@@ -108,37 +114,9 @@ function collectCategoryAndDescendantIds(categories, selectedId) {
     return selectedNode ? collectIds(selectedNode) : [selectedId];
 }
 
-function describeArc(cx, cy, radius, startAngle, endAngle) {
-    const start = {
-        x: cx + radius * Math.cos(startAngle),
-        y: cy + radius * Math.sin(startAngle),
-    };
-    const end = {
-        x: cx + radius * Math.cos(endAngle),
-        y: cy + radius * Math.sin(endAngle),
-    };
-    const largeArcFlag = endAngle - startAngle > Math.PI ? 1 : 0;
-
-    return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
-}
-
 function DonutChart({ data, total, formatAmount }) {
     const [activeIndex, setActiveIndex] = useState(0);
     const activeItem = data[activeIndex] || data[0];
-    const segments = data.reduce((acc, item) => {
-        const start = acc.cursor;
-        const size = total > 0 ? (item.value / total) * TAU : 0;
-        const end = start + size;
-        return {
-            cursor: end,
-            parts: [...acc.parts, {
-                ...item,
-                start,
-                end,
-                midpoint: start + size / 2,
-            }],
-        };
-    }, { cursor: -Math.PI / 2, parts: [] }).parts;
 
     if (data.length === 0) {
         return <EmptyState icon={GlobeAmericasIcon} title="Chưa có chi tiêu" description="Thêm giao dịch và gắn với chuyến đi này." />;
@@ -147,32 +125,47 @@ function DonutChart({ data, total, formatAmount }) {
     return (
         <div className="flex flex-col items-center gap-5">
             <div className="relative flex h-64 w-64 items-center justify-center">
-                <svg viewBox="0 0 240 240" className="absolute inset-0 h-full w-full overflow-visible">
-                    <circle
-                        cx="120"
-                        cy="120"
-                        r="82"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="26"
-                        className="text-neutral-200 dark:text-neutral-800"
-                    />
-                    {segments.map((item, index) => (
-                        <path
-                            key={item.name}
-                            d={describeArc(120, 120, 82, item.start, item.end)}
-                            fill="none"
-                            stroke={item.color}
-                            strokeWidth={activeIndex === index ? 30 : 26}
-                            strokeLinecap="round"
-                            className="cursor-pointer transition-all duration-200"
-                            onMouseEnter={() => setActiveIndex(index)}
-                            onFocus={() => setActiveIndex(index)}
-                            tabIndex={0}
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie
+                            data={data}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={72}
+                            outerRadius={104}
+                            paddingAngle={4}
+                            cornerRadius={12}
+                            stroke="none"
+                            activeIndex={activeIndex}
+                            activeOuterRadius={110}
+                            onMouseEnter={(_, index) => setActiveIndex(index)}
+                        >
+                            {data.map((entry) => (
+                                <Cell key={entry.name} fill={entry.color} />
+                            ))}
+                        </Pie>
+                        <RechartsTooltip
+                            cursor={false}
+                            wrapperClassName="!outline-none"
+                            content={({ active, payload }) => {
+                                if (!active || !payload?.length) return null;
+                                const item = payload[0]?.payload;
+                                return (
+                                    <div className="rounded-2xl border border-neutral-200 bg-white/95 px-4 py-3 shadow-xl backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-950/95">
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                                            <span className="text-sm font-black text-neutral-900 dark:text-white">{item.name}</span>
+                                        </div>
+                                        <p className="mt-1 text-sm font-bold text-neutral-500">{formatAmount(item.value)}</p>
+                                    </div>
+                                );
+                            }}
                         />
-                    ))}
-                </svg>
-                <div className="absolute h-32 w-32 rounded-full bg-neutral-50 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:bg-neutral-950 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" />
+                    </PieChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute h-32 w-32 rounded-full bg-neutral-50 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:bg-neutral-950 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" />
                 <div className="relative z-10 max-w-[130px] text-center">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">
                         {activeItem?.name || 'Tổng'}
@@ -180,22 +173,6 @@ function DonutChart({ data, total, formatAmount }) {
                     <p className="mt-1 text-lg font-black text-neutral-950 dark:text-white">
                         {formatAmount(activeItem?.value || total)}
                     </p>
-                </div>
-                <div className="absolute inset-0 rounded-full pointer-events-none">
-                    {segments.map((item, index) => (
-                        <button
-                            key={item.name}
-                            type="button"
-                            aria-label={item.name}
-                            onMouseEnter={() => setActiveIndex(index)}
-                            onFocus={() => setActiveIndex(index)}
-                            className="pointer-events-auto absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-neutral-50 shadow-sm transition-transform hover:scale-125 focus:outline-none focus:ring-2 focus:ring-primary dark:border-neutral-950"
-                            style={{
-                                backgroundColor: item.color,
-                                transform: `translate(-50%, -50%) translate(${Math.cos(item.midpoint) * 82}px, ${Math.sin(item.midpoint) * 82}px)`,
-                            }}
-                        />
-                    ))}
                 </div>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
@@ -309,7 +286,10 @@ function TripDetailView({ trip, onBack, formatAmount }) {
     }, [categoryMap, expenseTransactions, kpis.total]);
 
     const updateFilter = (key, value) => {
-        setFilters((prev) => ({ ...prev, [key]: value || 'all' }));
+        setFilters((prev) => ({
+            ...prev,
+            [key]: key === 'search' ? (value || '') : (value || 'all'),
+        }));
     };
 
     const openCreateExpense = () => {
