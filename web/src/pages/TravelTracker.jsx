@@ -148,7 +148,13 @@ function DonutChart({ data, total, formatAmount }) {
                         </Pie>
                     </PieChart>
                 </ResponsiveContainer>
-                <div className="pointer-events-none absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06),0_18px_40px_rgba(0,0,0,0.08)] dark:bg-neutral-950 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),0_18px_40px_rgba(0,0,0,0.25)]" />
+                <div
+                    className="pointer-events-none absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                    style={{
+                        backgroundColor: 'var(--travel-donut-center-bg)',
+                        boxShadow: 'var(--travel-donut-center-shadow)',
+                    }}
+                />
                 <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 max-w-[130px] -translate-x-1/2 -translate-y-1/2 text-center">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">
                         {activeItem?.name || 'Tổng'}

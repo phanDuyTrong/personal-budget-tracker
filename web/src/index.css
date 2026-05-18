@@ -57,6 +57,17 @@ body {
   --tooltip-border: rgba(38, 38, 38, 0.8);
 }
 
+/* Travel donut center must follow the app theme even when HeroUI/Tailwind
+   theme state is applied through data-theme instead of only the .dark class. */
+:root {
+  --travel-donut-center-bg: #ffffff;
+  --travel-donut-center-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06), 0 18px 40px rgba(0, 0, 0, 0.08);
+}
+:is(.dark, [data-theme="dark"]) {
+  --travel-donut-center-bg: #0a0a0a;
+  --travel-donut-center-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 18px 40px rgba(0, 0, 0, 0.25);
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
