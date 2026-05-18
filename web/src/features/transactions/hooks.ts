@@ -72,6 +72,75 @@ export const useTransactionMutations = () => {
         mutationFn: async (id: string) => { const { error } = await supabase.from('transactions').delete().eq('id', id); if (error) throw error; },
         onSuccess: invAll,
     });
+    const bulkUpdateCategory = useMutation({
+        mutationFn: async ({ ids, categoryId }: { ids: string[]; categoryId: string | null }) => {
+            const { error } = await supabase
+                .from('transactions')
+                .update({ category_id: categoryId || null, updated_at: nowISO() })
+                .in('id', ids);
+            if (error) throw error;
+        },
+        onSuccess: invAll,
+    });
+    const restoreCategories = useMutation({
+        mutationFn: async (rows: Array<{ id: string; category_id: string | null; updated_at?: string | null }>) => {
+            await Promise.all(rows.map(async (row) => {
+                const { error } = await supabase
+                    .from('transactions')
+                    .update({ category_id: row.category_id || null, updated_at: row.updated_at || nowISO() })
+                    .eq('id', row.id);
+                if (error) throw error;
+            }));
+        },
+        onSuccess: invAll,
+    });
+    const bulkDelete = useMutation({
+        mutationFn: async (ids: string[]) => {
+            const { error } = await supabase.from('transactions').delete().in('id', ids);
+            if (error) throw error;
+        },
+        onSuccess: invAll,
+    });
+    const restoreDeleted = useMutation({
+        mutationFn: async (transactions: any[]) => {
+            const txRows = transactions.map((tx) => ({
+                id: tx.id,
+                user_id: tx.user_id,
+                wallet_id: tx.wallet_id,
+                to_wallet_id: tx.to_wallet_id,
+                category_id: tx.category_id,
+                contact_id: tx.contact_id,
+                trip_id: tx.trip_id,
+                amount: tx.amount,
+                type: tx.type,
+                description: tx.description,
+                date: tx.date,
+                is_recurring: !!tx.is_recurring,
+                is_reviewed: !!tx.is_reviewed,
+                is_debt: !!tx.is_debt,
+                created_at: tx.created_at,
+                updated_at: tx.updated_at,
+            }));
+            const { error: txError } = await supabase.from('transactions').insert(txRows);
+            if (txError) throw txError;
+
+            const splitRows = transactions.flatMap((tx) =>
+                (tx.splits || []).map((split: any) => ({
+                    id: split.id,
+                    transaction_id: tx.id,
+                    category_id: split.category_id,
+                    amount: split.amount,
+                    note: split.note,
+                    created_at: split.created_at,
+                })),
+            );
+            if (splitRows.length > 0) {
+                const { error: splitError } = await supabase.from('transaction_splits').insert(splitRows);
+                if (splitError) throw splitError;
+            }
+        },
+        onSuccess: invAll,
+    });
     const setSplits = useMutation({
         mutationFn: async ({ id, splits }: any) => {
             await supabase.from('transaction_splits').delete().eq('transaction_id', id);
@@ -85,5 +154,5 @@ export const useTransactionMutations = () => {
             if (error) throw error;
         }, onSuccess: invAll,
     });
-    return { create, update, remove, setSplits, toggleReview };
+    return { create, update, remove, bulkUpdateCategory, restoreCategories, bulkDelete, restoreDeleted, setSplits, toggleReview };
 };

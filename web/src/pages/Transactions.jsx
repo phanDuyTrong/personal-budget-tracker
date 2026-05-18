@@ -557,6 +557,8 @@ function collectCategoryAndDescendantIds(categories, selectedId) {
 
 export function Transactions() {
   const [page, setPage] = useState(1);
+  const [selectedRowKeys, setSelectedRowKeys] = useState(new Set([]));
+  const [bulkCategoryId, setBulkCategoryId] = useState("");
   const [filters, setFilters] = useState({
     type: "all",
     search: "",
@@ -568,6 +570,7 @@ export function Transactions() {
   const [modal, setModal] = useState(null); // null | 'new' | transaction
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
+  const [confirmBulkDel, setConfirmBulkDel] = useState(false);
   const toast = useToast();
 
   const updateFilter = (k, v) => {
@@ -575,7 +578,13 @@ export function Transactions() {
     setPage(1);
   };
 
-  const { remove } = useTransactionMutations();
+  const {
+    remove,
+    bulkUpdateCategory,
+    restoreCategories,
+    bulkDelete,
+    restoreDeleted,
+  } = useTransactionMutations();
   const { data: wallets = [] } = useWallets();
   const { data: categoryTree = [] } = useCategories();
   const { data: contacts = [] } = useContacts();
@@ -598,8 +607,15 @@ export function Transactions() {
 
   const { data, isLoading } = useTransactions(params);
 
-  const txs = data?.data || [];
+  const txs = useMemo(() => data?.data || [], [data?.data]);
   const totalPages = data?.totalPages || 1;
+
+  const selectedRows = useMemo(() => {
+    if (selectedRowKeys === "all") return txs;
+    const keys = selectedRowKeys instanceof Set ? selectedRowKeys : new Set([]);
+    return txs.filter((tx) => keys.has(tx.id));
+  }, [selectedRowKeys, txs]);
+  const selectedCount = selectedRows.length;
 
   const flatCats = useMemo(() => {
     const flat = [];
@@ -621,6 +637,72 @@ export function Transactions() {
       toast("Error deleting", "error");
     }
     setConfirmDel(null);
+  };
+
+  const clearBulkSelection = () => {
+    setSelectedRowKeys(new Set([]));
+    setBulkCategoryId("");
+  };
+
+  const handleBulkCategoryUpdate = async () => {
+    if (!bulkCategoryId || selectedRows.length === 0) return;
+    const previousRows = selectedRows.map((tx) => ({
+      id: tx.id,
+      category_id: tx.category_id || null,
+      updated_at: tx.updated_at || null,
+    }));
+    const ids = selectedRows.map((tx) => tx.id);
+
+    try {
+      await bulkUpdateCategory.mutateAsync({
+        ids,
+        categoryId: bulkCategoryId === "__none__" ? null : bulkCategoryId,
+      });
+      const count = selectedRows.length;
+      clearBulkSelection();
+      toast(`${count} transaction${count > 1 ? "s" : ""} updated`, "success", {
+        duration: 9000,
+        actionLabel: "Undo",
+        onAction: async () => {
+          try {
+            await restoreCategories.mutateAsync(previousRows);
+            toast("Bulk category update undone", "success");
+          } catch {
+            toast("Could not undo bulk update", "error");
+          }
+        },
+      });
+    } catch {
+      toast("Error updating selected transactions", "error");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedRows.length === 0) return;
+    const deletedRows = JSON.parse(JSON.stringify(selectedRows));
+    const ids = selectedRows.map((tx) => tx.id);
+
+    try {
+      await bulkDelete.mutateAsync(ids);
+      const count = selectedRows.length;
+      setConfirmBulkDel(false);
+      clearBulkSelection();
+      toast(`${count} transaction${count > 1 ? "s" : ""} deleted`, "success", {
+        duration: 9000,
+        actionLabel: "Undo",
+        onAction: async () => {
+          try {
+            await restoreDeleted.mutateAsync(deletedRows);
+            toast("Bulk delete undone", "success");
+          } catch {
+            toast("Could not undo bulk delete", "error");
+          }
+        },
+      });
+    } catch {
+      toast("Error deleting selected transactions", "error");
+      setConfirmBulkDel(false);
+    }
   };
 
   const handleExport = () => {
@@ -875,10 +957,65 @@ export function Transactions() {
         </div>
       </div>
 
+      {selectedCount > 0 && (
+        <div className="glass-card flex flex-col gap-4 rounded-3xl border border-primary/20 bg-primary/5 p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-black text-neutral-900 dark:text-white">
+              {selectedCount} transaction{selectedCount > 1 ? "s" : ""} selected
+            </p>
+            <p className="text-xs font-medium text-neutral-500">
+              Bulk edit category or delete these selected rows.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <Autocomplete
+              className="min-w-[240px]"
+              placeholder="Set category..."
+              defaultFilter={viFilter}
+              selectedKey={bulkCategoryId || null}
+              onSelectionChange={(key) => setBulkCategoryId(key || "")}
+              variant="flat"
+            >
+              <AutocompleteItem key="__none__" textValue="No Category">
+                No Category
+              </AutocompleteItem>
+              {flatCats.map((cat) => (
+                <AutocompleteItem key={cat.id} textValue={cat.name}>
+                  {cat.label}
+                </AutocompleteItem>
+              ))}
+            </Autocomplete>
+            <Button
+              color="primary"
+              isDisabled={!bulkCategoryId}
+              isLoading={bulkUpdateCategory.isPending}
+              onClick={handleBulkCategoryUpdate}
+            >
+              Apply Category
+            </Button>
+            <Button
+              color="danger"
+              variant="flat"
+              isLoading={bulkDelete.isPending}
+              startContent={<TrashIcon className="h-4 w-4" />}
+              onClick={() => setConfirmBulkDel(true)}
+            >
+              Delete Selected
+            </Button>
+            <Button variant="light" onClick={clearBulkSelection}>
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Table Section */}
       <div className="glass-card backdrop-blur-md rounded-3xl overflow-hidden shadow-xl overflow-x-auto">
         <Table
           aria-label="Transactions table"
+          selectionMode="multiple"
+          selectedKeys={selectedRowKeys}
+          onSelectionChange={setSelectedRowKeys}
           removeWrapper
           className="bg-transparent min-w-[700px]"
         >
@@ -963,6 +1100,14 @@ export function Transactions() {
         description="This will permanently delete the transaction and reverse the wallet balance."
         onConfirm={handleDelete}
         onCancel={() => setConfirmDel(null)}
+      />
+      <ConfirmModal
+        open={confirmBulkDel}
+        title="Delete Selected Transactions"
+        description={`This will delete ${selectedCount} selected transaction${selectedCount > 1 ? "s" : ""}. You can undo from the success toast right after it completes.`}
+        confirmLabel="Delete Selected"
+        onConfirm={handleBulkDelete}
+        onCancel={() => setConfirmBulkDel(false)}
       />
     </div>
   );
