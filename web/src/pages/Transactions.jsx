@@ -43,6 +43,7 @@ import { useTrips } from "@/features/trips/hooks";
 import { aiService, buildTransactionDraft } from "@/lib/aiParser";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { viFilter } from "@/lib/filters";
+import { useT } from "@/hooks/useTranslation";
 import {
   Modal,
   AmountInput,
@@ -71,26 +72,32 @@ const getEmptyForm = () => ({
 });
 
 function SelectionBox({ isSelected, isIndeterminate = false, label, onChange }) {
+  const active = isSelected || isIndeterminate;
+
   return (
     <button
       type="button"
       aria-label={label}
       aria-pressed={isSelected}
+      data-selected={active ? "true" : "false"}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
         onChange?.(!isSelected || isIndeterminate);
       }}
-      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
-        isSelected || isIndeterminate
-          ? "border-primary bg-primary text-white shadow-sm shadow-primary/20"
-          : "border-neutral-600/70 bg-transparent text-transparent hover:border-primary/70 hover:bg-primary/10"
-      }`}
+      style={{
+        backgroundColor: active ? "var(--color-primary-base)" : "transparent",
+        borderColor: active
+          ? "var(--color-primary-base)"
+          : "rgba(115, 115, 115, 0.7)",
+        color: active ? "#ffffff" : "transparent",
+      }}
+      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition hover:border-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       {isIndeterminate ? (
-        <MinusIcon className="h-3.5 w-3.5" />
+        <MinusIcon className="h-3.5 w-3.5" strokeWidth={3} />
       ) : (
-        <CheckIcon className="h-3.5 w-3.5" />
+        <CheckIcon className="h-3.5 w-3.5" strokeWidth={3} />
       )}
     </button>
   );
@@ -606,6 +613,7 @@ function BulkEditModal({
   isSaving,
 }) {
   const { currency } = useSettingsStore();
+  const t = useT();
   const sym = currency === "VND" ? "₫" : "$";
   const [touchedFields, setTouchedFields] = useState(new Set([]));
   const [form, setForm] = useState(() => ({
@@ -633,7 +641,7 @@ function BulkEditModal({
     form[field] === MIXED_VALUE &&
     !touchedFields.has(field) && (
       <p className="mt-1 text-xs font-medium text-amber-500">
-        Mixed across selected rows. Choose a value to apply it to all.
+        {t("transactions.mixedHint")}
       </p>
     );
 
@@ -692,32 +700,36 @@ function BulkEditModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={`Bulk Edit ${transactions.length} Transactions`}
+      title={t("transactions.bulkEditTitle").replace(
+        "{count}",
+        transactions.length,
+      )}
       size="lg"
     >
       <form onSubmit={handleSubmit} className="p-6 space-y-4">
         <div className="rounded-3xl border border-amber-400/20 bg-amber-400/10 p-4">
           <p className="text-sm font-semibold text-neutral-900 dark:text-white">
-            Only fields you change here will be applied to all selected rows.
+            {t("transactions.bulkEditRule")}
           </p>
           <p className="mt-1 text-sm text-neutral-500">
-            Matching fields show their shared value. Different fields show as
-            Mixed and stay unchanged unless you choose a new value.
+            {t("transactions.bulkEditRuleDesc")}
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Field label={`Amount (${sym})`}>
+          <Field label={`${t("transactions.amount")} (${sym})`}>
             <AmountInput
-              placeholder={form.amount === MIXED_VALUE ? "Mixed" : "0"}
+              placeholder={
+                form.amount === MIXED_VALUE ? t("transactions.mixed") : "0"
+              }
               value={getDisplayValue("amount")}
               onChange={(event) => markTouched("amount", event.target.value)}
             />
             {mixedHint("amount")}
           </Field>
-          <Field label="Type">
+          <Field label={t("transactions.type")}>
             <Select
-              placeholder="Mixed"
+              placeholder={t("transactions.mixed")}
               selectedKeys={form.type ? [form.type] : []}
               disabledKeys={[MIXED_VALUE]}
               onSelectionChange={(keys) =>
@@ -725,26 +737,32 @@ function BulkEditModal({
               }
               variant="flat"
             >
-              <SelectItem key={MIXED_VALUE}>Mixed</SelectItem>
-              <SelectItem key="expense">Expense</SelectItem>
-              <SelectItem key="income">Income</SelectItem>
-              <SelectItem key="transfer">Transfer</SelectItem>
+              <SelectItem key={MIXED_VALUE}>
+                {t("transactions.mixed")}
+              </SelectItem>
+              <SelectItem key="expense">{t("transactions.expense")}</SelectItem>
+              <SelectItem key="income">{t("transactions.income")}</SelectItem>
+              <SelectItem key="transfer">{t("transactions.transfer")}</SelectItem>
             </Select>
             {mixedHint("type")}
           </Field>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Field label="Date">
+          <Field label={t("transactions.date")}>
             <CustomDatePicker
               value={getDisplayValue("date")}
               onChange={(value) => markTouched("date", value)}
             />
             {mixedHint("date")}
           </Field>
-          <Field label="Wallet">
+          <Field label={t("transactions.wallet")}>
             <Autocomplete
-              placeholder={form.walletId === MIXED_VALUE ? "Mixed" : "Search wallet..."}
+              placeholder={
+                form.walletId === MIXED_VALUE
+                  ? t("transactions.mixed")
+                  : t("transactions.searchWallet")
+              }
               defaultFilter={viFilter}
               selectedKey={
                 form.walletId === MIXED_VALUE ? null : form.walletId || null
@@ -763,10 +781,12 @@ function BulkEditModal({
         </div>
 
         {(selectedType === "transfer" || form.toWalletId === MIXED_VALUE) && (
-          <Field label="To Wallet">
+          <Field label={t("transactions.toWallet")}>
             <Autocomplete
               placeholder={
-                form.toWalletId === MIXED_VALUE ? "Mixed" : "Search destination..."
+                form.toWalletId === MIXED_VALUE
+                  ? t("transactions.mixed")
+                  : t("transactions.searchDestination")
               }
               defaultFilter={viFilter}
               selectedKey={
@@ -775,8 +795,11 @@ function BulkEditModal({
               onSelectionChange={(key) => markTouched("toWalletId", key || "")}
               variant="flat"
             >
-              <AutocompleteItem key={NONE_VALUE} textValue="No Destination">
-                No Destination
+              <AutocompleteItem
+                key={NONE_VALUE}
+                textValue={t("transactions.noDestination")}
+              >
+                {t("transactions.noDestination")}
               </AutocompleteItem>
               {wallets.map((wallet) => (
                 <AutocompleteItem key={wallet.id} textValue={wallet.name}>
@@ -789,10 +812,12 @@ function BulkEditModal({
         )}
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Field label="Category">
+          <Field label={t("transactions.category")}>
             <Autocomplete
               placeholder={
-                form.categoryId === MIXED_VALUE ? "Mixed" : "Search category..."
+                form.categoryId === MIXED_VALUE
+                  ? t("transactions.mixed")
+                  : t("transactions.searchCategory")
               }
               defaultFilter={viFilter}
               selectedKey={
@@ -803,8 +828,11 @@ function BulkEditModal({
               }
               variant="flat"
             >
-              <AutocompleteItem key={NONE_VALUE} textValue="No Category">
-                No Category
+              <AutocompleteItem
+                key={NONE_VALUE}
+                textValue={t("transactions.noCategory")}
+              >
+                {t("transactions.noCategory")}
               </AutocompleteItem>
               {flatCats.map((cat) => (
                 <AutocompleteItem key={cat.id} textValue={cat.name}>
@@ -814,10 +842,12 @@ function BulkEditModal({
             </Autocomplete>
             {mixedHint("categoryId")}
           </Field>
-          <Field label="For Who (Contact)">
+          <Field label={t("transactions.contact")}>
             <Autocomplete
               placeholder={
-                form.contactId === MIXED_VALUE ? "Mixed" : "Search contact..."
+                form.contactId === MIXED_VALUE
+                  ? t("transactions.mixed")
+                  : t("transactions.searchContact")
               }
               defaultFilter={viFilter}
               selectedKey={
@@ -828,8 +858,11 @@ function BulkEditModal({
               }
               variant="flat"
             >
-              <AutocompleteItem key={NONE_VALUE} textValue="No Contact">
-                No Contact
+              <AutocompleteItem
+                key={NONE_VALUE}
+                textValue={t("transactions.noContact")}
+              >
+                {t("transactions.noContact")}
               </AutocompleteItem>
               {contacts.map((contact) => (
                 <AutocompleteItem key={contact.id} textValue={contact.name}>
@@ -842,16 +875,23 @@ function BulkEditModal({
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Field label="Trip">
+          <Field label={t("transactions.trip")}>
             <Autocomplete
-              placeholder={form.tripId === MIXED_VALUE ? "Mixed" : "Search trip..."}
+              placeholder={
+                form.tripId === MIXED_VALUE
+                  ? t("transactions.mixed")
+                  : t("transactions.searchTrip")
+              }
               defaultFilter={viFilter}
               selectedKey={form.tripId === MIXED_VALUE ? null : form.tripId || null}
               onSelectionChange={(key) => markTouched("tripId", key || NONE_VALUE)}
               variant="flat"
             >
-              <AutocompleteItem key={NONE_VALUE} textValue="No Trip">
-                No Trip
+              <AutocompleteItem
+                key={NONE_VALUE}
+                textValue={t("transactions.noTrip")}
+              >
+                {t("transactions.noTrip")}
               </AutocompleteItem>
               {trips.map((trip) => (
                 <AutocompleteItem key={trip.id} textValue={trip.name}>
@@ -861,9 +901,9 @@ function BulkEditModal({
             </Autocomplete>
             {mixedHint("tripId")}
           </Field>
-          <Field label="Debt Flag">
+          <Field label={t("transactions.debtFlag")}>
             <Select
-              placeholder="Mixed"
+              placeholder={t("transactions.mixed")}
               selectedKeys={form.isDebt ? [form.isDebt] : []}
               disabledKeys={[MIXED_VALUE]}
               onSelectionChange={(keys) =>
@@ -871,18 +911,24 @@ function BulkEditModal({
               }
               variant="flat"
             >
-              <SelectItem key={MIXED_VALUE}>Mixed</SelectItem>
-              <SelectItem key="false">Not debt</SelectItem>
-              <SelectItem key="true">Record as debt</SelectItem>
+              <SelectItem key={MIXED_VALUE}>
+                {t("transactions.mixed")}
+              </SelectItem>
+              <SelectItem key="false">{t("transactions.notDebt")}</SelectItem>
+              <SelectItem key="true">{t("transactions.recordAsDebt")}</SelectItem>
             </Select>
             {mixedHint("isDebt")}
           </Field>
         </div>
 
-        <Field label="Description">
+        <Field label={t("transactions.description")}>
           <Textarea
             rows={2}
-            placeholder={form.description === MIXED_VALUE ? "Mixed" : "Optional note..."}
+            placeholder={
+              form.description === MIXED_VALUE
+                ? t("transactions.mixed")
+                : t("transactions.optional")
+            }
             value={getDisplayValue("description")}
             onChange={(event) =>
               markTouched("description", event.target.value)
@@ -893,7 +939,7 @@ function BulkEditModal({
 
         <div className="flex justify-end gap-2 border-t border-neutral-100 pt-4 dark:border-neutral-800">
           <Button variant="light" onPress={onClose}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             color="primary"
@@ -901,7 +947,10 @@ function BulkEditModal({
             isDisabled={touchedFields.size === 0}
             isLoading={isSaving}
           >
-            Apply to {transactions.length} Rows
+            {t("transactions.applyToRows").replace(
+              "{count}",
+              transactions.length,
+            )}
           </Button>
         </div>
       </form>
@@ -926,6 +975,7 @@ export function Transactions() {
   const [confirmDel, setConfirmDel] = useState(null);
   const [confirmBulkDel, setConfirmBulkDel] = useState(false);
   const toast = useToast();
+  const t = useT();
 
   const updateFilter = (k, v) => {
     setFilters((prev) => ({ ...prev, [k]: v }));
@@ -1034,9 +1084,9 @@ export function Transactions() {
       const count = selectedRows.length;
       setBulkEditOpen(false);
       clearBulkSelection();
-      toast(`${count} transaction${count > 1 ? "s" : ""} updated`, "success");
+      toast(t("transactions.bulkUpdated").replace("{count}", count), "success");
     } catch {
-      toast("Error updating selected transactions", "error");
+      toast(t("transactions.bulkUpdateError"), "error");
     }
   };
 
@@ -1051,9 +1101,9 @@ export function Transactions() {
       });
       const count = selectedRows.length;
       clearBulkSelection();
-      toast(`${count} transaction${count > 1 ? "s" : ""} duplicated`, "success");
+      toast(t("transactions.bulkDuplicated").replace("{count}", count), "success");
     } catch {
-      toast("Error duplicating selected transactions", "error");
+      toast(t("transactions.bulkDuplicateError"), "error");
     }
   };
 
@@ -1067,20 +1117,20 @@ export function Transactions() {
       const count = selectedRows.length;
       setConfirmBulkDel(false);
       clearBulkSelection();
-      toast(`${count} transaction${count > 1 ? "s" : ""} deleted`, "success", {
+      toast(t("transactions.bulkDeleted").replace("{count}", count), "success", {
         duration: 9000,
-        actionLabel: "Undo",
+        actionLabel: t("transactions.undo"),
         onAction: async () => {
           try {
             await restoreDeleted.mutateAsync(deletedRows);
-            toast("Bulk delete undone", "success");
+            toast(t("transactions.bulkDeleteUndone"), "success");
           } catch {
-            toast("Could not undo bulk delete", "error");
+            toast(t("transactions.bulkDeleteUndoError"), "error");
           }
         },
       });
     } catch {
-      toast("Error deleting selected transactions", "error");
+      toast(t("transactions.bulkDeleteError"), "error");
       setConfirmBulkDel(false);
     }
   };
@@ -1350,10 +1400,13 @@ export function Transactions() {
         <div className="glass-card grid grid-cols-1 gap-4 rounded-3xl border border-primary/20 bg-primary/5 p-4 shadow-sm xl:grid-cols-[1fr_auto] xl:items-center">
           <div className="min-w-0">
             <p className="text-sm font-black text-neutral-900 dark:text-white">
-              {selectedCount} transaction{selectedCount > 1 ? "s" : ""} selected
+              {t("transactions.selectedCount").replace(
+                "{count}",
+                selectedCount,
+              )}
             </p>
             <p className="text-xs font-medium text-neutral-500">
-              Edit shared fields, duplicate them for today, or delete them.
+              {t("transactions.bulkActionHint")}
             </p>
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:items-center">
@@ -1363,7 +1416,7 @@ export function Transactions() {
               startContent={<PencilIcon className="h-4 w-4" />}
               onPress={() => setBulkEditOpen(true)}
             >
-              Edit
+              {t("common.edit")}
             </Button>
             <Button
               variant="bordered"
@@ -1372,7 +1425,7 @@ export function Transactions() {
               startContent={<DocumentDuplicateIcon className="h-4 w-4" />}
               onPress={handleBulkDuplicate}
             >
-              Duplicate
+              {t("transactions.duplicate")}
             </Button>
             <Button
               color="danger"
@@ -1382,7 +1435,7 @@ export function Transactions() {
               startContent={<TrashIcon className="h-4 w-4" />}
               onPress={() => setConfirmBulkDel(true)}
             >
-              Delete
+              {t("common.delete")}
             </Button>
           </div>
         </div>
@@ -1516,8 +1569,11 @@ export function Transactions() {
       <ConfirmModal
         open={confirmBulkDel}
         title="Delete Selected Transactions"
-        description={`This will delete ${selectedCount} selected transaction${selectedCount > 1 ? "s" : ""}. You can undo from the success toast right after it completes.`}
-        confirmLabel="Delete"
+        description={t("transactions.bulkDeleteDesc").replace(
+          "{count}",
+          selectedCount,
+        )}
+        confirmLabel={t("common.delete")}
         onConfirm={handleBulkDelete}
         onCancel={() => setConfirmBulkDel(false)}
       />
