@@ -123,7 +123,7 @@ function DonutChart({ data, total, formatAmount }) {
 
     return (
         <div className="flex flex-col items-center gap-5">
-            <div className="relative flex h-72 w-72 items-center justify-center overflow-visible [&_.recharts-surface]:!overflow-visible [&_.recharts-wrapper]:!overflow-visible">
+            <div className="relative h-72 w-72 overflow-visible [&_.recharts-sector]:cursor-pointer [&_.recharts-surface]:!overflow-visible [&_.recharts-wrapper]:!overflow-visible">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart margin={{ top: 24, right: 24, bottom: 24, left: 24 }}>
                         <Pie
@@ -140,6 +140,7 @@ function DonutChart({ data, total, formatAmount }) {
                             activeIndex={activeIndex}
                             activeOuterRadius={108}
                             onMouseEnter={(_, index) => setActiveIndex(index)}
+                            onMouseLeave={() => setActiveIndex(0)}
                         >
                             {data.map((entry) => (
                                 <Cell key={entry.name} fill={entry.color} />
@@ -147,8 +148,8 @@ function DonutChart({ data, total, formatAmount }) {
                         </Pie>
                     </PieChart>
                 </ResponsiveContainer>
-                <div className="pointer-events-none absolute h-32 w-32 rounded-full bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06),0_18px_40px_rgba(0,0,0,0.08)] dark:bg-neutral-950 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),0_18px_40px_rgba(0,0,0,0.25)]" />
-                <div className="pointer-events-none relative z-10 max-w-[130px] text-center">
+                <div className="pointer-events-none absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06),0_18px_40px_rgba(0,0,0,0.08)] dark:bg-neutral-950 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),0_18px_40px_rgba(0,0,0,0.25)]" />
+                <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 max-w-[130px] -translate-x-1/2 -translate-y-1/2 text-center">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">
                         {activeItem?.name || 'Tổng'}
                     </p>
