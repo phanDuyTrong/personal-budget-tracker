@@ -28,6 +28,7 @@ import {
   Chip,
   Tooltip,
   SelectItem,
+  Checkbox,
 } from "@heroui/react";
 
 import {
@@ -610,12 +611,16 @@ export function Transactions() {
   const txs = useMemo(() => data?.data || [], [data?.data]);
   const totalPages = data?.totalPages || 1;
 
-  const selectedRows = useMemo(() => {
-    if (selectedRowKeys === "all") return txs;
-    const keys = selectedRowKeys instanceof Set ? selectedRowKeys : new Set([]);
-    return txs.filter((tx) => keys.has(tx.id));
-  }, [selectedRowKeys, txs]);
+  const selectedRows = useMemo(
+    () => txs.filter((tx) => selectedRowKeys.has(tx.id)),
+    [selectedRowKeys, txs],
+  );
   const selectedCount = selectedRows.length;
+  const visibleIds = useMemo(() => txs.map((tx) => tx.id), [txs]);
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selectedRowKeys.has(id));
+  const someVisibleSelected =
+    visibleIds.some((id) => selectedRowKeys.has(id)) && !allVisibleSelected;
 
   const flatCats = useMemo(() => {
     const flat = [];
@@ -643,6 +648,26 @@ export function Transactions() {
     setSelectedRowKeys(new Set([]));
     setBulkCategoryId("");
   };
+
+  const toggleRowSelection = React.useCallback((id, selected) => {
+    setSelectedRowKeys((previous) => {
+      const next = new Set(previous);
+      if (selected) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const toggleVisibleSelection = React.useCallback((selected) => {
+    setSelectedRowKeys((previous) => {
+      const next = new Set(previous);
+      visibleIds.forEach((id) => {
+        if (selected) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  }, [visibleIds]);
 
   const handleBulkCategoryUpdate = async () => {
     if (!bulkCategoryId || selectedRows.length === 0) return;
@@ -710,6 +735,7 @@ export function Transactions() {
   };
 
   const columns = [
+    { name: "SELECT", uid: "select" },
     { name: "DATE", uid: "date" },
     { name: "WALLET", uid: "wallet" },
     { name: "TYPE/AMOUNT", uid: "amount" },
@@ -723,6 +749,14 @@ export function Transactions() {
     const cellValue = tx[columnKey];
 
     switch (columnKey) {
+      case "select":
+        return (
+          <Checkbox
+            aria-label={`Select transaction ${tx.description || tx.id}`}
+            isSelected={selectedRowKeys.has(tx.id)}
+            onValueChange={(selected) => toggleRowSelection(tx.id, selected)}
+          />
+        );
       case "date":
         return (
           <div className="flex flex-col">
@@ -826,7 +860,7 @@ export function Transactions() {
       default:
         return cellValue;
     }
-  }, []);
+  }, [selectedRowKeys, toggleRowSelection]);
 
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-[1400px] mx-auto animate-in fade-in duration-500">
@@ -1013,26 +1047,34 @@ export function Transactions() {
       <div className="glass-card backdrop-blur-md rounded-3xl overflow-hidden shadow-xl overflow-x-auto">
         <Table
           aria-label="Transactions table"
-          selectionMode="multiple"
-          selectedKeys={selectedRowKeys}
-          onSelectionChange={setSelectedRowKeys}
           removeWrapper
-          className="bg-transparent min-w-[700px]"
+          className="bg-transparent min-w-[760px]"
         >
           <TableHeader columns={columns}>
             {(column) => (
               <TableColumn
                 key={column.uid}
-                className="bg-neutral-100/50 dark:bg-neutral-800/50 text-muted-foreground font-bold uppercase py-4"
+                className={`bg-neutral-100/50 dark:bg-neutral-800/50 text-muted-foreground font-bold uppercase py-4 ${
+                  column.uid === "select" ? "w-12 px-4" : ""
+                }`}
               >
-                {column.name}
+                {column.uid === "select" ? (
+                  <Checkbox
+                    aria-label="Select all visible transactions"
+                    isSelected={allVisibleSelected}
+                    isIndeterminate={someVisibleSelected}
+                    onValueChange={toggleVisibleSelection}
+                  />
+                ) : (
+                  column.name
+                )}
               </TableColumn>
             )}
           </TableHeader>
           <TableBody
             items={txs}
             isLoading={isLoading}
-            loadingContent={<TableSkeleton rows={10} cols={7} />}
+            loadingContent={<TableSkeleton rows={10} cols={8} />}
             emptyContent={
               <EmptyState
                 icon={ArrowsRightLeftIcon}
