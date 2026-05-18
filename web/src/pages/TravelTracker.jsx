@@ -26,7 +26,6 @@ import {
     Pie,
     PieChart,
     ResponsiveContainer,
-    Tooltip as RechartsTooltip,
 } from 'recharts';
 
 import { 
@@ -126,47 +125,29 @@ function DonutChart({ data, total, formatAmount }) {
         <div className="flex flex-col items-center gap-5">
             <div className="relative flex h-64 w-64 items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
+                    <PieChart margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
                         <Pie
                             data={data}
                             dataKey="value"
                             nameKey="name"
                             cx="50%"
                             cy="50%"
-                            innerRadius={72}
-                            outerRadius={104}
-                            paddingAngle={4}
-                            cornerRadius={12}
+                            innerRadius={70}
+                            outerRadius={96}
+                            paddingAngle={3}
+                            cornerRadius={9}
                             stroke="none"
-                            activeIndex={activeIndex}
-                            activeOuterRadius={110}
                             onMouseEnter={(_, index) => setActiveIndex(index)}
+                            isAnimationActive={false}
                         >
                             {data.map((entry) => (
                                 <Cell key={entry.name} fill={entry.color} />
                             ))}
                         </Pie>
-                        <RechartsTooltip
-                            cursor={false}
-                            wrapperClassName="!outline-none"
-                            content={({ active, payload }) => {
-                                if (!active || !payload?.length) return null;
-                                const item = payload[0]?.payload;
-                                return (
-                                    <div className="rounded-2xl border border-neutral-200 bg-white/95 px-4 py-3 shadow-xl backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-950/95">
-                                        <div className="flex items-center gap-2">
-                                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                                            <span className="text-sm font-black text-neutral-900 dark:text-white">{item.name}</span>
-                                        </div>
-                                        <p className="mt-1 text-sm font-bold text-neutral-500">{formatAmount(item.value)}</p>
-                                    </div>
-                                );
-                            }}
-                        />
                     </PieChart>
                 </ResponsiveContainer>
-                <div className="pointer-events-none absolute h-32 w-32 rounded-full bg-neutral-50 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)] dark:bg-neutral-950 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" />
-                <div className="relative z-10 max-w-[130px] text-center">
+                <div className="pointer-events-none absolute h-32 w-32 rounded-full bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06),0_18px_40px_rgba(0,0,0,0.08)] dark:bg-neutral-950 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),0_18px_40px_rgba(0,0,0,0.25)]" />
+                <div className="pointer-events-none relative z-10 max-w-[130px] text-center">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">
                         {activeItem?.name || 'Tổng'}
                     </p>
