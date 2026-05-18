@@ -214,6 +214,23 @@ function aliasesForItem(item: TelegramItem) {
       "restaurant",
     );
 
+  if (normalized.includes("mua qua"))
+    aliases.push(
+      "gop tien",
+      "gop tien mua",
+      "mua qua",
+      "cho qua",
+      "mua ga",
+      "mua vit",
+      "gift",
+      "present",
+    );
+  else if (normalized === "qua" || normalized.includes("gift"))
+    aliases.push("mua qua", "cho qua", "gift", "present");
+
+  if (normalized.includes("dong nghiep"))
+    aliases.push("anh bau", "dong nghiep", "team", "cong ty", "colleague");
+
   return aliases;
 }
 
@@ -234,7 +251,10 @@ function findBest(
         phrase: bestAlias?.alias || item.name,
       };
     })
-    .sort((a, b) => b.score - a.score)[0];
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return normalizeText(a.item.name).length - normalizeText(b.item.name).length;
+    })[0];
   return best && best.score >= minimum ? best : null;
 }
 
@@ -375,6 +395,7 @@ export type ParsedEdit = {
     walletId?: string;
     toWalletId?: string | null;
     categoryId?: string | null;
+    contactId?: string | null;
     description?: string;
     date?: string;
   };
@@ -411,6 +432,13 @@ export function parseTelegramEdit(
     if (!category)
       return { action: "none", reason: "I could not match that category." };
     changes.categoryId = category.item.id;
+  }
+
+  if (/\b(nguoi nhan|nguoi lien quan|lien quan|contact|person|recipient)\b/.test(normalized)) {
+    const contact = findBest(context.contacts, input, 30);
+    if (!contact)
+      return { action: "none", reason: "I could not match that contact." };
+    changes.contactId = contact.item.id;
   }
 
   if (/\b(ngay|date)\b/.test(normalized))

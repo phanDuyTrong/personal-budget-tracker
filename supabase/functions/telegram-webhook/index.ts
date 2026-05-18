@@ -60,6 +60,19 @@ type AiParsedTransaction = {
   reason?: string | null;
 };
 
+type ParsedOkTransaction = {
+  ok: true;
+  type: "expense" | "income" | "transfer";
+  amount: number;
+  date: string;
+  description: string;
+  walletId: string;
+  toWalletId: string | null;
+  categoryId: string | null;
+  contactId: string | null;
+  unmatched: string[];
+};
+
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const telegramToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
@@ -164,6 +177,7 @@ async function loadContext(userId: string, defaultWalletId?: string | null) {
   if (categoryError) throw categoryError;
   if (contactError) throw contactError;
   return {
+    userId,
     wallets: wallets || [],
     categories: categories || [],
     contacts: contacts || [],
@@ -216,6 +230,65 @@ async function rememberParse(
     parsed_payload: parsedPayload,
     transaction_id: transactionId || null,
   });
+}
+
+function parsedPayload(parsed: ParsedOkTransaction) {
+  return {
+    type: parsed.type,
+    amount: parsed.amount,
+    wallet_id: parsed.walletId,
+    to_wallet_id: parsed.toWalletId,
+    category_id: parsed.categoryId,
+    contact_id: parsed.contactId,
+    description: parsed.description,
+    date: parsed.date,
+  };
+}
+
+function isMissingWalletReason(reason = "") {
+  return normalizeText(reason).includes("could not match a wallet");
+}
+
+async function savePendingDraft(
+  link: any,
+  message: TelegramMessage,
+  sourceText: string,
+  parsed: ParsedOkTransaction,
+) {
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  await supabase.from("telegram_pending_transaction_drafts").upsert(
+    {
+      user_id: link.user_id,
+      telegram_user_id: asText(message.from?.id),
+      chat_id: asText(message.chat.id),
+      source_message_id: asText(message.message_id),
+      source_text: sourceText,
+      parsed_payload: { ...parsedPayload(parsed), wallet_id: null },
+      expires_at: expiresAt,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "telegram_user_id,chat_id" },
+  );
+}
+
+async function loadPendingDraft(message: TelegramMessage) {
+  const { data, error } = await supabase
+    .from("telegram_pending_transaction_drafts")
+    .select("*")
+    .eq("telegram_user_id", asText(message.from?.id))
+    .eq("chat_id", asText(message.chat.id))
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function clearPendingDraft(message: TelegramMessage) {
+  await supabase
+    .from("telegram_pending_transaction_drafts")
+    .delete()
+    .eq("telegram_user_id", asText(message.from?.id))
+    .eq("chat_id", asText(message.chat.id));
 }
 
 function compactItems(items: Array<{ name?: string | null; type?: string | null }>) {
@@ -307,7 +380,7 @@ async function parseTransactionWithAi(
   if (!aiParseApiKey) return null;
 
   const prompt = {
-    task: "Parse one personal finance Telegram message into one transaction JSON. Preserve the user's language in description. Infer category from meaning and prior examples. Do not invent wallets/categories/contacts outside provided lists. Return JSON only.",
+    task: "Parse one personal finance Telegram message into one transaction JSON. Preserve the user's language in description. Infer category and contact from meaning, Vietnamese wording, and prior corrected examples. Do not invent wallets/categories/contacts outside provided lists. Return JSON only.",
     message: text,
     today: todayInTimeZone(),
     allowedTypes: ["expense", "income", "transfer"],
@@ -316,6 +389,7 @@ async function parseTransactionWithAi(
     contacts: compactItems(context.contacts),
     recentUserExamples: memories.map((memory) => ({
       text: memory.source_text,
+      parser: memory.parser,
       parsed: memory.parsed_payload,
     })),
     outputSchema: {
@@ -714,6 +788,7 @@ async function runTemplate(
       source_message_id: asText(message.message_id),
       bot_message_id: asText(reply.message_id),
       transaction_id: tx.id,
+      source_text: template.name,
     })),
   );
 
@@ -768,13 +843,19 @@ async function handleTemplateCommand(message: TelegramMessage, link: any, text: 
 async function handleEdit(message: TelegramMessage, link: any, text: string) {
   const chatId = asText(message.chat.id);
   const botMessageId = asText(message.reply_to_message?.message_id);
-  const { data: event, error } = await supabase
+  let eventQuery = supabase
     .from("telegram_transaction_events")
-    .select("transaction_id,user_id")
+    .select("transaction_id,user_id,source_text,created_at")
     .eq("chat_id", chatId)
-    .eq("telegram_user_id", asText(message.from?.id))
-    .eq("bot_message_id", botMessageId)
-    .maybeSingle();
+    .eq("telegram_user_id", asText(message.from?.id));
+  eventQuery = botMessageId
+    ? eventQuery.eq("bot_message_id", botMessageId)
+    : eventQuery
+        .gte("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+  const { data: event, error } = await eventQuery.maybeSingle();
 
   if (error) throw error;
   if (!event) {
@@ -823,6 +904,8 @@ async function handleEdit(message: TelegramMessage, link: any, text: string) {
     updatePayload.to_wallet_id = parsed.changes.toWalletId;
   if (parsed.changes.categoryId !== undefined)
     updatePayload.category_id = parsed.changes.categoryId;
+  if (parsed.changes.contactId !== undefined)
+    updatePayload.contact_id = parsed.changes.contactId;
   if (parsed.changes.description !== undefined)
     updatePayload.description = parsed.changes.description;
   if (parsed.changes.date !== undefined)
@@ -836,11 +919,48 @@ async function handleEdit(message: TelegramMessage, link: any, text: string) {
     .select()
     .single();
   if (updateError) throw updateError;
+  await rememberParse(
+    event.user_id,
+    event.source_text || text,
+    "local",
+    {
+      type: tx.type,
+      amount: Number(tx.amount),
+      wallet_id: tx.wallet_id,
+      to_wallet_id: tx.to_wallet_id,
+      category_id: tx.category_id,
+      contact_id: tx.contact_id,
+      description: tx.description,
+      date: tx.date,
+      corrected_by: text,
+    },
+    tx.id,
+  );
   await sendMessage(
     chatId,
     summarizeTransaction(tx, detectVietnamese(text)),
     asText(message.message_id),
   );
+}
+
+async function resolveParsedTransaction(
+  text: string,
+  context: Awaited<ReturnType<typeof loadContext>>,
+) {
+  const localParsed = parseTelegramTransaction(text, context);
+  const memories = await loadAiMemories(context.userId);
+  const shouldAskAi =
+    Boolean(aiParseApiKey) &&
+    (aiParseMode === "always" ||
+      !localParsed.ok ||
+      (localParsed.ok && localParsed.unmatched.includes("category")));
+  const aiParsed = shouldAskAi
+    ? await parseTransactionWithAi(text, context, memories)
+    : null;
+  return {
+    parsed: aiParsed?.ok ? aiParsed : localParsed,
+    parser: (aiParsed?.ok ? "ai" : "local") as "local" | "ai",
+  };
 }
 
 async function handleTransaction(
@@ -850,21 +970,30 @@ async function handleTransaction(
 ) {
   const chatId = asText(message.chat.id);
   const context = await loadContext(link.user_id, link.default_wallet_id);
-  const localParsed = parseTelegramTransaction(text, context);
-  const memories = await loadAiMemories(link.user_id);
-  const shouldAskAi =
-    Boolean(aiParseApiKey) &&
-    (aiParseMode === "always" ||
-      !localParsed.ok ||
-      (localParsed.ok && localParsed.unmatched.includes("category")));
-  const aiParsed = shouldAskAi
-    ? await parseTransactionWithAi(text, context, memories)
-    : null;
-  const parsed = aiParsed?.ok ? aiParsed : localParsed;
-  const parser: "local" | "ai" = aiParsed?.ok ? "ai" : "local";
+  const pendingDraft = await loadPendingDraft(message);
+  const sourceText = pendingDraft?.source_text || text;
+  const textToParse = pendingDraft ? `${pendingDraft.source_text} ${text}` : text;
+  const { parsed, parser } = await resolveParsedTransaction(textToParse, context);
   const languageIsVietnamese = detectVietnamese(text);
 
   if (!parsed.ok) {
+    if (!pendingDraft && isMissingWalletReason(parsed.reason)) {
+      const draftParsed = parseTelegramTransaction(text, {
+        ...context,
+        defaultWalletId: "__missing_wallet__",
+      });
+      if (draftParsed.ok) {
+        await savePendingDraft(link, message, text, draftParsed);
+        await sendMessage(
+          chatId,
+          detectVietnamese(text)
+            ? `Mình đã hiểu ${formatAmount(draftParsed.amount)} cho “${draftParsed.description}”. Còn thiếu ví. Nhắn tiếp tên ví, ví dụ “tài khoản”, “tiền mặt”, hoặc “momo”.`
+            : `I understood ${formatAmount(draftParsed.amount)} for “${draftParsed.description}”. I still need the wallet. Send just the wallet name, like “cash” or “Techcombank”.`,
+          asText(message.message_id),
+        );
+        return;
+      }
+    }
     await sendMessage(chatId, parsed.reason, asText(message.message_id));
     return;
   }
@@ -890,18 +1019,9 @@ async function handleTransaction(
 
   await rememberParse(
     link.user_id,
-    text,
+    sourceText,
     parser,
-    {
-      type: parsed.type,
-      amount: parsed.amount,
-      wallet_id: parsed.walletId,
-      to_wallet_id: parsed.toWalletId,
-      category_id: parsed.categoryId,
-      contact_id: parsed.contactId,
-      description: parsed.description,
-      date: parsed.date,
-    },
+    parsedPayload(parsed),
     tx.id,
   );
 
@@ -917,7 +1037,9 @@ async function handleTransaction(
     source_message_id: asText(message.message_id),
     bot_message_id: asText(reply.message_id),
     transaction_id: tx.id,
+    source_text: sourceText,
   });
+  if (pendingDraft) await clearPendingDraft(message);
 }
 
 Deno.serve(async (req) => {

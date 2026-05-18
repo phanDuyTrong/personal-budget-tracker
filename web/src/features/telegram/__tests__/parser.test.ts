@@ -10,15 +10,20 @@ const context = {
   defaultWalletId: "wallet-default",
   wallets: [
     { id: "wallet-cash", name: "Tiền mặt" },
+    { id: "wallet-account", name: "Tài khoản" },
     { id: "wallet-tech", name: "Techcombank" },
     { id: "wallet-saving", name: "Savings" },
     { id: "wallet-default", name: "Default wallet" },
   ],
   categories: [
     { id: "cat-food", name: "Mua đồ ăn", type: "expense" },
+    { id: "cat-gift", name: "Mua quà", type: "expense" },
     { id: "cat-salary", name: "Salary", type: "income" },
   ],
-  contacts: [{ id: "contact-minh", name: "Minh" }],
+  contacts: [
+    { id: "contact-colleague", name: "Đồng nghiệp" },
+    { id: "contact-minh", name: "Minh" },
+  ],
 };
 
 describe("parseTelegramTransaction", () => {
@@ -54,9 +59,9 @@ describe("parseTelegramTransaction", () => {
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.walletId).toBe("wallet-default");
+    expect(result.walletId).toBe("wallet-account");
     expect(result.categoryId).toBe("cat-food");
-    expect(result.description).toBe("ăn kem tại jolibee tài khoản");
+    expect(result.description).toBe("ăn kem tại jolibee");
   });
 
   it("parses Vietnamese and English income shorthand", () => {
@@ -112,6 +117,21 @@ describe("parseTelegramTransaction", () => {
     expect(mentionedWallet.ok && mentionedWallet.walletId).toBe("wallet-cash");
     expect(missingWallet.ok).toBe(false);
   });
+
+  it("understands Vietnamese gift contribution notes", () => {
+    const result = parseTelegramTransaction(
+      "góp tiền mua gà & vịt cho anh bâu 117k tài khoản",
+      context,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.amount).toBe(117000);
+    expect(result.walletId).toBe("wallet-account");
+    expect(result.categoryId).toBe("cat-gift");
+    expect(result.contactId).toBe("contact-colleague");
+    expect(result.description).toBe("góp tiền mua gà & vịt cho anh bâu");
+  });
 });
 
 describe("parseTelegramEdit", () => {
@@ -120,6 +140,13 @@ describe("parseTelegramEdit", () => {
     expect(parseTelegramEdit("change amount 90000", context)).toMatchObject({
       action: "update",
       changes: { amount: 90000 },
+    });
+  });
+
+  it("parses Vietnamese contact edit commands", () => {
+    expect(parseTelegramEdit("sửa người nhận Đồng nghiệp", context)).toMatchObject({
+      action: "update",
+      changes: { contactId: "contact-colleague" },
     });
   });
 });
