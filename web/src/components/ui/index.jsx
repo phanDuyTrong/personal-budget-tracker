@@ -25,9 +25,10 @@ import {
 const ToastCtx = createContext(null);
 export function ToastProvider({ children }) {
     const [toasts, setToasts] = useState([]);
-    const add = useCallback((message, type = 'info', duration = 3500) => {
+    const add = useCallback((message, type = 'info', options = 3500) => {
+        const duration = typeof options === 'number' ? options : (options.duration ?? 3500);
         const id = Math.random().toString(36);
-        setToasts(t => [...t, { id, message, type }]);
+        setToasts(t => [...t, { id, message, type, actionLabel: options.actionLabel, onAction: options.onAction }]);
         setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), duration);
     }, []);
     // FIX: was setToasts(t => setToasts(...)) — double nesting corrupted state
@@ -60,6 +61,17 @@ export function ToastProvider({ children }) {
                                 {icons[t.type]}
                             </div>
                             <span className="flex-1 font-bold text-sm text-neutral-900 dark:text-white tracking-tight">{t.message}</span>
+                            {t.actionLabel && (
+                                <button
+                                    onClick={() => {
+                                        t.onAction?.();
+                                        remove(t.id);
+                                    }}
+                                    className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-black text-white transition-colors hover:bg-primary dark:bg-white dark:text-neutral-950"
+                                >
+                                    {t.actionLabel}
+                                </button>
+                            )}
                             <button onClick={() => remove(t.id)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors shrink-0">
                                 <XMarkIcon className="h-5 w-5" />
                             </button>
