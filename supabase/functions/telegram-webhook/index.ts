@@ -989,7 +989,7 @@ async function handleFinancialReport(message: TelegramMessage, link: any, text: 
   const categoryById = new Map(context.categories.map((category: any) => [category.id, category]));
   const { data: rows, error } = await supabase
     .from("transactions")
-    .select("id,type,amount,date,description,wallet_id,category_id,contact_id,wallet:wallets(id,name),category:categories(id,name,parent_id),contact:contacts(id,name)")
+    .select("id,type,amount,date,description,wallet_id,category_id,contact_id,wallet:wallets!wallet_id(id,name),category:categories(id,name,parent_id),contact:contacts(id,name)")
     .eq("user_id", link.user_id)
     .gte("date", range.start)
     .lte("date", range.end)
