@@ -73,6 +73,36 @@ type ParsedOkTransaction = {
   unmatched: string[];
 };
 
+type ReportRange = {
+  start: string;
+  end: string;
+  labelVi: string;
+  labelEn: string;
+};
+
+type ReportStatRow = {
+  name: string;
+  value: number;
+};
+
+type FinancialReportSummary = {
+  range: ReportRange;
+  languageIsVietnamese: boolean;
+  transactionCount: number;
+  totalExpense: number;
+  totalIncome: number;
+  net: number;
+  topCategories: ReportStatRow[];
+  topWallets: ReportStatRow[];
+  topContacts: ReportStatRow[];
+  monthly: ReportStatRow[];
+  largestExpense?: {
+    amount: number;
+    description: string;
+    categoryName: string;
+  };
+};
+
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const telegramToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
@@ -225,10 +255,10 @@ async function loadTemplates(userId: string) {
 async function loadAiMemories(userId: string) {
   const { data, error } = await supabase
     .from("telegram_ai_parse_memories")
-    .select("source_text,parser,parsed_payload,created_at")
+    .select("source_text,parser,parsed_payload,created_at,transaction_id")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(12);
+    .limit(20);
   if (error) return [];
   return data || [];
 }
@@ -261,6 +291,28 @@ function parsedPayload(parsed: ParsedOkTransaction) {
     description: parsed.description,
     date: parsed.date,
   };
+}
+
+function compactMemories(memories: any[]) {
+  return memories.slice(0, 14).map((memory) => {
+    const parsed = memory.parsed_payload || {};
+    return {
+      userWording: memory.source_text,
+      parser: memory.parser,
+      isCorrection: Boolean(parsed.corrected_by),
+      correctedBy: parsed.corrected_by || null,
+      result: {
+        type: parsed.type,
+        amount: parsed.amount,
+        walletId: parsed.wallet_id,
+        toWalletId: parsed.to_wallet_id,
+        categoryId: parsed.category_id,
+        contactId: parsed.contact_id,
+        description: parsed.description,
+        date: parsed.date,
+      },
+    };
+  });
 }
 
 function isMissingWalletReason(reason = "") {
@@ -398,18 +450,20 @@ async function parseTransactionWithAi(
   if (!aiParseApiKey) return null;
 
   const prompt = {
-    task: "Parse one personal finance Telegram message into one transaction JSON. Preserve the user's language in description. Infer category and contact from meaning, Vietnamese wording, and prior corrected examples. Do not invent wallets/categories/contacts outside provided lists. Return JSON only.",
+    task: "Parse one personal finance Telegram message into one transaction JSON. Preserve the user's language in description. Infer category and contact from meaning, Vietnamese wording, and prior corrected examples. Recent corrections are stronger than generic guesses. Do not invent wallets/categories/contacts outside provided lists. Return JSON only.",
     message: text,
     today: todayInTimeZone(),
     allowedTypes: ["expense", "income", "transfer"],
     wallets: compactItems(context.wallets),
     categories: compactItems(context.categories),
     contacts: compactItems(context.contacts),
-    recentUserExamples: memories.map((memory) => ({
-      text: memory.source_text,
-      parser: memory.parser,
-      parsed: memory.parsed_payload,
-    })),
+    recentUserExamples: compactMemories(memories),
+    learningRules: [
+      "If a past correction maps a phrase to a category/contact, reuse that mapping for similar future wording.",
+      "Keep description close to the user's wording; remove only amount/date/wallet connector words.",
+      "If the user mentions a person/company/team, prefer matching it to contacts when available.",
+      "If unsure between category and contact, choose null instead of inventing.",
+    ],
     outputSchema: {
       type: "expense|income|transfer",
       amount: "number in the transaction currency",
@@ -503,7 +557,7 @@ async function handleLink(message: TelegramMessage, code: string) {
     .eq("id", linkCode.id);
   await sendMessage(
     chatId,
-    "Linked. You can now send transactions like “ăn trưa 85k bằng tiền mặt” or “lunch 85k from cash”.",
+    "Linked rồi nhé ✅\nBạn có thể ghi giao dịch như “ăn trưa 85k bằng tiền mặt”, tạo template, hoặc hỏi mình kiểu “tóm tắt chi tiêu tháng này”.",
     asText(message.message_id),
   );
 }
@@ -537,9 +591,11 @@ function summarizeTransaction(
           : "Expense";
   const warnings =
     unmatched.length > 0
-      ? `\n${languageIsVietnamese ? "Chưa khớp" : "Unmatched"}: ${unmatched.join(", ")}`
+      ? `\n${languageIsVietnamese ? "Mình chưa khớp chắc" : "Not confidently matched"}: ${unmatched.join(", ")}`
       : "";
-  return `${languageIsVietnamese ? "Đã ghi" : "Saved"}: ${typeLabel} ${formatAmount(Number(tx.amount))}\n${languageIsVietnamese ? "Ngày" : "Date"}: ${tx.date}\n${languageIsVietnamese ? "Mô tả" : "Description"}: ${tx.description || "-"}${warnings}\n\n${languageIsVietnamese ? "Reply tin nhắn này với “sửa ...” hoặc “xóa” nếu cần chỉnh." : "Reply to this message with “change ...” or “delete” if you need to fix it."}`;
+  return languageIsVietnamese
+    ? `Mình đã ghi rồi nhé ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nNgày: ${tx.date}\nMô tả: ${tx.description || "-"}${warnings}\n\nNếu cần chỉnh, reply tin này với “sửa ...” hoặc “xóa”. Mình sẽ học từ lần sửa đó để lần sau bắt đúng hơn.`
+    : `Saved for you ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nDate: ${tx.date}\nDescription: ${tx.description || "-"}${warnings}\n\nIf you need to fix it, reply with “change ...” or “delete”. I’ll learn from the correction for next time.`;
 }
 
 
@@ -981,6 +1037,146 @@ function reportLinesForTop(title: string, rows: Array<{ name: string; value: num
   ];
 }
 
+function buildFinancialReportLines(summary: FinancialReportSummary) {
+  const {
+    range,
+    languageIsVietnamese,
+    transactionCount,
+    totalExpense,
+    totalIncome,
+    net,
+    topCategories,
+    topWallets,
+    topContacts,
+    monthly,
+    largestExpense,
+  } = summary;
+  const topCategory = topCategories[0];
+
+  return languageIsVietnamese
+    ? [
+        `Báo cáo tài chính ${range.labelVi} 📊`,
+        `${range.start} → ${range.end}`,
+        "",
+        `Tổng chi: ${formatAmount(totalExpense)}`,
+        `Tổng thu: ${formatAmount(totalIncome)}`,
+        `Dòng tiền ròng: ${formatAmount(net)}`,
+        `Số giao dịch: ${transactionCount}`,
+        "",
+        topCategory
+          ? `Chi nhiều nhất: ${topCategory.name} (${formatAmount(topCategory.value)})`
+          : "Chi nhiều nhất: -",
+        largestExpense
+          ? `Khoản chi lớn nhất: ${formatAmount(largestExpense.amount)} - ${largestExpense.description || largestExpense.categoryName}`
+          : "Khoản chi lớn nhất: -",
+        "",
+        ...reportLinesForTop("Top danh mục", topCategories),
+        "",
+        ...reportLinesForTop("Top ví chi tiêu", topWallets, 3),
+        ...(topContacts.length ? ["", ...reportLinesForTop("Top người liên quan", topContacts, 3)] : []),
+        ...(monthly.length > 1
+          ? ["", "Theo tháng:", ...monthly.map((item) => `- ${item.name}: ${formatAmount(item.value)}`)]
+          : []),
+      ]
+    : [
+        `Financial report for ${range.labelEn} 📊`,
+        `${range.start} -> ${range.end}`,
+        "",
+        `Total expense: ${formatAmount(totalExpense)}`,
+        `Total income: ${formatAmount(totalIncome)}`,
+        `Net cash flow: ${formatAmount(net)}`,
+        `Transactions: ${transactionCount}`,
+        "",
+        topCategory
+          ? `Highest spending area: ${topCategory.name} (${formatAmount(topCategory.value)})`
+          : "Highest spending area: -",
+        largestExpense
+          ? `Largest expense: ${formatAmount(largestExpense.amount)} - ${largestExpense.description || largestExpense.categoryName}`
+          : "Largest expense: -",
+        "",
+        ...reportLinesForTop("Top categories", topCategories),
+        "",
+        ...reportLinesForTop("Top spending wallets", topWallets, 3),
+        ...(topContacts.length ? ["", ...reportLinesForTop("Top contacts", topContacts, 3)] : []),
+        ...(monthly.length > 1
+          ? ["", "By month:", ...monthly.map((item) => `- ${item.name}: ${formatAmount(item.value)}`)]
+          : []),
+      ];
+}
+
+async function buildFinancialCoachNote(
+  question: string,
+  summary: FinancialReportSummary,
+) {
+  if (!aiParseApiKey) return null;
+
+  const language = summary.languageIsVietnamese ? "Vietnamese" : "English";
+  const prompt = {
+    task: "Write a short supportive personal finance coach note based only on the provided report numbers. Do not invent numbers or facts. Be warm, practical, and non-judgmental. Max 2 emojis.",
+    language,
+    userQuestion: question,
+    report: {
+      period: summary.languageIsVietnamese ? summary.range.labelVi : summary.range.labelEn,
+      start: summary.range.start,
+      end: summary.range.end,
+      transactionCount: summary.transactionCount,
+      totalExpense: summary.totalExpense,
+      totalIncome: summary.totalIncome,
+      net: summary.net,
+      topCategories: summary.topCategories.slice(0, 5),
+      topWallets: summary.topWallets.slice(0, 3),
+      topContacts: summary.topContacts.slice(0, 3),
+      monthly: summary.monthly,
+      largestExpense: summary.largestExpense || null,
+    },
+    style: {
+      tone: "friendly supportive finance expert",
+      length: "2-4 short lines",
+      avoid: ["shaming", "alarmist language", "inventing recommendations not grounded in data"],
+    },
+  };
+
+  const response = await fetch(aiParseBaseUrl, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${aiParseApiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": webAppUrl,
+      "X-Title": "Budget Manager Telegram Bot",
+    },
+    body: JSON.stringify({
+      model: aiParseModel,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a kind, practical personal finance coach. Use only the supplied report data. Keep it concise and supportive.",
+        },
+        { role: "user", content: JSON.stringify(prompt) },
+      ],
+      temperature: 0.35,
+    }),
+  });
+
+  if (!response.ok) return null;
+  const payload = await response.json().catch(() => null);
+  const note = payload?.choices?.[0]?.message?.content?.trim();
+  if (!note || note.length > 900) return null;
+  return note;
+}
+
+function fallbackCoachNote(summary: FinancialReportSummary) {
+  const topCategory = summary.topCategories[0];
+  if (summary.languageIsVietnamese) {
+    if (!topCategory) return "Nhìn chung dữ liệu còn ít, mình sẽ theo dõi thêm vài giao dịch nữa để đưa insight tốt hơn nhé 🙂";
+    const ratio = summary.totalExpense > 0 ? Math.round((topCategory.value / summary.totalExpense) * 100) : 0;
+    return `Góc nhìn nhanh: ${topCategory.name} đang chiếm khoảng ${ratio}% tổng chi. Nếu đây là khoản có chủ đích thì ổn; nếu không, mình gợi ý theo dõi nhóm này sát hơn vài ngày tới 🙂`;
+  }
+  if (!topCategory) return "There is not much data yet, but I’ll keep tracking and give better insights as you add more transactions 🙂";
+  const ratio = summary.totalExpense > 0 ? Math.round((topCategory.value / summary.totalExpense) * 100) : 0;
+  return `Quick take: ${topCategory.name} is about ${ratio}% of spending. If that was intentional, you’re fine; otherwise, it’s the first area I’d keep an eye on 🙂`;
+}
+
 async function handleFinancialReport(message: TelegramMessage, link: any, text: string) {
   const chatId = asText(message.chat.id);
   const languageIsVietnamese = detectVietnamese(text);
@@ -1026,59 +1222,34 @@ async function handleFinancialReport(message: TelegramMessage, link: any, text: 
     tx.type === "income" ? Number(tx.amount || 0) : -Number(tx.amount || 0),
   ).sort((a, b) => a.name.localeCompare(b.name));
   const largestExpense = [...expenses].sort((a: any, b: any) => Number(b.amount || 0) - Number(a.amount || 0))[0];
-  const topCategory = topCategories[0];
+  const summary: FinancialReportSummary = {
+    range,
+    languageIsVietnamese,
+    transactionCount: transactions.length,
+    totalExpense,
+    totalIncome,
+    net,
+    topCategories,
+    topWallets,
+    topContacts,
+    monthly,
+    largestExpense: largestExpense
+      ? {
+          amount: Number(largestExpense.amount || 0),
+          description: largestExpense.description || "",
+          categoryName: categoryName(largestExpense),
+        }
+      : undefined,
+  };
+  const lines = buildFinancialReportLines(summary);
+  const coachNote = await buildFinancialCoachNote(text, summary).catch(() => null);
+  const finalNote = coachNote || fallbackCoachNote(summary);
 
-  const lines = languageIsVietnamese
-    ? [
-        `Báo cáo tài chính ${range.labelVi}`,
-        `${range.start} → ${range.end}`,
-        "",
-        `Tổng chi: ${formatAmount(totalExpense)}`,
-        `Tổng thu: ${formatAmount(totalIncome)}`,
-        `Dòng tiền ròng: ${formatAmount(net)}`,
-        `Số giao dịch: ${transactions.length}`,
-        "",
-        topCategory
-          ? `Chi nhiều nhất: ${topCategory.name} (${formatAmount(topCategory.value)})`
-          : "Chi nhiều nhất: -",
-        largestExpense
-          ? `Khoản chi lớn nhất: ${formatAmount(Number(largestExpense.amount))} - ${largestExpense.description || categoryName(largestExpense)}`
-          : "Khoản chi lớn nhất: -",
-        "",
-        ...reportLinesForTop("Top danh mục", topCategories),
-        "",
-        ...reportLinesForTop("Top ví chi tiêu", topWallets, 3),
-        ...(topContacts.length ? ["", ...reportLinesForTop("Top người liên quan", topContacts, 3)] : []),
-        ...(monthly.length > 1
-          ? ["", "Theo tháng:", ...monthly.map((item) => `- ${item.name}: ${formatAmount(item.value)}`)]
-          : []),
-      ]
-    : [
-        `Financial report for ${range.labelEn}`,
-        `${range.start} -> ${range.end}`,
-        "",
-        `Total expense: ${formatAmount(totalExpense)}`,
-        `Total income: ${formatAmount(totalIncome)}`,
-        `Net cash flow: ${formatAmount(net)}`,
-        `Transactions: ${transactions.length}`,
-        "",
-        topCategory
-          ? `Highest spending area: ${topCategory.name} (${formatAmount(topCategory.value)})`
-          : "Highest spending area: -",
-        largestExpense
-          ? `Largest expense: ${formatAmount(Number(largestExpense.amount))} - ${largestExpense.description || categoryName(largestExpense)}`
-          : "Largest expense: -",
-        "",
-        ...reportLinesForTop("Top categories", topCategories),
-        "",
-        ...reportLinesForTop("Top spending wallets", topWallets, 3),
-        ...(topContacts.length ? ["", ...reportLinesForTop("Top contacts", topContacts, 3)] : []),
-        ...(monthly.length > 1
-          ? ["", "By month:", ...monthly.map((item) => `- ${item.name}: ${formatAmount(item.value)}`)]
-          : []),
-      ];
-
-  await sendMessage(chatId, lines.join("\n"), asText(message.message_id));
+  await sendMessage(
+    chatId,
+    `${lines.join("\n")}\n\n${languageIsVietnamese ? "Nhận xét của mình" : "My take"}:\n${finalNote}`,
+    asText(message.message_id),
+  );
   return true;
 }
 
@@ -1230,8 +1401,8 @@ async function handleTransaction(
         await sendMessage(
           chatId,
           detectVietnamese(text)
-            ? `Mình đã hiểu ${formatAmount(draftParsed.amount)} cho “${draftParsed.description}”. Còn thiếu ví. Nhắn tiếp tên ví, ví dụ “tài khoản”, “tiền mặt”, hoặc “momo”.`
-            : `I understood ${formatAmount(draftParsed.amount)} for “${draftParsed.description}”. I still need the wallet. Send just the wallet name, like “cash” or “Techcombank”.`,
+            ? `Mình hiểu rồi: ${formatAmount(draftParsed.amount)} cho “${draftParsed.description}” 👍\nCòn thiếu ví thôi. Nhắn tiếp tên ví, ví dụ “tài khoản”, “tiền mặt”, hoặc “momo”.`
+            : `I understood ${formatAmount(draftParsed.amount)} for “${draftParsed.description}” 👍\nI still need the wallet. Send just the wallet name, like “cash” or “Techcombank”.`,
           asText(message.message_id),
         );
         return;
@@ -1320,7 +1491,7 @@ Deno.serve(async (req) => {
     if (text.startsWith("/start")) {
       await sendMessage(
         chatId,
-        "Open Budget Manager Settings, generate a Telegram link code, then send /link 123456 here.\n\nAfter linking, you can add transactions, manage templates, or ask reports like “tóm tắt chi tiêu tháng này”.",
+        "Mình sẵn sàng làm trợ lý tài chính cá nhân cho bạn đây 🙂\n\nĐể bắt đầu: mở Budget Manager Settings, tạo Telegram link code, rồi gửi /link 123456 ở đây.\n\nSau khi link xong, bạn có thể ghi giao dịch, tạo template, hoặc hỏi mình: “tóm tắt chi tiêu tháng này”.",
       );
       return jsonResponse({ ok: true });
     }
