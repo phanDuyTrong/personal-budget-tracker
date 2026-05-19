@@ -99,6 +99,8 @@ The Telegram bot runs as Supabase Edge Functions and writes directly to the exis
 
 The parser is hybrid and AI-first when `AI_PARSE_API_KEY` is configured. It tries templates first, then server-side AI with the user's wallets/categories/contacts/recent examples, then local parsing as a free fallback. The AI key is stored only in Supabase Edge Function secrets, never in the browser. Successful parses and later corrections are stored as per-user examples in `telegram_ai_parse_memories`, so future AI calls can follow that user's wording and categorization style. Without `AI_PARSE_API_KEY`, the bot still works with the free local parser. It supports Vietnamese and English examples like `ăn trưa 85k bằng tiền mặt`, `lunch 85k from cash`, `nhận lương 20tr vào Techcombank`, and `transfer 2m from cash to savings`.
 
+Telegram replies use a friendly, supportive personal-finance tone. Report answers include real queried totals plus a short coach note. The coach note can use AI when available, but it is constrained to the supplied report data and falls back to a deterministic summary if the AI provider is unavailable.
+
 Telegram templates let one message create multiple transactions. Create or replace a template from Telegram with:
 
 ```text
