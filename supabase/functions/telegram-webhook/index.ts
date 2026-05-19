@@ -103,6 +103,11 @@ type FinancialReportSummary = {
   };
 };
 
+type CasualChatResult = {
+  isCasual: boolean;
+  reply: string | null;
+};
+
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const telegramToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
@@ -132,6 +137,156 @@ function detectVietnamese(text: string) {
       text.normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
     )
   );
+}
+
+function normalizedPlainText(text: string) {
+  return normalizeText(text).replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+}
+
+function hasMoneySignal(text: string) {
+  const normalized = normalizedPlainText(text);
+  return (
+    /(?:^|\s)(?:\d+(?:[.,]\d+)?)(?:\s*)(?:k|tr|m|mil|million|nghin|ngan|ngàn|trieu|triệu|usd|dollar|dollars|vnd|dong|đ|₫)(?:\s|$)/i.test(text) ||
+    /[$₫]\s*\d+/i.test(text) ||
+    /\b\d{4,}\b/.test(normalized)
+  );
+}
+
+function hasFinanceSignal(text: string) {
+  const normalized = normalizedPlainText(text);
+  return (
+    hasMoneySignal(text) ||
+    /\b(an|uống|uong|mua|tra|trả|thanh toan|chi|tieu|tiêu|nhan|nhận|luong|lương|thu|refund|salary|income|expense|spent|paid|pay|buy|bought|transfer|chuyen|chuyển|tu|từ|sang|vao|vào|bang|bằng|vi|ví|wallet|cash|card|bank|tai khoan|tài khoản|momo|techcombank|vcb|mb|visa|date|ngay|ngày|hom qua|hôm qua|today|yesterday)\b/i.test(
+      normalized,
+    )
+  );
+}
+
+function localCasualReply(text: string, languageIsVietnamese: boolean) {
+  const normalized = normalizedPlainText(text);
+
+  if (/\b(hi|hello|hey|xin chao|xin chào|chao|chào|alo|yo)\b/i.test(normalized)) {
+    return languageIsVietnamese
+      ? "Hello hello, mình đây 😄 Muốn ghi chi tiêu hay hỏi report thì cứ nhắn tự nhiên nha."
+      : "Hey hey, I’m here 😄 Send me a transaction or ask for a spending report anytime.";
+  }
+
+  if (/\b(cam on|cảm ơn|thanks|thank you|tks|thank)\b/i.test(normalized)) {
+    return languageIsVietnamese
+      ? "Không có gì nha, cứ quăng giao dịch vào đây, mình ghi giúp cho gọn 😄"
+      : "Anytime. Drop transactions here and I’ll keep things tidy for you 😄";
+  }
+
+  if (/\b(help|giup|giúp|lam duoc gi|làm được gì|ban la ai|bạn là ai|what can you do|huong dan|hướng dẫn)\b/i.test(normalized)) {
+    return languageIsVietnamese
+      ? [
+          "Mình là bot ghi chi tiêu kiêm trợ lý tài chính nhẹ nhàng của bạn 🙂",
+          "",
+          "Bạn có thể nhắn kiểu:",
+          "- ăn trưa 85k bằng tiền mặt",
+          "- nhận lương 20tr vào tài khoản",
+          "- tóm tắt chi tiêu 7 ngày qua",
+          "- tạo template Nhận lương tháng",
+        ].join("\n")
+      : [
+          "I’m your transaction bot plus a chill personal-finance sidekick 🙂",
+          "",
+          "Try messages like:",
+          "- lunch 85k from cash",
+          "- received salary 20m to bank",
+          "- summarize spending last 7 days",
+          "- create template Monthly salary",
+        ].join("\n");
+  }
+
+  return languageIsVietnamese
+    ? "Mình nghe nè 😄 Nếu muốn ghi chi tiêu, bạn nhắn kèm số tiền và ví. Nếu muốn xem tình hình tiền bạc, cứ hỏi kiểu “tóm tắt chi tiêu tháng này”."
+    : "I’m listening 😄 For transactions, include amount and wallet. For insights, ask something like “summarize my spending this month”.";
+}
+
+async function buildCasualChatReply(text: string, link?: any): Promise<CasualChatResult> {
+  const languageIsVietnamese = detectVietnamese(text);
+  const normalized = normalizedPlainText(text);
+
+  const localLooksCasual =
+    /\b(hi|hello|hey|xin chao|xin chào|chao|chào|alo|yo|cam on|cảm ơn|thanks|thank you|tks|help|giup|giúp|lam duoc gi|làm được gì|ban la ai|bạn là ai|what can you do|huong dan|hướng dẫn)\b/i.test(
+      normalized,
+    );
+
+  if (hasFinanceSignal(text) && !localLooksCasual) {
+    return { isCasual: false, reply: null };
+  }
+
+  if (!aiParseApiKey || aiParseMode === "local" || aiParseMode === "off") {
+    return {
+      isCasual: localLooksCasual || !hasFinanceSignal(text),
+      reply: localCasualReply(text, languageIsVietnamese),
+    };
+  }
+
+  const prompt = {
+    task: "Classify whether this Telegram message is casual conversation instead of a transaction/template/report/edit command. If casual, write a short reply.",
+    message: text,
+    userLinked: Boolean(link?.user_id),
+    language: languageIsVietnamese ? "Vietnamese" : "English",
+    botRole:
+      "Budget Manager Telegram bot: records transactions, manages templates, and answers personal-finance reports.",
+    rules: [
+      "If the message includes a money amount, wallet, transfer, report request, template command, or edit/delete instruction, set isCasual=false.",
+      "If it is greeting, thanks, help, small talk, encouragement, or a general non-finance chat, set isCasual=true.",
+      "When replying in Vietnamese, use friendly light Gen Z tone, supportive, not cringe, max 2 emojis.",
+      "Do not pretend you can do things outside Budget Manager.",
+      "Keep reply under 5 short lines.",
+    ],
+    outputSchema: {
+      isCasual: "boolean",
+      reply: "string|null",
+    },
+  };
+
+  const response = await fetch(aiParseBaseUrl, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${aiParseApiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": webAppUrl,
+      "X-Title": "Budget Manager Telegram Bot",
+    },
+    body: JSON.stringify({
+      model: aiParseModel,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a warm, lightly Gen Z Telegram finance assistant. Classify intent carefully. Output valid compact JSON only.",
+        },
+        { role: "user", content: JSON.stringify(prompt) },
+      ],
+      temperature: 0.45,
+    }),
+  });
+
+  if (!response.ok) {
+    return {
+      isCasual: localLooksCasual || !hasFinanceSignal(text),
+      reply: localCasualReply(text, languageIsVietnamese),
+    };
+  }
+
+  const payload = await response.json().catch(() => null);
+  const content = payload?.choices?.[0]?.message?.content || "";
+  const json = extractJsonObject(content) as CasualChatResult | null;
+  if (!json || typeof json.isCasual !== "boolean") {
+    return {
+      isCasual: localLooksCasual || !hasFinanceSignal(text),
+      reply: localCasualReply(text, languageIsVietnamese),
+    };
+  }
+
+  return {
+    isCasual: json.isCasual,
+    reply: json.reply || localCasualReply(text, languageIsVietnamese),
+  };
 }
 
 function formatAmount(amount: number) {
@@ -402,7 +557,12 @@ function aiToParsedTransaction(
     : "expense";
   const amount = Number(ai.amount || 0);
   if (!Number.isFinite(amount) || amount <= 0) {
-    return { ok: false as const, reason: "AI could not detect a valid amount." };
+    return {
+      ok: false as const,
+      reason: detectVietnamese(text)
+        ? "Mình chưa thấy số tiền trong câu này á. Thử nhắn kiểu “ăn trưa 85k bằng tiền mặt” nha 🙂"
+        : "I could not spot the amount yet. Try something like “lunch 85k from cash” 🙂",
+    };
   }
 
   const wallet = findByName(context.wallets, ai.walletName) || null;
@@ -411,13 +571,17 @@ function aiToParsedTransaction(
   if (!walletId) {
     return {
       ok: false as const,
-      reason: "I could not match a wallet. Please mention one, like “bằng tiền mặt”, “vào Techcombank”, or “from cash”.",
+      reason: detectVietnamese(text)
+        ? "Mình hiểu ý rồi, nhưng chưa match được ví. Bạn thêm kiểu “bằng tiền mặt”, “vào Techcombank”, hoặc “from cash” nha."
+        : "I got the idea, but could not match a wallet yet. Please add one like “from cash” or “to Techcombank”.",
     };
   }
   if (type === "transfer" && !toWallet) {
     return {
       ok: false as const,
-      reason: "Transfer needs a destination wallet. Please resend with “from wallet A to wallet B” or “từ ví A sang ví B”.",
+      reason: detectVietnamese(text)
+        ? "Giao dịch chuyển tiền cần ví nhận nữa nha. Bạn gửi lại kiểu “chuyển 2tr từ tiền mặt sang tiết kiệm”."
+        : "A transfer needs a destination wallet too. Please resend like “transfer 2m from cash to savings”.",
     };
   }
 
@@ -557,7 +721,7 @@ async function handleLink(message: TelegramMessage, code: string) {
     .eq("id", linkCode.id);
   await sendMessage(
     chatId,
-    "Linked rồi nhé ✅\nBạn có thể ghi giao dịch như “ăn trưa 85k bằng tiền mặt”, tạo template, hoặc hỏi mình kiểu “tóm tắt chi tiêu tháng này”.",
+    "Linked rồi nha ✅\nTừ giờ cứ nhắn tự nhiên kiểu “ăn trưa 85k bằng tiền mặt”, tạo template, hoặc hỏi mình “tóm tắt chi tiêu tháng này”. Mình lo phần ghi chép cho gọn 😄",
     asText(message.message_id),
   );
 }
@@ -594,7 +758,7 @@ function summarizeTransaction(
       ? `\n${languageIsVietnamese ? "Mình chưa khớp chắc" : "Not confidently matched"}: ${unmatched.join(", ")}`
       : "";
   return languageIsVietnamese
-    ? `Mình đã ghi rồi nhé ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nNgày: ${tx.date}\nMô tả: ${tx.description || "-"}${warnings}\n\nNếu cần chỉnh, reply tin này với “sửa ...” hoặc “xóa”. Mình sẽ học từ lần sửa đó để lần sau bắt đúng hơn.`
+    ? `Done, mình ghi rồi nha ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nNgày: ${tx.date}\nMô tả: ${tx.description || "-"}${warnings}\n\nCần chỉnh thì reply tin này với “sửa ...” hoặc “xóa”. Mình sẽ học từ lần sửa đó để lần sau bắt vibe đúng hơn.`
     : `Saved for you ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nDate: ${tx.date}\nDescription: ${tx.description || "-"}${warnings}\n\nIf you need to fix it, reply with “change ...” or “delete”. I’ll learn from the correction for next time.`;
 }
 
@@ -1112,7 +1276,7 @@ async function buildFinancialCoachNote(
 
   const language = summary.languageIsVietnamese ? "Vietnamese" : "English";
   const prompt = {
-    task: "Write a short supportive personal finance coach note based only on the provided report numbers. Do not invent numbers or facts. Be warm, practical, and non-judgmental. Max 2 emojis.",
+    task: "Write a short supportive personal finance coach note based only on the provided report numbers. Do not invent numbers or facts. Be warm, practical, non-judgmental, and lightly Gen Z. Max 2 emojis.",
     language,
     userQuestion: question,
     report: {
@@ -1130,9 +1294,17 @@ async function buildFinancialCoachNote(
       largestExpense: summary.largestExpense || null,
     },
     style: {
-      tone: "friendly supportive finance expert",
+      tone: summary.languageIsVietnamese
+        ? "Vietnamese friendly Gen Z finance bestie, supportive but still useful"
+        : "friendly supportive finance expert with light casual energy",
       length: "2-4 short lines",
-      avoid: ["shaming", "alarmist language", "inventing recommendations not grounded in data"],
+      avoid: [
+        "shaming",
+        "alarmist language",
+        "inventing recommendations not grounded in data",
+        "overusing slang",
+        "more than 2 emojis",
+      ],
     },
   };
 
@@ -1150,7 +1322,7 @@ async function buildFinancialCoachNote(
         {
           role: "system",
           content:
-            "You are a kind, practical personal finance coach. Use only the supplied report data. Keep it concise and supportive.",
+            "You are a kind, practical personal finance coach with light Gen Z warmth. Use only supplied report data. Keep it concise and supportive.",
         },
         { role: "user", content: JSON.stringify(prompt) },
       ],
@@ -1491,7 +1663,7 @@ Deno.serve(async (req) => {
     if (text.startsWith("/start")) {
       await sendMessage(
         chatId,
-        "Mình sẵn sàng làm trợ lý tài chính cá nhân cho bạn đây 🙂\n\nĐể bắt đầu: mở Budget Manager Settings, tạo Telegram link code, rồi gửi /link 123456 ở đây.\n\nSau khi link xong, bạn có thể ghi giao dịch, tạo template, hoặc hỏi mình: “tóm tắt chi tiêu tháng này”.",
+        "Mình đây, trợ lý tài chính cá nhân bản dễ tính của bạn 😄\n\nĐể bắt đầu: mở Budget Manager Settings, tạo Telegram link code, rồi gửi /link 123456 ở đây.\n\nSau khi link xong, bạn cứ nhắn tự nhiên để ghi giao dịch, tạo template, hoặc hỏi mình: “tóm tắt chi tiêu tháng này”.",
       );
       return jsonResponse({ ok: true });
     }
@@ -1504,6 +1676,15 @@ Deno.serve(async (req) => {
 
     const link = await getLink(message);
     if (!link) {
+      const casual = await buildCasualChatReply(text);
+      if (casual.isCasual) {
+        await sendMessage(
+          chatId,
+          `${casual.reply}\n\nNhưng để mình ghi chi tiêu/report cho đúng tài khoản, bạn link Budget Manager trước nha: mở Settings → Telegram Bot → Generate Link Code.`,
+          asText(message.message_id),
+        );
+        return jsonResponse({ ok: true });
+      }
       await sendMessage(
         chatId,
         "This Telegram account is not linked yet. Open Budget Manager Settings and generate a link code.",
@@ -1512,8 +1693,18 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: true });
     }
 
-    if (message.reply_to_message) await handleEdit(message, link, text);
-    else if (await handleTemplateCommand(message, link, text)) {
+    if (message.reply_to_message) {
+      const casual = await buildCasualChatReply(text, link);
+      if (casual.isCasual) {
+        await sendMessage(
+          chatId,
+          casual.reply || localCasualReply(text, detectVietnamese(text)),
+          asText(message.message_id),
+        );
+      } else {
+        await handleEdit(message, link, text);
+      }
+    } else if (await handleTemplateCommand(message, link, text)) {
       // handled
     } else if (isReportRequest(text)) {
       await handleFinancialReport(message, link, text);
@@ -1521,7 +1712,18 @@ Deno.serve(async (req) => {
       const templates = await loadTemplates(link.user_id);
       const template = findTemplateMatch(templates, text);
       if (template) await runTemplate(message, link, template);
-      else await handleTransaction(message, link, text);
+      else {
+        const casual = await buildCasualChatReply(text, link);
+        if (casual.isCasual) {
+          await sendMessage(
+            chatId,
+            casual.reply || localCasualReply(text, detectVietnamese(text)),
+            asText(message.message_id),
+          );
+        } else {
+          await handleTransaction(message, link, text);
+        }
+      }
     }
 
     return jsonResponse({ ok: true });
