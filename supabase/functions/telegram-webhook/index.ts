@@ -130,6 +130,24 @@ function transactionDate(offsetDays = 0) {
   return addDays(todayInTimeZone(), offsetDays);
 }
 
+function toUtcDate(dateString: string) {
+  return new Date(`${dateString}T00:00:00.000Z`);
+}
+
+function startOfMonth(dateString: string) {
+  return `${dateString.slice(0, 7)}-01`;
+}
+
+function addMonths(dateString: string, months: number) {
+  const date = toUtcDate(startOfMonth(dateString));
+  date.setUTCMonth(date.getUTCMonth() + months);
+  return date.toISOString().slice(0, 10);
+}
+
+function endOfPreviousMonth(dateString: string) {
+  return addDays(startOfMonth(dateString), -1);
+}
+
 async function sendMessage(
   chatId: string,
   text: string,
@@ -627,9 +645,13 @@ function parseTemplateCreate(text: string) {
     normalized.startsWith("create template ");
   if (!startsWithCommand) return null;
 
-  const cleaned = text
+  let cleaned = text
     .replace(/^\/template\s+(?:add|create|tao|tạo)\s+/i, "")
     .replace(/^(?:tạo|tao)\s+(?:mẫu|mau|template)\s+/i, "");
+
+  const naturalMatch = cleaned.match(/^(.+?)\s+(?:gồm|gom|including|with)\s+(.+)/i);
+  if (naturalMatch) cleaned = `${naturalMatch[1]} => ${naturalMatch[2]}`;
+
   const parts = cleaned.split(/=>|:/);
   if (parts.length < 2) return null;
   const name = parts.shift()?.trim() || "";
@@ -840,6 +862,226 @@ async function handleTemplateCommand(message: TelegramMessage, link: any, text: 
   return false;
 }
 
+function looksLikeMoneyInput(text: string) {
+  return /(?:[$₫]\s*)?\d+(?:[.,]\d+)?\s*(?:k|nghìn|nghin|ngàn|ngan|tr|triệu|trieu|m|million|usd|vnd|₫|dollars?)\b/i.test(text);
+}
+
+function isReportRequest(text: string) {
+  const normalized = normalizeText(text);
+  const reportWords = [
+    "tom tat",
+    "bao cao",
+    "thong ke",
+    "phan tich",
+    "chi nhieu",
+    "chi tieu",
+    "linh vuc",
+    "danh muc nao",
+    "top",
+    "summary",
+    "report",
+    "analyze",
+    "analysis",
+    "spending",
+    "spent",
+    "expense",
+    "compare",
+    "so sanh",
+  ];
+  if (!reportWords.some((word) => normalized.includes(word))) return false;
+  return !looksLikeMoneyInput(text) || /\b(bao cao|report|tom tat|summary|thong ke|top|so sanh|compare)\b/.test(normalized);
+}
+
+function parseReportRange(text: string) {
+  const normalized = normalizeText(text);
+  const today = todayInTimeZone();
+  const monthCount = normalized.match(/\b(\d{1,2})\s*(?:thang|month|months)\b/);
+  const dayCount = normalized.match(/\b(\d{1,3})\s*(?:ngay|day|days)\b/);
+
+  if (/\b(30 ngay|1 thang qua|past month|last 30 days)\b/.test(normalized)) {
+    return {
+      start: addDays(today, -29),
+      end: today,
+      labelVi: "30 ngày qua",
+      labelEn: "the last 30 days",
+    };
+  }
+
+  if (/\b(thang truoc|last month)\b/.test(normalized)) {
+    const start = addMonths(today, -1);
+    return {
+      start,
+      end: endOfPreviousMonth(today),
+      labelVi: "tháng trước",
+      labelEn: "last month",
+    };
+  }
+
+  if (/\b(thang nay|this month)\b/.test(normalized)) {
+    return {
+      start: startOfMonth(today),
+      end: today,
+      labelVi: "tháng này",
+      labelEn: "this month",
+    };
+  }
+
+  if (monthCount) {
+    const months = Math.max(1, Math.min(Number(monthCount[1]), 12));
+    return {
+      start: startOfMonth(addMonths(today, -(months - 1))),
+      end: today,
+      labelVi: `${months} tháng gần đây`,
+      labelEn: `the last ${months} months`,
+    };
+  }
+
+  if (dayCount) {
+    const days = Math.max(1, Math.min(Number(dayCount[1]), 365));
+    return {
+      start: addDays(today, -(days - 1)),
+      end: today,
+      labelVi: `${days} ngày qua`,
+      labelEn: `the last ${days} days`,
+    };
+  }
+
+  return {
+    start: startOfMonth(today),
+    end: today,
+    labelVi: "tháng này",
+    labelEn: "this month",
+  };
+}
+
+function monthLabel(dateString: string) {
+  return dateString.slice(0, 7);
+}
+
+function groupSum<T>(
+  rows: T[],
+  keyFn: (row: T) => string,
+  valueFn: (row: T) => number,
+) {
+  const groups = new Map<string, number>();
+  rows.forEach((row) => {
+    const key = keyFn(row) || "Khác";
+    groups.set(key, (groups.get(key) || 0) + valueFn(row));
+  });
+  return [...groups.entries()]
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+}
+
+function reportLinesForTop(title: string, rows: Array<{ name: string; value: number }>, limit = 5) {
+  if (rows.length === 0) return [`${title}: -`];
+  return [
+    `${title}:`,
+    ...rows.slice(0, limit).map((row, index) => `${index + 1}. ${row.name}: ${formatAmount(row.value)}`),
+  ];
+}
+
+async function handleFinancialReport(message: TelegramMessage, link: any, text: string) {
+  const chatId = asText(message.chat.id);
+  const languageIsVietnamese = detectVietnamese(text);
+  const range = parseReportRange(text);
+  const context = await loadContext(link.user_id, link.default_wallet_id);
+  const categoryById = new Map(context.categories.map((category: any) => [category.id, category]));
+  const { data: rows, error } = await supabase
+    .from("transactions")
+    .select("id,type,amount,date,description,wallet_id,category_id,contact_id,wallet:wallets(id,name),category:categories(id,name,parent_id),contact:contacts(id,name)")
+    .eq("user_id", link.user_id)
+    .gte("date", range.start)
+    .lte("date", range.end)
+    .order("date", { ascending: false });
+  if (error) throw error;
+
+  const transactions = rows || [];
+  if (transactions.length === 0) {
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? `Mình chưa thấy giao dịch nào trong ${range.labelVi} (${range.start} → ${range.end}).`
+        : `I could not find any transactions for ${range.labelEn} (${range.start} → ${range.end}).`,
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const expenses = transactions.filter((tx: any) => tx.type === "expense");
+  const incomes = transactions.filter((tx: any) => tx.type === "income");
+  const totalExpense = expenses.reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0);
+  const totalIncome = incomes.reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0);
+  const net = totalIncome - totalExpense;
+  const categoryName = (tx: any) => {
+    const category = tx.category || categoryById.get(tx.category_id);
+    return category?.name || "Khác";
+  };
+  const walletName = (tx: any) => tx.wallet?.name || "Không rõ ví";
+  const contactName = (tx: any) => tx.contact?.name || "Không có người liên quan";
+  const topCategories = groupSum(expenses, categoryName, (tx: any) => Number(tx.amount || 0));
+  const topWallets = groupSum(expenses, walletName, (tx: any) => Number(tx.amount || 0));
+  const topContacts = groupSum(expenses.filter((tx: any) => tx.contact_id), contactName, (tx: any) => Number(tx.amount || 0));
+  const monthly = groupSum(transactions, (tx: any) => monthLabel(tx.date), (tx: any) =>
+    tx.type === "income" ? Number(tx.amount || 0) : -Number(tx.amount || 0),
+  ).sort((a, b) => a.name.localeCompare(b.name));
+  const largestExpense = [...expenses].sort((a: any, b: any) => Number(b.amount || 0) - Number(a.amount || 0))[0];
+  const topCategory = topCategories[0];
+
+  const lines = languageIsVietnamese
+    ? [
+        `Báo cáo tài chính ${range.labelVi}`,
+        `${range.start} → ${range.end}`,
+        "",
+        `Tổng chi: ${formatAmount(totalExpense)}`,
+        `Tổng thu: ${formatAmount(totalIncome)}`,
+        `Dòng tiền ròng: ${formatAmount(net)}`,
+        `Số giao dịch: ${transactions.length}`,
+        "",
+        topCategory
+          ? `Chi nhiều nhất: ${topCategory.name} (${formatAmount(topCategory.value)})`
+          : "Chi nhiều nhất: -",
+        largestExpense
+          ? `Khoản chi lớn nhất: ${formatAmount(Number(largestExpense.amount))} - ${largestExpense.description || categoryName(largestExpense)}`
+          : "Khoản chi lớn nhất: -",
+        "",
+        ...reportLinesForTop("Top danh mục", topCategories),
+        "",
+        ...reportLinesForTop("Top ví chi tiêu", topWallets, 3),
+        ...(topContacts.length ? ["", ...reportLinesForTop("Top người liên quan", topContacts, 3)] : []),
+        ...(monthly.length > 1
+          ? ["", "Theo tháng:", ...monthly.map((item) => `- ${item.name}: ${formatAmount(item.value)}`)]
+          : []),
+      ]
+    : [
+        `Financial report for ${range.labelEn}`,
+        `${range.start} -> ${range.end}`,
+        "",
+        `Total expense: ${formatAmount(totalExpense)}`,
+        `Total income: ${formatAmount(totalIncome)}`,
+        `Net cash flow: ${formatAmount(net)}`,
+        `Transactions: ${transactions.length}`,
+        "",
+        topCategory
+          ? `Highest spending area: ${topCategory.name} (${formatAmount(topCategory.value)})`
+          : "Highest spending area: -",
+        largestExpense
+          ? `Largest expense: ${formatAmount(Number(largestExpense.amount))} - ${largestExpense.description || categoryName(largestExpense)}`
+          : "Largest expense: -",
+        "",
+        ...reportLinesForTop("Top categories", topCategories),
+        "",
+        ...reportLinesForTop("Top spending wallets", topWallets, 3),
+        ...(topContacts.length ? ["", ...reportLinesForTop("Top contacts", topContacts, 3)] : []),
+        ...(monthly.length > 1
+          ? ["", "By month:", ...monthly.map((item) => `- ${item.name}: ${formatAmount(item.value)}`)]
+          : []),
+      ];
+
+  await sendMessage(chatId, lines.join("\n"), asText(message.message_id));
+  return true;
+}
+
 async function handleEdit(message: TelegramMessage, link: any, text: string) {
   const chatId = asText(message.chat.id);
   const botMessageId = asText(message.reply_to_message?.message_id);
@@ -947,19 +1189,20 @@ async function resolveParsedTransaction(
   text: string,
   context: Awaited<ReturnType<typeof loadContext>>,
 ) {
-  const localParsed = parseTelegramTransaction(text, context);
   const memories = await loadAiMemories(context.userId);
-  const shouldAskAi =
-    Boolean(aiParseApiKey) &&
-    (aiParseMode === "always" ||
-      !localParsed.ok ||
-      (localParsed.ok && localParsed.unmatched.includes("category")));
-  const aiParsed = shouldAskAi
-    ? await parseTransactionWithAi(text, context, memories)
-    : null;
+  const aiEnabled = Boolean(aiParseApiKey) && aiParseMode !== "local" && aiParseMode !== "off";
+  const aiParsed = aiEnabled ? await parseTransactionWithAi(text, context, memories) : null;
+  if (aiParsed?.ok) {
+    return {
+      parsed: aiParsed,
+      parser: "ai" as const,
+    };
+  }
+
+  const localParsed = parseTelegramTransaction(text, context);
   return {
-    parsed: aiParsed?.ok ? aiParsed : localParsed,
-    parser: (aiParsed?.ok ? "ai" : "local") as "local" | "ai",
+    parsed: localParsed,
+    parser: "local" as const,
   };
 }
 
@@ -1077,7 +1320,7 @@ Deno.serve(async (req) => {
     if (text.startsWith("/start")) {
       await sendMessage(
         chatId,
-        "Open Budget Manager Settings, generate a Telegram link code, then send /link 123456 here.",
+        "Open Budget Manager Settings, generate a Telegram link code, then send /link 123456 here.\n\nAfter linking, you can add transactions, manage templates, or ask reports like “tóm tắt chi tiêu tháng này”.",
       );
       return jsonResponse({ ok: true });
     }
@@ -1101,6 +1344,8 @@ Deno.serve(async (req) => {
     if (message.reply_to_message) await handleEdit(message, link, text);
     else if (await handleTemplateCommand(message, link, text)) {
       // handled
+    } else if (isReportRequest(text)) {
+      await handleFinancialReport(message, link, text);
     } else {
       const templates = await loadTemplates(link.user_id);
       const template = findTemplateMatch(templates, text);

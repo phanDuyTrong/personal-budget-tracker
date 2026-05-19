@@ -97,7 +97,7 @@ The Telegram bot runs as Supabase Edge Functions and writes directly to the exis
 
 6. In the web app, open Settings → Telegram Bot, generate a code, optionally choose a fallback wallet, then send `/link 123456` to the bot.
 
-The parser is hybrid. It tries templates first, then local parsing, then optional server-side AI when local parsing fails or leaves the category uncertain. The AI key is stored only in Supabase Edge Function secrets, never in the browser. Successful parses are stored as per-user examples in `telegram_ai_parse_memories`, so future AI calls can follow that user's wording and categorization style. Without `AI_PARSE_API_KEY`, the bot still works with the free local parser. It supports Vietnamese and English examples like `ăn trưa 85k bằng tiền mặt`, `lunch 85k from cash`, `nhận lương 20tr vào Techcombank`, and `transfer 2m from cash to savings`.
+The parser is hybrid and AI-first when `AI_PARSE_API_KEY` is configured. It tries templates first, then server-side AI with the user's wallets/categories/contacts/recent examples, then local parsing as a free fallback. The AI key is stored only in Supabase Edge Function secrets, never in the browser. Successful parses and later corrections are stored as per-user examples in `telegram_ai_parse_memories`, so future AI calls can follow that user's wording and categorization style. Without `AI_PARSE_API_KEY`, the bot still works with the free local parser. It supports Vietnamese and English examples like `ăn trưa 85k bằng tiền mặt`, `lunch 85k from cash`, `nhận lương 20tr vào Techcombank`, and `transfer 2m from cash to savings`.
 
 Telegram templates let one message create multiple transactions. Create or replace a template from Telegram with:
 
@@ -105,4 +105,20 @@ Telegram templates let one message create multiple transactions. Create or repla
 /template add Nhận lương tháng => nhận lương 20tr vào Techcombank; cho mẹ 5tr từ tài khoản
 ```
 
+You can also create templates in more natural wording:
+
+```text
+tạo template Nhận lương tháng gồm nhận lương 20tr vào Techcombank; cho mẹ 5tr từ tài khoản
+```
+
 Then send `Nhận lương tháng` to run the template. Use `/templates` to list templates and `/template delete 1` or `/template delete Nhận lương tháng` to remove one. Templates also appear in Settings → Telegram Bot so they can be reviewed and deleted from the web app.
+
+The bot can answer financial questions from Telegram after the account is linked. It queries real transaction rows for the linked Supabase user, then summarizes totals and top spending areas. Examples:
+
+```text
+tóm tắt chi tiêu tháng này
+tháng trước tôi chi nhiều nhất vào đâu?
+báo cáo tài chính 3 tháng vừa rồi
+top 5 khoản chi lớn nhất tháng này
+how much did I spend in the last 30 days?
+```
