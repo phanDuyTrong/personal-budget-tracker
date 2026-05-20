@@ -53,7 +53,6 @@ function CategoryModal({ open, onClose, category, parentCategory }) {
         try {
             const payload = {
                 ...form,
-                color: form.type === 'expense' ? DEFAULT_EXPENSE_COLOR : form.color,
                 parentId: form.parentId || null,
             };
             if (isEdit) await update.mutateAsync({ id: category.id, ...payload });
@@ -117,20 +116,14 @@ function CategoryModal({ open, onClose, category, parentCategory }) {
                 </div>
 
                 <div className="space-y-2">
-                    <div>
-                        <p className="text-sm font-medium text-neutral-500">Color</p>
-                        {form.type === 'expense' && (
-                            <p className="text-xs text-neutral-400">Expense categories use the default gray for consistency.</p>
-                        )}
-                    </div>
+                    <p className="text-sm font-medium text-neutral-500">Color</p>
                     <div className="flex flex-wrap gap-2">
                         {COLORS.map(color => (
                             <button
                                 key={color}
                                 type="button"
-                                disabled={form.type === 'expense' && color !== DEFAULT_EXPENSE_COLOR}
-                                onClick={() => setForm(f => ({ ...f, color: f.type === 'expense' ? DEFAULT_EXPENSE_COLOR : color }))}
-                                className={`w-8 h-8 rounded-full transition-all ${form.type === 'expense' && color !== DEFAULT_EXPENSE_COLOR ? 'cursor-not-allowed opacity-30' : 'hover:scale-110'}`}
+                                onClick={() => setForm(f => ({ ...f, color }))}
+                                className="w-8 h-8 rounded-full transition-all hover:scale-110"
                                 style={{ background: color, border: form.color === color ? '3px solid white' : 'none', boxShadow: form.color === color ? '0 0 0 2px ' + color : 'none' }}
                             />
                         ))}

@@ -2,8 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { buildTree, nowISO } from '@/features/shared/api';
 
-const DEFAULT_EXPENSE_COLOR = '#64748b';
-
 // ── Categories ────────────────────────────────────────────────────
 export const useCategories = () => useQuery({
     queryKey: ['categories'],
@@ -20,14 +18,14 @@ export const useCategoryMutations = () => {
     const create = useMutation({
         mutationFn: async (d: any) => {
             const { data: { user } } = await supabase.auth.getUser();
-            const color = d.type === 'expense' ? DEFAULT_EXPENSE_COLOR : (d.color || null);
+            const color = d.color || null;
             const { data, error } = await supabase.from('categories').insert({ user_id: user.id, name: d.name, icon: d.icon || null, color, type: d.type, parent_id: d.parentId || null }).select().single();
             if (error) throw error; return data;
         }, onSuccess: inv,
     });
     const update = useMutation({
         mutationFn: async ({ id, parentId, ...d }: any) => {
-            const color = d.type === 'expense' ? DEFAULT_EXPENSE_COLOR : (d.color || null);
+            const color = d.color || null;
             const { data, error } = await supabase.from('categories').update({ name: d.name, icon: d.icon || null, color, type: d.type, parent_id: parentId || null, updated_at: nowISO() }).eq('id', id).select().single();
             if (error) throw error; return data;
         }, onSuccess: inv,
