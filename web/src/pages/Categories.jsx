@@ -27,10 +27,21 @@ const ICONS = [
     'SparklesIcon', 'BanknotesIcon', 'BuildingLibraryIcon', 'CreditCardIcon', 'ChartBarIcon', 'WrenchIcon'
 ];
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#a855f7', '#64748b', '#0ea5e9'];
+const DEFAULT_EXPENSE_COLOR = '#64748b';
+const DEFAULT_INCOME_COLOR = '#3b82f6';
+
+function colorForCategoryType(type) {
+    return type === 'expense' ? DEFAULT_EXPENSE_COLOR : DEFAULT_INCOME_COLOR;
+}
+
+function displayCategoryColor(category) {
+    return category.color || colorForCategoryType(category.type);
+}
 
 function CategoryModal({ open, onClose, category, parentCategory }) {
     const isEdit = !!category;
-    const [form, setForm] = useState(isEdit ? { name: category.name, icon: category.icon || '', color: category.color || COLORS[5], type: category.type, parentId: category.parent_id || '' } : { name: '', icon: '', color: COLORS[5], type: parentCategory?.type || 'expense', parentId: parentCategory?.id || '' });
+    const initialType = category?.type || parentCategory?.type || 'expense';
+    const [form, setForm] = useState(isEdit ? { name: category.name, icon: category.icon || '', color: category.color || colorForCategoryType(category.type), type: category.type, parentId: category.parent_id || '' } : { name: '', icon: '', color: colorForCategoryType(initialType), type: initialType, parentId: parentCategory?.id || '' });
     const { create, update } = useCategoryMutations();
     const { data: categoryTree = [] } = useCategories();
     const toast = useToast();
@@ -40,7 +51,11 @@ function CategoryModal({ open, onClose, category, parentCategory }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const payload = { ...form, parentId: form.parentId || null };
+            const payload = {
+                ...form,
+                color: form.type === 'expense' ? DEFAULT_EXPENSE_COLOR : form.color,
+                parentId: form.parentId || null,
+            };
             if (isEdit) await update.mutateAsync({ id: category.id, ...payload });
             else await create.mutateAsync(payload);
             toast(`Category ${isEdit ? 'updated' : 'created'}!`, 'success');
@@ -63,7 +78,14 @@ function CategoryModal({ open, onClose, category, parentCategory }) {
                 <HeroSelect 
                     label="Type"
                     selectedKeys={[form.type]} 
-                    onSelectionChange={keys => setForm(f => ({ ...f, type: Array.from(keys)[0] }))}
+                    onSelectionChange={keys => setForm(f => {
+                        const nextType = Array.from(keys)[0];
+                        return {
+                            ...f,
+                            type: nextType,
+                            color: nextType === 'expense' ? DEFAULT_EXPENSE_COLOR : (f.color === DEFAULT_EXPENSE_COLOR ? DEFAULT_INCOME_COLOR : f.color),
+                        };
+                    })}
                     variant="flat"
                     isDisabled={!!parentCategory}
                 >
@@ -95,10 +117,22 @@ function CategoryModal({ open, onClose, category, parentCategory }) {
                 </div>
 
                 <div className="space-y-2">
-                    <p className="text-sm font-medium text-neutral-500">Color</p>
+                    <div>
+                        <p className="text-sm font-medium text-neutral-500">Color</p>
+                        {form.type === 'expense' && (
+                            <p className="text-xs text-neutral-400">Expense categories use the default gray for consistency.</p>
+                        )}
+                    </div>
                     <div className="flex flex-wrap gap-2">
                         {COLORS.map(color => (
-                            <button key={color} type="button" onClick={() => setForm(f => ({ ...f, color }))} className="w-8 h-8 rounded-full transition-all hover:scale-110" style={{ background: color, border: form.color === color ? '3px solid white' : 'none', boxShadow: form.color === color ? '0 0 0 2px ' + color : 'none' }} />
+                            <button
+                                key={color}
+                                type="button"
+                                disabled={form.type === 'expense' && color !== DEFAULT_EXPENSE_COLOR}
+                                onClick={() => setForm(f => ({ ...f, color: f.type === 'expense' ? DEFAULT_EXPENSE_COLOR : color }))}
+                                className={`w-8 h-8 rounded-full transition-all ${form.type === 'expense' && color !== DEFAULT_EXPENSE_COLOR ? 'cursor-not-allowed opacity-30' : 'hover:scale-110'}`}
+                                style={{ background: color, border: form.color === color ? '3px solid white' : 'none', boxShadow: form.color === color ? '0 0 0 2px ' + color : 'none' }}
+                            />
                         ))}
                     </div>
                 </div>
@@ -208,8 +242,8 @@ export function Categories() {
                                 <div 
                                     className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" 
                                     style={{ 
-                                        backgroundColor: cat.color ? `${cat.color}20` : 'rgba(255, 87, 34, 0.1)', 
-                                        color: cat.color || '#FF5722' 
+                                        backgroundColor: `${displayCategoryColor(cat)}20`,
+                                        color: displayCategoryColor(cat),
                                     }}
                                 >
                                     <DynamicIcon name={cat.icon} className="h-6 w-6" />
@@ -252,7 +286,7 @@ export function Categories() {
                                             <div key={sub.id} className="relative group/sub flex flex-col items-center justify-center p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-800/30 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800/80 transition-all text-center">
                                                 <div 
                                                     className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 shadow-sm" 
-                                                    style={{ backgroundColor: sub.color ? `${sub.color}20` : 'rgba(255, 87, 34, 0.1)', color: sub.color || '#FF5722' }}
+                                                    style={{ backgroundColor: `${displayCategoryColor(sub)}20`, color: displayCategoryColor(sub) }}
                                                 >
                                                     <DynamicIcon name={sub.icon} className="h-5 w-5" />
                                                 </div>
