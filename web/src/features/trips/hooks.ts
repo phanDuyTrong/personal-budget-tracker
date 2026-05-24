@@ -37,7 +37,7 @@ export const useTripTransactions = (tripId: string | null | undefined) => useQue
         const { data, error } = await supabase.from('transactions')
             .select('*, wallet:wallets!wallet_id(id,name), category:categories(id,name,icon,color,parent_id), contact:contacts(id,name)')
             .eq('trip_id', tripId)
-            .order('date', { ascending: false });
+            .order('created_at', { ascending: false });
         if (error) throw error;
         return data || [];
     },
