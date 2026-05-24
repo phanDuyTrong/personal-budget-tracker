@@ -239,6 +239,13 @@ function TripDetailView({ trip, onBack, formatAmount }) {
             );
         });
         return [...rows].sort((a, b) => {
+            const aSortTime = new Date(a.created_at || a.date).getTime();
+            const bSortTime = new Date(b.created_at || b.date).getTime();
+            const createdDiff = aSortTime - bSortTime;
+            if (createdDiff !== 0) {
+                return filters.sortDate === 'oldest' ? createdDiff : -createdDiff;
+            }
+
             const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
             return filters.sortDate === 'oldest' ? dateDiff : -dateDiff;
         });
