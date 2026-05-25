@@ -7,8 +7,8 @@ export const useTransactions = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['transactions', params],
     queryFn: async () => {
         let query = supabase.from('transactions').select('*, wallet:wallets!wallet_id(id,name), to_wallet:wallets!to_wallet_id(id,name), category:categories(id,name,icon,color,parent_id), splits:transaction_splits(*, category:categories(id,name,icon,color)), contact:contacts(id,name)', { count: 'exact' });
-        if (params.sortDate === 'oldest') query = query.order('date', { ascending: true }).order('created_at', { ascending: true });
-        else query = query.order('date', { ascending: false }).order('created_at', { ascending: false });
+        if (params.sortDate === 'oldest') query = query.order('created_at', { ascending: true }).order('date', { ascending: true });
+        else query = query.order('created_at', { ascending: false }).order('date', { ascending: false });
         if (params.date_from) query = query.gte('date', params.date_from);
         if (params.date_to) query = query.lte('date', params.date_to);
         if (params.category_ids?.length) query = query.in('category_id', params.category_ids);
@@ -32,7 +32,7 @@ export const useTransactions = (params: Record<string, any> = {}) => useQuery({
 export const useAllTransactions = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['all-transactions', params],
     queryFn: async () => {
-        let query = supabase.from('transactions').select('*, category:categories(id,name,icon,color,parent_id)').order('date', { ascending: false });
+        let query = supabase.from('transactions').select('*, category:categories(id,name,icon,color,parent_id)').order('created_at', { ascending: false }).order('date', { ascending: false });
         if (params.date_from) query = query.gte('date', params.date_from);
         if (params.date_to) query = query.lte('date', params.date_to);
         if (params.type) query = query.eq('type', params.type);
