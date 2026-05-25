@@ -7,16 +7,17 @@ import {
 import { useCalculatedWallets } from '@/features/wallets/hooks';
 import { useFormatAmount } from '@/hooks/useTranslation';
 import { TermBox, TermInputPrompt, AsciiProgressBar, AsciiSparkline } from '@/components/terminal';
+import { getMonthRangeByParts, getVietnamDateParts } from '@/lib/date';
 
 export function TerminalDashboard() {
     const fmt = useFormatAmount();
     
-    const dashMonth = new Date().getMonth();
-    const dashYear = new Date().getFullYear();
+    const todayParts = React.useMemo(() => getVietnamDateParts(), []);
+    const dashMonth = todayParts.month - 1;
+    const dashYear = todayParts.year;
 
     const dateFilter = React.useMemo(() => {
-        const from = new Date(dashYear, dashMonth, 1).toISOString().split('T')[0];
-        const to = new Date(dashYear, dashMonth + 1, 0).toISOString().split('T')[0];
+        const { from, to } = getMonthRangeByParts(dashYear, dashMonth + 1);
         return { date_from: from, date_to: to };
     }, [dashMonth, dashYear]);
 

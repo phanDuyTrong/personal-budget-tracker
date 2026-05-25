@@ -4,7 +4,7 @@ import { useDevMockData } from '@/features/shared/api';
 import { calculateLiveBalance } from '@/features/wallets/balance';
 import { calculateDashboardKPIs } from './money';
 import { enrichGoal } from '@/features/goals/money';
-import { getDashboardDateRange, getMonthRange, getPreviousMonthRange, getShiftedMonthRange, monthLabel, toISODate } from '@/lib/date';
+import { getDashboardDateRange, getDayOfMonth, getMonthRange, getPreviousMonthRange, getShiftedMonthRange, monthLabel, toISODate } from '@/lib/date';
 
 // ── Dashboard ─────────────────────────────────────────────────────
 export const useDashboardKPIs = (params: Record<string, any> = {}) => useQuery({
@@ -171,7 +171,7 @@ export const useDailySpend = (params: Record<string, any> = {}) => useQuery({
     queryFn: async () => {
         const { from, to, end } = getMonthRange();
         const { data: txs } = await supabase.from('transactions').select('amount,date').eq('type', 'expense').gte('date', from).lte('date', to);
-        const dailyMap = {}; (txs || []).forEach(tx => { const d = new Date(tx.date).getDate(); dailyMap[d] = (dailyMap[d] || 0) + Number(tx.amount); });
+        const dailyMap = {}; (txs || []).forEach(tx => { const d = getDayOfMonth(tx.date); dailyMap[d] = (dailyMap[d] || 0) + Number(tx.amount); });
         const days = end.getDate();
         const result = Array.from({ length: days }, (_, i) => ({ day: i + 1, amount: dailyMap[i + 1] || 0 }));
         return result.map((r, i) => { const window = result.slice(Math.max(0, i - 6), i + 1), avg = window.reduce((s, x) => s + x.amount, 0) / window.length; return { ...r, rollingAvg: Math.round(avg * 100) / 100 }; });

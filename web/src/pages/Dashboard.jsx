@@ -29,6 +29,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { TrendChart } from '@/components/dashboard/TrendChart';
+import { getMonthRangeByParts, getVietnamDateParts } from '@/lib/date';
 
 const PREDEFINED_WALLET_ORDER = ["Tài khoản", "Tiền mặt", "Tiết kiệm", "Vàng", "Chứng khoán", "Crypto", "Trading"];
 
@@ -50,12 +51,12 @@ export function Dashboard() {
     const fmt = useFormatAmount();
     const { hideBalances } = useSettingsStore();
 
-    const [dashMonth, setDashMonth] = useState(new Date().getMonth());
-    const [dashYear, setDashYear] = useState(new Date().getFullYear());
+    const todayParts = useMemo(() => getVietnamDateParts(), []);
+    const [dashMonth, setDashMonth] = useState(todayParts.month - 1);
+    const [dashYear, setDashYear] = useState(todayParts.year);
 
     const dateFilter = useMemo(() => {
-        const from = new Date(dashYear, dashMonth, 1).toISOString().split('T')[0];
-        const to = new Date(dashYear, dashMonth + 1, 0).toISOString().split('T')[0];
+        const { from, to } = getMonthRangeByParts(dashYear, dashMonth + 1);
         return { date_from: from, date_to: to };
     }, [dashMonth, dashYear]);
 
