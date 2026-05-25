@@ -1,8 +1,10 @@
+import { toISODate } from '@/lib/date';
+
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const MODEL = "gemini-1.5-flash";
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return toISODate(new Date());
 }
 
 export function normalizeLabel(value = "") {

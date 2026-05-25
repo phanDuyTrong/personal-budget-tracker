@@ -60,6 +60,7 @@ import {
     DatePicker as CustomDatePicker,
 } from '@/components/ui';
 import { viFilter } from '@/lib/filters';
+import { toISODate } from '@/lib/date';
 
 const CHART_COLORS = ['#FF5722', '#10b981', '#6366f1', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6'];
 
@@ -297,7 +298,7 @@ function TripDetailView({ trip, onBack, formatAmount }) {
             contactId: '',
             tripId: trip.id,
             description: '',
-            date: format(new Date(), 'yyyy-MM-dd'),
+            date: toISODate(new Date()),
         });
     };
 

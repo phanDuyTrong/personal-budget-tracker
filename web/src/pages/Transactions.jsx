@@ -43,6 +43,7 @@ import { useTrips } from "@/features/trips/hooks";
 import { aiService, buildTransactionDraft } from "@/lib/aiParser";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { viFilter } from "@/lib/filters";
+import { toISODate } from "@/lib/date";
 import { useT } from "@/hooks/useTranslation";
 import {
   Modal,
@@ -65,7 +66,7 @@ const getEmptyForm = () => ({
   contactId: "",
   tripId: "",
   description: "",
-  date: format(new Date(), "yyyy-MM-dd"),
+  date: toISODate(new Date()),
   isRecurring: false,
   isDebt: false,
   toWalletId: "",
@@ -228,7 +229,7 @@ export function TransactionModal({ open, onClose, transaction }) {
           isDebt:
             txData.is_debt !== undefined ? !!txData.is_debt : !!txData.isDebt,
           date: isDuplicate
-            ? format(new Date(), "yyyy-MM-dd")
+            ? toISODate(new Date())
             : format(new Date(txData.date || new Date()), "yyyy-MM-dd"),
         }
       : getEmptyForm(),
@@ -1105,7 +1106,7 @@ export function Transactions() {
     try {
       await bulkDuplicate.mutateAsync({
         transactions: rowsToDuplicate,
-        date: format(new Date(), "yyyy-MM-dd"),
+        date: toISODate(new Date()),
       });
       const count = selectedRows.length;
       clearBulkSelection();
