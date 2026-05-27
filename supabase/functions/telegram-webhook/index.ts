@@ -236,7 +236,8 @@ function localCasualReply(text: string, languageIsVietnamese: boolean) {
           "- ăn trưa 85k bằng tiền mặt",
           "- nhận lương 20tr vào tài khoản",
           "- tóm tắt chi tiêu 7 ngày qua",
-          "- tạo template Nhận lương tháng",
+          "- /template create Nhận lương tháng => nhận lương 20tr vào tài khoản; cho mẹ 5tr từ tài khoản",
+          "- /template edit Nhận lương tháng => nhận lương 25tr vào tài khoản; cho mẹ 6tr từ tài khoản",
         ].join("\n")
       : [
           "I’m your transaction bot plus a chill personal-finance sidekick 🙂",
@@ -245,7 +246,8 @@ function localCasualReply(text: string, languageIsVietnamese: boolean) {
           "- lunch 85k from cash",
           "- received salary 20m to bank",
           "- summarize spending last 7 days",
-          "- create template Monthly salary",
+          "- /template create Monthly salary => received salary 20m to bank; give mom 5m from bank",
+          "- /template edit Monthly salary => received salary 25m to bank; give mom 6m from bank",
         ].join("\n");
   }
 
@@ -1318,8 +1320,8 @@ async function listTemplates(message: TelegramMessage, link: any) {
     await sendMessage(
       chatId,
       languageIsVietnamese
-        ? "Bạn chưa có template nào. Tạo bằng: /template add Nhận lương tháng => nhận lương 20tr vào Techcombank; cho mẹ 5tr từ tài khoản"
-        : "You do not have templates yet. Create one with: /template add Monthly salary => received salary 20m to Techcombank; give mom 5m from Techcombank",
+        ? "Bạn chưa có template nào. Tạo bằng: /template create Nhận lương tháng => nhận lương 20tr vào Techcombank; cho mẹ 5tr từ tài khoản"
+        : "You do not have templates yet. Create one with: /template create Monthly salary => received salary 20m to Techcombank; give mom 5m from Techcombank",
       asText(message.message_id),
     );
     return;
@@ -1375,27 +1377,70 @@ async function deleteTemplateByName(
   );
 }
 
-function looksLikeTemplateCreate(text: string) {
+type TemplateMutationMode = "create" | "edit";
+
+function getTemplateMutationMode(
+  text: string,
+): TemplateMutationMode | "legacy-add" | null {
   const normalized = normalizeText(text);
-  return (
-    normalized.startsWith("/template add ") ||
+  if (
+    normalized.startsWith("/template create ") ||
+    normalized.startsWith("/teamplate create ") ||
     normalized.startsWith("/template tao ") ||
     normalized.startsWith("/template tạo ") ||
-    normalized.startsWith("/template create ") ||
+    normalized.startsWith("/teamplate tao ") ||
+    normalized.startsWith("/teamplate tạo ") ||
     normalized.startsWith("tao mau ") ||
     normalized.startsWith("tạo mẫu ") ||
     normalized.startsWith("tao template ") ||
     normalized.startsWith("tạo template ") ||
     normalized.startsWith("create template ")
-  );
+  ) {
+    return "create";
+  }
+  if (
+    normalized.startsWith("/template edit ") ||
+    normalized.startsWith("/teamplate edit ") ||
+    normalized.startsWith("/template update ") ||
+    normalized.startsWith("/teamplate update ") ||
+    normalized.startsWith("/template sua ") ||
+    normalized.startsWith("/template sửa ") ||
+    normalized.startsWith("/teamplate sua ") ||
+    normalized.startsWith("/teamplate sửa ") ||
+    normalized.startsWith("edit template ") ||
+    normalized.startsWith("update template ") ||
+    normalized.startsWith("sua template ") ||
+    normalized.startsWith("sửa template ") ||
+    normalized.startsWith("sua mau ") ||
+    normalized.startsWith("sửa mẫu ")
+  ) {
+    return "edit";
+  }
+  if (
+    normalized.startsWith("/template add ") ||
+    normalized.startsWith("/teamplate add ")
+  ) {
+    return "legacy-add";
+  }
+  return null;
 }
 
-function parseTemplateCreate(text: string) {
-  if (!looksLikeTemplateCreate(text)) return null;
+function looksLikeTemplateMutation(text: string) {
+  return getTemplateMutationMode(text) !== null;
+}
+
+function parseTemplateMutation(text: string) {
+  const mode = getTemplateMutationMode(text);
+  if (!mode || mode === "legacy-add") return null;
 
   let cleaned = text
-    .replace(/^\/template\s+(?:add|create|tao|tạo)\s+/i, "")
-    .replace(/^(?:tạo|tao)\s+(?:mẫu|mau|template)\s+/i, "");
+    .replace(
+      /^\/(?:template|teamplate)\s+(?:create|edit|update|tao|tạo|sua|sửa)\s+/i,
+      "",
+    )
+    .replace(/^(?:tạo|tao)\s+(?:mẫu|mau|template)\s+/i, "")
+    .replace(/^(?:sửa|sua|edit|update)\s+(?:mẫu|mau|template)\s+/i, "")
+    .replace(/^create\s+template\s+/i, "");
 
   const naturalMatch = cleaned.match(
     /^(.+?)\s+(?:gồm|gom|including|with)\s+(.+)/i,
@@ -1411,37 +1456,85 @@ function parseTemplateCreate(text: string) {
     .map((item) => item.trim())
     .filter(Boolean);
   if (!name || itemTexts.length === 0) return null;
-  return { name, itemTexts };
+  return { mode, name, itemTexts };
 }
 
-async function createTemplateFromMessage(
+function templateMutationHelp(
+  mode: TemplateMutationMode | "legacy-add" | null,
+  languageIsVietnamese: boolean,
+) {
+  if (mode === "edit") {
+    return languageIsVietnamese
+      ? [
+          "Mình nhận ra bạn muốn edit template, nhưng còn thiếu danh sách giao dịch á.",
+          "",
+          "Bạn gửi theo mẫu này nha:",
+          "/template edit Nhận lương tháng => nhận lương 20tr vào tài khoản; cho mẹ 5tr từ tài khoản; chuyển 3tr từ tài khoản sang tiết kiệm",
+          "",
+          "Mỗi giao dịch cách nhau bằng dấu `;`.",
+        ].join("\n")
+      : [
+          "I can tell you want to edit a template, but I still need the transaction list.",
+          "",
+          "Use this format:",
+          "/template edit Monthly salary => received salary 20m to bank; give mom 5m from bank; transfer 3m from bank to savings",
+          "",
+          "Separate each transaction with `;`.",
+        ].join("\n");
+  }
+
+  if (mode === "legacy-add") {
+    return languageIsVietnamese
+      ? [
+          "Mình tách template theo CRUD rồi nha:",
+          "- Tạo mới: /template create Tên template => giao dịch 1; giao dịch 2",
+          "- Chỉnh sửa: /template edit Tên template => giao dịch 1; giao dịch 2",
+          "",
+          "Ví dụ:",
+          "/template create Nhận lương tháng => nhận lương 20tr vào tài khoản; cho mẹ 5tr từ tài khoản",
+        ].join("\n")
+      : [
+          "Templates now use CRUD wording:",
+          "- Create: /template create Template name => transaction 1; transaction 2",
+          "- Edit: /template edit Template name => transaction 1; transaction 2",
+          "",
+          "Example:",
+          "/template create Monthly salary => received salary 20m to bank; give mom 5m from bank",
+        ].join("\n");
+  }
+
+  return languageIsVietnamese
+    ? [
+        "Mình nhận ra bạn muốn create template, nhưng còn thiếu danh sách giao dịch á.",
+        "",
+        "Bạn gửi theo mẫu này nha:",
+        "/template create Nhận lương tháng => nhận lương 20tr vào tài khoản; cho mẹ 5tr từ tài khoản; chuyển 3tr từ tài khoản sang tiết kiệm",
+        "",
+        "Mỗi giao dịch cách nhau bằng dấu `;`.",
+      ].join("\n")
+    : [
+        "I can tell you want to create a template, but I still need the transaction list.",
+        "",
+        "Use this format:",
+        "/template create Monthly salary => received salary 20m to bank; give mom 5m from bank; transfer 3m from bank to savings",
+        "",
+        "Separate each transaction with `;`.",
+      ].join("\n");
+}
+
+async function saveTemplateFromMessage(
   message: TelegramMessage,
   link: any,
   text: string,
 ) {
   const chatId = asText(message.chat.id);
-  const parsedCreate = parseTemplateCreate(text);
-  if (!parsedCreate) {
-    if (!looksLikeTemplateCreate(text)) return false;
+  const mutationMode = getTemplateMutationMode(text);
+  const parsedMutation = parseTemplateMutation(text);
+  if (!parsedMutation) {
+    if (!looksLikeTemplateMutation(text)) return false;
     await sendMessage(
       chatId,
-      detectVietnamese(text)
-        ? [
-            "Mình nhận ra bạn muốn tạo template, nhưng còn thiếu danh sách giao dịch á.",
-            "",
-            "Bạn gửi theo mẫu này nha:",
-            "/template add Nhận lương tháng => nhận lương 20tr vào tài khoản; cho mẹ 5tr từ tài khoản; chuyển 3tr từ tài khoản sang tiết kiệm",
-            "",
-            "Mỗi giao dịch cách nhau bằng dấu `;`.",
-          ].join("\n")
-        : [
-            "I can tell you want to create a template, but I still need the transaction list.",
-            "",
-            "Use this format:",
-            "/template add Monthly salary => received salary 20m to bank; give mom 5m from bank; transfer 3m from bank to savings",
-            "",
-            "Separate each transaction with `;`.",
-          ].join("\n"),
+      templateMutationHelp(mutationMode, detectVietnamese(text)),
       asText(message.message_id),
     );
     return true;
@@ -1449,7 +1542,7 @@ async function createTemplateFromMessage(
 
   const context = await loadContext(link.user_id, link.default_wallet_id);
   const parsedItems = await Promise.all(
-    parsedCreate.itemTexts.map(async (itemText) => ({
+    parsedMutation.itemTexts.map(async (itemText) => ({
       source: itemText,
       ...(await resolveParsedTransaction(itemText, context)),
     })),
@@ -1466,22 +1559,45 @@ async function createTemplateFromMessage(
     return true;
   }
 
-  const triggerNormalized = normalizeText(parsedCreate.name);
+  const triggerNormalized = normalizeText(parsedMutation.name);
   const { data: existing, error: findError } = await supabase
     .from("telegram_transaction_templates")
-    .select("id")
+    .select("id, name")
     .eq("user_id", link.user_id)
     .eq("trigger_normalized", triggerNormalized)
     .maybeSingle();
   if (findError) throw findError;
+
+  const languageIsVietnamese = detectVietnamese(text);
+  if (parsedMutation.mode === "create" && existing?.id) {
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? `Template "${existing.name}" đã tồn tại rồi. Nếu muốn sửa, dùng: /template edit ${parsedMutation.name} => ...`
+        : `Template "${existing.name}" already exists. To update it, use: /template edit ${parsedMutation.name} => ...`,
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  if (parsedMutation.mode === "edit" && !existing?.id) {
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? `Mình chưa thấy template "${parsedMutation.name}". Nếu muốn tạo mới, dùng: /template create ${parsedMutation.name} => ...`
+        : `I could not find template "${parsedMutation.name}". To create it, use: /template create ${parsedMutation.name} => ...`,
+      asText(message.message_id),
+    );
+    return true;
+  }
 
   let templateId = existing?.id;
   if (templateId) {
     const { error: updateError } = await supabase
       .from("telegram_transaction_templates")
       .update({
-        name: parsedCreate.name,
-        trigger_text: parsedCreate.name,
+        name: parsedMutation.name,
+        trigger_text: parsedMutation.name,
         is_active: true,
         updated_at: new Date().toISOString(),
       })
@@ -1499,8 +1615,8 @@ async function createTemplateFromMessage(
       .from("telegram_transaction_templates")
       .insert({
         user_id: link.user_id,
-        name: parsedCreate.name,
-        trigger_text: parsedCreate.name,
+        name: parsedMutation.name,
+        trigger_text: parsedMutation.name,
         trigger_normalized: triggerNormalized,
       })
       .select("id")
@@ -1535,7 +1651,13 @@ async function createTemplateFromMessage(
 
   await sendMessage(
     chatId,
-    `Đã lưu template "${parsedCreate.name}" với ${rows.length} giao dịch. Lần sau chỉ cần nhắn: ${parsedCreate.name}`,
+    parsedMutation.mode === "edit"
+      ? languageIsVietnamese
+        ? `Đã edit template "${parsedMutation.name}" với ${rows.length} giao dịch. Lần sau chỉ cần nhắn: ${parsedMutation.name}`
+        : `Edited template "${parsedMutation.name}" with ${rows.length} transactions. Next time, just send: ${parsedMutation.name}`
+      : languageIsVietnamese
+        ? `Đã create template "${parsedMutation.name}" với ${rows.length} giao dịch. Lần sau chỉ cần nhắn: ${parsedMutation.name}`
+        : `Created template "${parsedMutation.name}" with ${rows.length} transactions. Next time, just send: ${parsedMutation.name}`,
     asText(message.message_id),
   );
   return true;
@@ -1642,7 +1764,7 @@ async function handleTemplateCommand(
     return true;
   }
 
-  if (await createTemplateFromMessage(message, link, text)) return true;
+  if (await saveTemplateFromMessage(message, link, text)) return true;
 
   return false;
 }
