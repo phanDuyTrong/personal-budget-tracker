@@ -54,7 +54,7 @@ const INCOME_KEYWORDS = [
   "paid back",
 ];
 
-const TRANSFER_KEYWORDS = ["chuyen", "transfer", "move"];
+const TRANSFER_KEYWORDS = ["chuyen", "transfer", "move", "doi vi"];
 const DATE_WORDS = ["hom nay", "today", "hom qua", "yesterday"];
 
 export function normalizeText(value = "") {
@@ -156,9 +156,16 @@ function parseAmount(text: string) {
   };
 }
 
+function hasTransferConnector(text: string) {
+  return /\b(?:tu|from)\b.+\b(?:sang|qua|to|vao|into|ve|den)\b/.test(text);
+}
+
 function detectType(text: string): "expense" | "income" | "transfer" {
   const normalized = normalizeText(text);
-  if (TRANSFER_KEYWORDS.some((keyword) => normalized.includes(keyword)))
+  if (
+    hasTransferConnector(normalized) ||
+    TRANSFER_KEYWORDS.some((keyword) => normalized.includes(keyword))
+  )
     return "transfer";
   if (INCOME_KEYWORDS.some((keyword) => normalized.includes(keyword)))
     return "income";
@@ -182,7 +189,8 @@ function aliasesForItem(item: TelegramItem) {
   const aliases = [item.name];
   if (normalized.includes("tien mat")) aliases.push("cash");
   if (normalized.includes("tiet kiem")) aliases.push("savings", "saving");
-  if (normalized.includes("ngan hang")) aliases.push("bank", "tai khoan", "account");
+  if (normalized.includes("ngan hang"))
+    aliases.push("bank", "tai khoan", "account");
 
   const looksLikeFoodCategory =
     normalized.includes("an uong") ||
@@ -253,7 +261,9 @@ function findBest(
     })
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      return normalizeText(a.item.name).length - normalizeText(b.item.name).length;
+      return (
+        normalizeText(a.item.name).length - normalizeText(b.item.name).length
+      );
     })[0];
   return best && best.score >= minimum ? best : null;
 }
@@ -267,7 +277,7 @@ function findWalletFromSegment(
   for (const label of labels) {
     const labelMatch = normalized.match(
       new RegExp(
-        `\\b${label}\\b\\s+(.+?)(?=\\b(?:sang|to|vao|into|from|tu|bang|with|hom|today|yesterday)\\b|$)`,
+        `\\b${label}\\b\\s+(.+?)(?=\\b(?:sang|qua|to|vao|into|from|tu|ve|den|bang|with|hom|today|yesterday)\\b|$)`,
       ),
     );
     if (labelMatch) {
@@ -276,6 +286,30 @@ function findWalletFromSegment(
     }
   }
   return null;
+}
+
+function findWalletsAroundTransferConnector(
+  wallets: TelegramItem[],
+  text: string,
+) {
+  const normalized = normalizeText(text);
+  const match = normalized.match(
+    /(.+?)\b(?:sang|qua|to|vao|into|ve|den)\b\s+(.+?)(?=\b(?:hom|today|yesterday)\b|$)/,
+  );
+  if (!match) return { fromWallet: null, toWallet: null };
+  return {
+    fromWallet: findBest(wallets, match[1], 25),
+    toWallet: findBest(wallets, match[2], 25),
+  };
+}
+
+function findContactFromSegment(contacts: TelegramItem[], text: string) {
+  const normalized = normalizeText(text);
+  const match = normalized.match(
+    /\b(?:cho|gui|tra|voi|with|for|to)\b\s+(.+?)(?=\b(?:bang|with|from|tu|sang|qua|vao|into|hom|today|yesterday)\b|$)/,
+  );
+  if (!match) return null;
+  return findBest(contacts, match[1], 30);
 }
 
 function cleanDescription(
@@ -299,10 +333,13 @@ function cleanDescription(
     );
   });
   description = description.replace(
-    /\b(?:transfer|chuyen|from|to|tu|sang|bang|with|vao|into)\b/gi,
+    /\b(?:transfer|chuyen|move|rut|nap|from|to|tu|sang|qua|ve|den|bang|with|vao|into)\b/gi,
     " ",
   );
-  description = description.replace(/\b(?:bằng|từ|vào)\b/gi, " ");
+  description = description.replace(
+    /\b(?:bằng|từ|vào|sang|qua|về|đến)\b/gi,
+    " ",
+  );
   return (
     description.replace(/\s+/g, " ").trim() || text.replace(/\s+/g, " ").trim()
   );
@@ -332,9 +369,14 @@ export function parseTelegramTransaction(
       (type === "transfer" ? false : true),
   );
   const contacts = context.contacts;
+  const connectorWallets =
+    type === "transfer"
+      ? findWalletsAroundTransferConnector(wallets, input)
+      : { fromWallet: null, toWallet: null };
   const fromWallet =
     type === "transfer"
-      ? findWalletFromSegment(wallets, input, ["from", "tu"])
+      ? findWalletFromSegment(wallets, input, ["from", "tu"]) ||
+        connectorWallets.fromWallet
       : findWalletFromSegment(wallets, input, [
           "from",
           "tu",
@@ -345,7 +387,15 @@ export function parseTelegramTransaction(
         ]) || findBest(wallets, input, 45);
   const toWallet =
     type === "transfer"
-      ? findWalletFromSegment(wallets, input, ["to", "sang", "vao", "into"])
+      ? findWalletFromSegment(wallets, input, [
+          "to",
+          "sang",
+          "qua",
+          "vao",
+          "into",
+          "ve",
+          "den",
+        ]) || connectorWallets.toWallet
       : null;
 
   if (type === "transfer" && !toWallet) {
@@ -357,7 +407,8 @@ export function parseTelegramTransaction(
   }
 
   const category = type === "transfer" ? null : findBest(categories, input, 55);
-  const contact = findBest(contacts, input, 60);
+  const contact =
+    findContactFromSegment(contacts, input) || findBest(contacts, input, 60);
   const walletId = fromWallet?.item.id || context.defaultWalletId || null;
   if (!walletId) {
     return {
@@ -434,7 +485,11 @@ export function parseTelegramEdit(
     changes.categoryId = category.item.id;
   }
 
-  if (/\b(nguoi nhan|nguoi lien quan|lien quan|contact|person|recipient)\b/.test(normalized)) {
+  if (
+    /\b(nguoi nhan|nguoi lien quan|lien quan|contact|person|recipient)\b/.test(
+      normalized,
+    )
+  ) {
     const contact = findBest(context.contacts, input, 30);
     if (!contact)
       return { action: "none", reason: "I could not match that contact." };

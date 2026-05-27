@@ -1087,6 +1087,7 @@ async function parseTransactionWithAi(
     learningRules: [
       "If a past correction maps a phrase to a category/contact, reuse that mapping for similar future wording.",
       "If similar historical transactions strongly point to a category/contact/wallet, reuse that mapping unless the current message says otherwise.",
+      "Treat messages with two wallets connected by Vietnamese words like từ/sang/qua/vào/về or English from/to/into as transfer, not expense.",
       "Keep description close to the user's wording; remove only amount/date/wallet connector words.",
       "If the user mentions a person/company/team, prefer matching it to contacts when available.",
       "If unsure between category and contact, choose null instead of inventing.",
@@ -2136,9 +2137,17 @@ async function resolveParsedTransaction(
   const profile = await loadSpendingPatternProfile(context.userId, text);
   const aiEnabled =
     Boolean(aiParseApiKey) && aiParseMode !== "local" && aiParseMode !== "off";
+  const localParsed = parseTelegramTransaction(text, context);
   const aiParsed = aiEnabled
     ? await parseTransactionWithAi(text, context, memories, profile)
     : null;
+  if (localParsed.ok && localParsed.type === "transfer") {
+    return {
+      parsed: applySpendingPatternProfile(localParsed, profile, context, text),
+      parser: "local" as const,
+      profile,
+    };
+  }
   if (aiParsed?.ok) {
     return {
       parsed: applySpendingPatternProfile(aiParsed, profile, context, text),
@@ -2147,7 +2156,6 @@ async function resolveParsedTransaction(
     };
   }
 
-  const localParsed = parseTelegramTransaction(text, context);
   return {
     parsed: localParsed.ok
       ? applySpendingPatternProfile(localParsed, profile, context, text)
