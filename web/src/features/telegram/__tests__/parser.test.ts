@@ -96,6 +96,36 @@ describe("parseTelegramTransaction", () => {
     expect(missing.ok).toBe(false);
   });
 
+  it("parses casual Vietnamese transfer connector wording", () => {
+    const accountToCash = parseTelegramTransaction(
+      "chuyển 500k tài khoản qua tiền mặt",
+      context,
+    );
+    const withdraw = parseTelegramTransaction(
+      "rút 300k từ tài khoản về tiền mặt",
+      context,
+    );
+
+    expect(accountToCash.ok && accountToCash.type).toBe("transfer");
+    expect(accountToCash.ok && accountToCash.walletId).toBe("wallet-account");
+    expect(accountToCash.ok && accountToCash.toWalletId).toBe("wallet-cash");
+    expect(withdraw.ok && withdraw.type).toBe("transfer");
+    expect(withdraw.ok && withdraw.walletId).toBe("wallet-account");
+    expect(withdraw.ok && withdraw.toWalletId).toBe("wallet-cash");
+  });
+
+  it("matches contacts from recipient-style Vietnamese wording", () => {
+    const result = parseTelegramTransaction(
+      "gửi Minh 50k bằng tài khoản",
+      context,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.walletId).toBe("wallet-account");
+    expect(result.contactId).toBe("contact-minh");
+  });
+
   it("parses relative dates in both languages", () => {
     const vi = parseTelegramTransaction("ăn phở hôm qua 55k", context);
     const en = parseTelegramTransaction("pho yesterday 55k", context);
@@ -144,7 +174,9 @@ describe("parseTelegramEdit", () => {
   });
 
   it("parses Vietnamese contact edit commands", () => {
-    expect(parseTelegramEdit("sửa người nhận Đồng nghiệp", context)).toMatchObject({
+    expect(
+      parseTelegramEdit("sửa người nhận Đồng nghiệp", context),
+    ).toMatchObject({
       action: "update",
       changes: { contactId: "contact-colleague" },
     });
