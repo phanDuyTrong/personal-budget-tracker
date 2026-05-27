@@ -21,9 +21,17 @@ type TelegramMessage = {
   reply_to_message?: { message_id: number };
 };
 
+type TelegramCallbackQuery = {
+  id: string;
+  from: TelegramUser;
+  data?: string;
+  message?: TelegramMessage;
+};
+
 type TelegramUpdate = {
   update_id: number;
   message?: TelegramMessage;
+  callback_query?: TelegramCallbackQuery;
 };
 
 type TemplateItem = {
@@ -71,6 +79,37 @@ type ParsedOkTransaction = {
   categoryId: string | null;
   contactId: string | null;
   unmatched: string[];
+  fieldConfidence?: Record<string, number>;
+};
+
+type InlineKeyboardButton = {
+  text: string;
+  callback_data: string;
+};
+
+type SendMessageOptions = {
+  replyToMessageId?: string;
+  replyMarkup?: { inline_keyboard: InlineKeyboardButton[][] };
+};
+
+type FieldSuggestion = {
+  id: string;
+  name: string;
+  confidence: number;
+  reason: string;
+};
+
+type SpendingPatternProfile = {
+  category?: FieldSuggestion;
+  contact?: FieldSuggestion;
+  wallet?: FieldSuggestion;
+  examples: Array<{
+    description: string;
+    amount: number;
+    categoryName?: string | null;
+    contactName?: string | null;
+    walletName?: string | null;
+  }>;
 };
 
 type ReportRange = {
@@ -140,13 +179,18 @@ function detectVietnamese(text: string) {
 }
 
 function normalizedPlainText(text: string) {
-  return normalizeText(text).replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+  return normalizeText(text)
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function hasMoneySignal(text: string) {
   const normalized = normalizedPlainText(text);
   return (
-    /(?:^|\s)(?:\d+(?:[.,]\d+)?)(?:\s*)(?:k|tr|m|mil|million|nghin|ngan|ngàn|trieu|triệu|usd|dollar|dollars|vnd|dong|đ|₫)(?:\s|$)/i.test(text) ||
+    /(?:^|\s)(?:\d+(?:[.,]\d+)?)(?:\s*)(?:k|tr|m|mil|million|nghin|ngan|ngàn|trieu|triệu|usd|dollar|dollars|vnd|dong|đ|₫)(?:\s|$)/i.test(
+      text,
+    ) ||
     /[$₫]\s*\d+/i.test(text) ||
     /\b\d{4,}\b/.test(normalized)
   );
@@ -165,7 +209,9 @@ function hasFinanceSignal(text: string) {
 function localCasualReply(text: string, languageIsVietnamese: boolean) {
   const normalized = normalizedPlainText(text);
 
-  if (/\b(hi|hello|hey|xin chao|xin chào|chao|chào|alo|yo)\b/i.test(normalized)) {
+  if (
+    /\b(hi|hello|hey|xin chao|xin chào|chao|chào|alo|yo)\b/i.test(normalized)
+  ) {
     return languageIsVietnamese
       ? "Hello hello, mình đây 😄 Muốn ghi chi tiêu hay hỏi report thì cứ nhắn tự nhiên nha."
       : "Hey hey, I’m here 😄 Send me a transaction or ask for a spending report anytime.";
@@ -177,7 +223,11 @@ function localCasualReply(text: string, languageIsVietnamese: boolean) {
       : "Anytime. Drop transactions here and I’ll keep things tidy for you 😄";
   }
 
-  if (/\b(help|giup|giúp|lam duoc gi|làm được gì|ban la ai|bạn là ai|what can you do|huong dan|hướng dẫn)\b/i.test(normalized)) {
+  if (
+    /\b(help|giup|giúp|lam duoc gi|làm được gì|ban la ai|bạn là ai|what can you do|huong dan|hướng dẫn)\b/i.test(
+      normalized,
+    )
+  ) {
     return languageIsVietnamese
       ? [
           "Mình là bot ghi chi tiêu kiêm trợ lý tài chính nhẹ nhàng của bạn 🙂",
@@ -204,7 +254,10 @@ function localCasualReply(text: string, languageIsVietnamese: boolean) {
     : "I’m listening 😄 For transactions, include amount and wallet. For insights, ask something like “summarize my spending this month”.";
 }
 
-async function buildCasualChatReply(text: string, link?: any): Promise<CasualChatResult> {
+async function buildCasualChatReply(
+  text: string,
+  link?: any,
+): Promise<CasualChatResult> {
   const languageIsVietnamese = detectVietnamese(text);
   const normalized = normalizedPlainText(text);
 
@@ -247,7 +300,7 @@ async function buildCasualChatReply(text: string, link?: any): Promise<CasualCha
   const response = await fetch(aiParseBaseUrl, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${aiParseApiKey}`,
+      Authorization: `Bearer ${aiParseApiKey}`,
       "Content-Type": "application/json",
       "HTTP-Referer": webAppUrl,
       "X-Title": "Budget Manager Telegram Bot",
@@ -336,8 +389,12 @@ function endOfPreviousMonth(dateString: string) {
 async function sendMessage(
   chatId: string,
   text: string,
-  replyToMessageId?: string,
+  replyToMessageIdOrOptions?: string | SendMessageOptions,
 ) {
+  const options =
+    typeof replyToMessageIdOrOptions === "string"
+      ? { replyToMessageId: replyToMessageIdOrOptions }
+      : replyToMessageIdOrOptions || {};
   const response = await fetch(
     `https://api.telegram.org/bot${telegramToken}/sendMessage`,
     {
@@ -346,16 +403,56 @@ async function sendMessage(
       body: JSON.stringify({
         chat_id: chatId,
         text,
-        reply_to_message_id: replyToMessageId
-          ? Number(replyToMessageId)
+        reply_to_message_id: options.replyToMessageId
+          ? Number(options.replyToMessageId)
           : undefined,
         allow_sending_without_reply: true,
+        reply_markup: options.replyMarkup,
       }),
     },
   );
   const payload = await response.json();
   if (!response.ok || !payload.ok)
     throw new Error(payload.description || "Telegram sendMessage failed.");
+  return payload.result as TelegramMessage;
+}
+
+async function answerCallbackQuery(callbackQueryId: string, text?: string) {
+  await fetch(
+    `https://api.telegram.org/bot${telegramToken}/answerCallbackQuery`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        callback_query_id: callbackQueryId,
+        text,
+      }),
+    },
+  );
+}
+
+async function editMessageText(
+  chatId: string,
+  messageId: string,
+  text: string,
+  replyMarkup?: { inline_keyboard: InlineKeyboardButton[][] },
+) {
+  const response = await fetch(
+    `https://api.telegram.org/bot${telegramToken}/editMessageText`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: Number(messageId),
+        text,
+        reply_markup: replyMarkup,
+      }),
+    },
+  );
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload?.ok)
+    throw new Error(payload?.description || "Telegram editMessageText failed.");
   return payload.result as TelegramMessage;
 }
 
@@ -479,6 +576,7 @@ async function savePendingDraft(
   message: TelegramMessage,
   sourceText: string,
   parsed: ParsedOkTransaction,
+  missingFields: string[] = [],
 ) {
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
   await supabase.from("telegram_pending_transaction_drafts").upsert(
@@ -488,7 +586,11 @@ async function savePendingDraft(
       chat_id: asText(message.chat.id),
       source_message_id: asText(message.message_id),
       source_text: sourceText,
-      parsed_payload: { ...parsedPayload(parsed), wallet_id: null },
+      parsed_payload: {
+        ...parsedPayload(parsed),
+        missing_fields: missingFields,
+        field_confidence: parsed.fieldConfidence || {},
+      },
       expires_at: expiresAt,
       updated_at: new Date().toISOString(),
     },
@@ -508,6 +610,21 @@ async function loadPendingDraft(message: TelegramMessage) {
   return data;
 }
 
+async function loadPendingDraftForTelegramUser(
+  telegramUserId: string,
+  chatId: string,
+) {
+  const { data, error } = await supabase
+    .from("telegram_pending_transaction_drafts")
+    .select("*")
+    .eq("telegram_user_id", telegramUserId)
+    .eq("chat_id", chatId)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 async function clearPendingDraft(message: TelegramMessage) {
   await supabase
     .from("telegram_pending_transaction_drafts")
@@ -516,18 +633,357 @@ async function clearPendingDraft(message: TelegramMessage) {
     .eq("chat_id", asText(message.chat.id));
 }
 
-function compactItems(items: Array<{ name?: string | null; type?: string | null }>) {
-  return items.map((item) => item.type ? `${item.name} (${item.type})` : item.name).filter(Boolean);
+function keyboardRows(
+  items: Array<{ id: string; name: string }>,
+  prefix: string,
+) {
+  const buttons = items.slice(0, 10).map((item) => ({
+    text: item.name,
+    callback_data: `${prefix}:${item.id}`,
+  }));
+  const rows: InlineKeyboardButton[][] = [];
+  for (let index = 0; index < buttons.length; index += 2) {
+    rows.push(buttons.slice(index, index + 2));
+  }
+  return rows;
 }
 
-function findByName<T extends { name?: string | null }>(items: T[], name?: string | null) {
+function categoryOptions(context: Awaited<ReturnType<typeof loadContext>>) {
+  const expenseCategories = context.categories.filter(
+    (category: any) => !category.type || category.type === "expense",
+  );
+  const childCategories = expenseCategories.filter(
+    (category: any) => category.parent_id,
+  );
+  return (childCategories.length ? childCategories : expenseCategories).slice(
+    0,
+    10,
+  );
+}
+
+function walletOptions(context: Awaited<ReturnType<typeof loadContext>>) {
+  return context.wallets
+    .filter((wallet: any) => !wallet.type || wallet.type !== "deleted")
+    .slice(0, 10);
+}
+
+async function askDraftField(
+  chatId: string,
+  replyToMessageId: string | undefined,
+  parsed: ParsedOkTransaction,
+  field: "wallet" | "category",
+  context: Awaited<ReturnType<typeof loadContext>>,
+  languageIsVietnamese: boolean,
+) {
+  const summary = `${formatAmount(parsed.amount)} - ${parsed.description || "-"}`;
+  if (field === "wallet") {
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? `Mình hiểu giao dịch này rồi: ${summary} 👍\nChọn ví để mình lưu nha:`
+        : `I understood this transaction: ${summary} 👍\nPick the wallet to save it:`,
+      {
+        replyToMessageId,
+        replyMarkup: {
+          inline_keyboard: keyboardRows(walletOptions(context), "draft:wallet"),
+        },
+      },
+    );
+    return;
+  }
+
+  const rows = keyboardRows(categoryOptions(context), "draft:category");
+  rows.push([
+    {
+      text: languageIsVietnamese ? "Bỏ qua danh mục" : "Skip category",
+      callback_data: "draft:category:skip",
+    },
+  ]);
+  await sendMessage(
+    chatId,
+    languageIsVietnamese
+      ? `Mình chưa chắc danh mục cho: ${summary}\nChọn nhanh một danh mục nha, hoặc bỏ qua nếu chưa cần.`
+      : `I’m not fully sure about the category for: ${summary}\nPick one quickly, or skip it for now.`,
+    {
+      replyToMessageId,
+      replyMarkup: { inline_keyboard: rows },
+    },
+  );
+}
+
+function parsedFromDraftPayload(payload: any): ParsedOkTransaction {
+  return {
+    ok: true,
+    type: payload.type || "expense",
+    amount: Number(payload.amount || 0),
+    walletId: payload.wallet_id || "",
+    toWalletId: payload.to_wallet_id || null,
+    categoryId: payload.category_id || null,
+    contactId: payload.contact_id || null,
+    description: payload.description || "",
+    date: payload.date || todayInTimeZone(),
+    unmatched: Array.isArray(payload.missing_fields)
+      ? payload.missing_fields
+      : [],
+    fieldConfidence: payload.field_confidence || {},
+  };
+}
+
+async function saveParsedTransactionFromDraft(
+  callback: TelegramCallbackQuery,
+  link: any,
+  draft: any,
+  parsed: ParsedOkTransaction,
+) {
+  const chatId = asText(callback.message?.chat.id);
+  const { data: tx, error } = await supabase
+    .from("transactions")
+    .insert({
+      user_id: link.user_id,
+      wallet_id: parsed.walletId,
+      to_wallet_id: parsed.toWalletId,
+      category_id: parsed.categoryId,
+      contact_id: parsed.contactId,
+      amount: parsed.amount,
+      type: parsed.type,
+      description: parsed.description,
+      date: parsed.date,
+      is_recurring: false,
+      is_debt: false,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+
+  await rememberParse(
+    link.user_id,
+    draft.source_text,
+    "local",
+    parsedPayload(parsed),
+    tx.id,
+  );
+  const reply = await sendMessage(
+    chatId,
+    summarizeTransaction(
+      tx,
+      detectVietnamese(draft.source_text),
+      parsed.unmatched,
+    ),
+    draft.source_message_id,
+  );
+  await supabase.from("telegram_transaction_events").insert({
+    user_id: link.user_id,
+    telegram_user_id: asText(callback.from.id),
+    chat_id: chatId,
+    source_message_id: draft.source_message_id,
+    bot_message_id: asText(reply.message_id),
+    transaction_id: tx.id,
+    source_text: draft.source_text,
+  });
+  await supabase
+    .from("telegram_pending_transaction_drafts")
+    .delete()
+    .eq("id", draft.id)
+    .eq("user_id", link.user_id);
+}
+
+function compactItems(
+  items: Array<{ name?: string | null; type?: string | null }>,
+) {
+  return items
+    .map((item) => (item.type ? `${item.name} (${item.type})` : item.name))
+    .filter(Boolean);
+}
+
+function importantTokens(text: string) {
+  const stopWords = new Set([
+    "bang",
+    "bằng",
+    "from",
+    "with",
+    "vao",
+    "vào",
+    "into",
+    "tu",
+    "từ",
+    "sang",
+    "to",
+    "hom",
+    "hôm",
+    "nay",
+    "qua",
+    "today",
+    "yesterday",
+    "ngay",
+    "ngày",
+    "tien",
+    "tiền",
+    "vi",
+    "ví",
+    "wallet",
+    "tai",
+    "khoan",
+    "tài",
+    "khoản",
+  ]);
+  return normalizedPlainText(text)
+    .split(" ")
+    .map((token) => token.trim())
+    .filter((token) => token.length > 1)
+    .filter((token) => !/^\d/.test(token))
+    .filter((token) => !stopWords.has(token));
+}
+
+function scoreTextSimilarity(sourceText: string, candidateText: string) {
+  const sourceTokens = importantTokens(sourceText);
+  const candidateTokens = new Set(importantTokens(candidateText));
+  if (sourceTokens.length === 0 || candidateTokens.size === 0) return 0;
+  const shared = sourceTokens.filter((token) => candidateTokens.has(token));
+  const phraseBonus =
+    normalizeText(candidateText).includes(normalizeText(sourceText)) ||
+    normalizeText(sourceText).includes(normalizeText(candidateText))
+      ? 2
+      : 0;
+  return shared.length + phraseBonus;
+}
+
+function suggestionFromScores(
+  scores: Map<
+    string,
+    { score: number; count: number; name: string; reason: string }
+  >,
+  minimumConfidence = 0.55,
+) {
+  const ranked = [...scores.entries()].sort((a, b) => {
+    if (b[1].score !== a[1].score) return b[1].score - a[1].score;
+    return b[1].count - a[1].count;
+  });
+  const best = ranked[0];
+  const second = ranked[1];
+  if (!best) return undefined;
+  const confidence = Math.min(
+    0.95,
+    0.42 +
+      best[1].score * 0.08 +
+      best[1].count * 0.03 +
+      (second ? Math.max(0, best[1].score - second[1].score) * 0.04 : 0.08),
+  );
+  if (confidence < minimumConfidence) return undefined;
+  return {
+    id: best[0],
+    name: best[1].name,
+    confidence: Math.round(confidence * 100) / 100,
+    reason: best[1].reason,
+  };
+}
+
+function addSuggestionScore(
+  scores: Map<
+    string,
+    { score: number; count: number; name: string; reason: string }
+  >,
+  id: string | null | undefined,
+  name: string | null | undefined,
+  score: number,
+  reason: string,
+) {
+  if (!id || !name || score <= 0) return;
+  const current = scores.get(id) || { score: 0, count: 0, name, reason };
+  scores.set(id, {
+    score: current.score + score,
+    count: current.count + 1,
+    name: current.name || name,
+    reason: current.reason || reason,
+  });
+}
+
+async function loadSpendingPatternProfile(
+  userId: string,
+  text: string,
+): Promise<SpendingPatternProfile> {
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      "id,type,amount,description,wallet_id,category_id,contact_id,wallet:wallets!wallet_id(name),category:categories(name),contact:contacts(name)",
+    )
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(250);
+  if (error) return { examples: [] };
+
+  const categoryScores = new Map<
+    string,
+    { score: number; count: number; name: string; reason: string }
+  >();
+  const contactScores = new Map<
+    string,
+    { score: number; count: number; name: string; reason: string }
+  >();
+  const walletScores = new Map<
+    string,
+    { score: number; count: number; name: string; reason: string }
+  >();
+  const examples: SpendingPatternProfile["examples"] = [];
+
+  (data || []).forEach((row: any) => {
+    const description = row.description || "";
+    const similarity = scoreTextSimilarity(text, description);
+    if (similarity <= 0) return;
+    const score = similarity + (row.type === "expense" ? 0.5 : 0);
+    if (examples.length < 6) {
+      examples.push({
+        description,
+        amount: Number(row.amount || 0),
+        categoryName: row.category?.name || null,
+        contactName: row.contact?.name || null,
+        walletName: row.wallet?.name || null,
+      });
+    }
+    addSuggestionScore(
+      categoryScores,
+      row.category_id,
+      row.category?.name,
+      score,
+      `similar past note: ${description}`,
+    );
+    addSuggestionScore(
+      contactScores,
+      row.contact_id,
+      row.contact?.name,
+      score,
+      `similar past note: ${description}`,
+    );
+    addSuggestionScore(
+      walletScores,
+      row.wallet_id,
+      row.wallet?.name,
+      Math.max(0, score - 0.5),
+      `similar past note: ${description}`,
+    );
+  });
+
+  return {
+    category: suggestionFromScores(categoryScores),
+    contact: suggestionFromScores(contactScores),
+    wallet: suggestionFromScores(walletScores, 0.65),
+    examples,
+  };
+}
+
+function findByName<T extends { name?: string | null }>(
+  items: T[],
+  name?: string | null,
+) {
   const normalized = normalizeText(name || "");
   if (!normalized) return null;
   return (
     items.find((item) => normalizeText(item.name || "") === normalized) ||
     items.find((item) => {
       const itemName = normalizeText(item.name || "");
-      return itemName && (normalized.includes(itemName) || itemName.includes(normalized));
+      return (
+        itemName &&
+        (normalized.includes(itemName) || itemName.includes(normalized))
+      );
     }) ||
     null
   );
@@ -566,7 +1022,8 @@ function aiToParsedTransaction(
   }
 
   const wallet = findByName(context.wallets, ai.walletName) || null;
-  const toWallet = type === "transfer" ? findByName(context.wallets, ai.toWalletName) : null;
+  const toWallet =
+    type === "transfer" ? findByName(context.wallets, ai.toWalletName) : null;
   const walletId = wallet?.id || context.defaultWalletId || null;
   if (!walletId) {
     return {
@@ -585,7 +1042,10 @@ function aiToParsedTransaction(
     };
   }
 
-  const category = type === "transfer" ? null : findByName(context.categories, ai.categoryName);
+  const category =
+    type === "transfer"
+      ? null
+      : findByName(context.categories, ai.categoryName);
   const contact = findByName(context.contacts, ai.contactName);
   const today = todayInTimeZone();
   const date = /^20\d{2}-\d{2}-\d{2}$/.test(ai.date || "") ? ai.date! : today;
@@ -600,9 +1060,9 @@ function aiToParsedTransaction(
     toWalletId: toWallet?.id || null,
     categoryId: category?.id || null,
     contactId: contact?.id || null,
-    unmatched: [
-      !category && type !== "transfer" ? "category" : null,
-    ].filter(Boolean) as string[],
+    unmatched: [!category && type !== "transfer" ? "category" : null].filter(
+      Boolean,
+    ) as string[],
   };
 }
 
@@ -610,11 +1070,12 @@ async function parseTransactionWithAi(
   text: string,
   context: Awaited<ReturnType<typeof loadContext>>,
   memories: any[],
+  profile: SpendingPatternProfile,
 ) {
   if (!aiParseApiKey) return null;
 
   const prompt = {
-    task: "Parse one personal finance Telegram message into one transaction JSON. Preserve the user's language in description. Infer category and contact from meaning, Vietnamese wording, and prior corrected examples. Recent corrections are stronger than generic guesses. Do not invent wallets/categories/contacts outside provided lists. Return JSON only.",
+    task: "Parse one personal finance Telegram message into one transaction JSON. Preserve the user's language in description. Infer category/contact/wallet from meaning, Vietnamese wording, prior corrected examples, and similar historical transactions. Recent corrections and similar past transactions are stronger than generic guesses. Do not invent wallets/categories/contacts outside provided lists. Return JSON only.",
     message: text,
     today: todayInTimeZone(),
     allowedTypes: ["expense", "income", "transfer"],
@@ -622,8 +1083,10 @@ async function parseTransactionWithAi(
     categories: compactItems(context.categories),
     contacts: compactItems(context.contacts),
     recentUserExamples: compactMemories(memories),
+    learnedPatternsFromPastTransactions: profile,
     learningRules: [
       "If a past correction maps a phrase to a category/contact, reuse that mapping for similar future wording.",
+      "If similar historical transactions strongly point to a category/contact/wallet, reuse that mapping unless the current message says otherwise.",
       "Keep description close to the user's wording; remove only amount/date/wallet connector words.",
       "If the user mentions a person/company/team, prefer matching it to contacts when available.",
       "If unsure between category and contact, choose null instead of inventing.",
@@ -645,7 +1108,7 @@ async function parseTransactionWithAi(
   const response = await fetch(aiParseBaseUrl, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${aiParseApiKey}`,
+      Authorization: `Bearer ${aiParseApiKey}`,
       "Content-Type": "application/json",
       "HTTP-Referer": webAppUrl,
       "X-Title": "Budget Manager Telegram Bot",
@@ -670,6 +1133,52 @@ async function parseTransactionWithAi(
   const json = extractJsonObject(content) as AiParsedTransaction | null;
   if (!json || Number(json.confidence || 0) < 0.45) return null;
   return aiToParsedTransaction(json, text, context);
+}
+
+function applySpendingPatternProfile(
+  parsed: ParsedOkTransaction,
+  profile: SpendingPatternProfile,
+  context: Awaited<ReturnType<typeof loadContext>>,
+  text: string,
+): ParsedOkTransaction {
+  const next = {
+    ...parsed,
+    unmatched: [...parsed.unmatched],
+    fieldConfidence: { ...(parsed.fieldConfidence || {}) },
+  };
+  if (
+    next.type !== "transfer" &&
+    !next.categoryId &&
+    profile.category &&
+    profile.category.confidence >= 0.55
+  ) {
+    next.categoryId = profile.category.id;
+    next.fieldConfidence.category = profile.category.confidence;
+    next.unmatched = next.unmatched.filter((field) => field !== "category");
+  }
+  if (
+    !next.contactId &&
+    profile.contact &&
+    profile.contact.confidence >= 0.55
+  ) {
+    next.contactId = profile.contact.id;
+    next.fieldConfidence.contact = profile.contact.confidence;
+  }
+  const walletWasOnlyFallback =
+    Boolean(context.defaultWalletId) &&
+    next.walletId === context.defaultWalletId &&
+    !context.wallets.some((wallet: any) =>
+      normalizeText(text).includes(normalizeText(wallet.name || "")),
+    );
+  if (
+    profile.wallet &&
+    profile.wallet.confidence >= 0.7 &&
+    (!next.walletId || walletWasOnlyFallback)
+  ) {
+    next.walletId = profile.wallet.id;
+    next.fieldConfidence.wallet = profile.wallet.confidence;
+  }
+  return next;
 }
 
 async function handleLink(message: TelegramMessage, code: string) {
@@ -726,14 +1235,18 @@ async function handleLink(message: TelegramMessage, code: string) {
   );
 }
 
-async function getLink(message: TelegramMessage) {
+async function getLinkByTelegramUserId(telegramUserId: string) {
   const { data, error } = await supabase
     .from("telegram_user_links")
     .select("user_id, telegram_user_id, chat_id, default_wallet_id")
-    .eq("telegram_user_id", asText(message.from?.id))
+    .eq("telegram_user_id", telegramUserId)
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+async function getLink(message: TelegramMessage) {
+  return getLinkByTelegramUserId(asText(message.from?.id));
 }
 
 function summarizeTransaction(
@@ -762,7 +1275,6 @@ function summarizeTransaction(
     : `Saved for you ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nDate: ${tx.date}\nDescription: ${tx.description || "-"}${warnings}\n\nIf you need to fix it, reply with “change ...” or “delete”. I’ll learn from the correction for next time.`;
 }
 
-
 function itemSummary(item: TemplateItem, languageIsVietnamese: boolean) {
   const label =
     item.type === "income"
@@ -786,8 +1298,12 @@ function findTemplateMatch(templates: TransactionTemplate[], text: string) {
     templates.find((template) => template.trigger_normalized === normalized) ||
     templates.find((template) => normalizeText(template.name) === normalized) ||
     templates.find((template) => {
-      const trigger = template.trigger_normalized || normalizeText(template.trigger_text);
-      return trigger.length >= 4 && (normalized.includes(trigger) || trigger.includes(normalized));
+      const trigger =
+        template.trigger_normalized || normalizeText(template.trigger_text);
+      return (
+        trigger.length >= 4 &&
+        (normalized.includes(trigger) || trigger.includes(normalized))
+      );
     }) ||
     null
   );
@@ -821,7 +1337,11 @@ async function listTemplates(message: TelegramMessage, link: any) {
   );
 }
 
-async function deleteTemplateByName(message: TelegramMessage, link: any, rawName: string) {
+async function deleteTemplateByName(
+  message: TelegramMessage,
+  link: any,
+  rawName: string,
+) {
   const chatId = asText(message.chat.id);
   const normalized = normalizeText(rawName);
   const templates = await loadTemplates(link.user_id);
@@ -869,7 +1389,9 @@ function parseTemplateCreate(text: string) {
     .replace(/^\/template\s+(?:add|create|tao|tạo)\s+/i, "")
     .replace(/^(?:tạo|tao)\s+(?:mẫu|mau|template)\s+/i, "");
 
-  const naturalMatch = cleaned.match(/^(.+?)\s+(?:gồm|gom|including|with)\s+(.+)/i);
+  const naturalMatch = cleaned.match(
+    /^(.+?)\s+(?:gồm|gom|including|with)\s+(.+)/i,
+  );
   if (naturalMatch) cleaned = `${naturalMatch[1]} => ${naturalMatch[2]}`;
 
   const parts = cleaned.split(/=>|:/);
@@ -952,7 +1474,10 @@ async function createTemplateFromMessage(
   }
 
   const rows = parsedItems.map((item, index) => {
-    const parsed = item.parsed as Extract<ReturnType<typeof parseTelegramTransaction>, { ok: true }>;
+    const parsed = item.parsed as Extract<
+      ReturnType<typeof parseTelegramTransaction>,
+      { ok: true }
+    >;
     return {
       template_id: templateId,
       user_id: link.user_id,
@@ -1057,7 +1582,11 @@ async function runTemplate(
   );
 }
 
-async function handleTemplateCommand(message: TelegramMessage, link: any, text: string) {
+async function handleTemplateCommand(
+  message: TelegramMessage,
+  link: any,
+  text: string,
+) {
   const normalized = normalizeText(text);
   if (
     normalized === "/templates" ||
@@ -1083,7 +1612,9 @@ async function handleTemplateCommand(message: TelegramMessage, link: any, text: 
 }
 
 function looksLikeMoneyInput(text: string) {
-  return /(?:[$₫]\s*)?\d+(?:[.,]\d+)?\s*(?:k|nghìn|nghin|ngàn|ngan|tr|triệu|trieu|m|million|usd|vnd|₫|dollars?)\b/i.test(text);
+  return /(?:[$₫]\s*)?\d+(?:[.,]\d+)?\s*(?:k|nghìn|nghin|ngàn|ngan|tr|triệu|trieu|m|million|usd|vnd|₫|dollars?)\b/i.test(
+    text,
+  );
 }
 
 function isReportRequest(text: string) {
@@ -1109,7 +1640,12 @@ function isReportRequest(text: string) {
     "so sanh",
   ];
   if (!reportWords.some((word) => normalized.includes(word))) return false;
-  return !looksLikeMoneyInput(text) || /\b(bao cao|report|tom tat|summary|thong ke|top|so sanh|compare)\b/.test(normalized);
+  return (
+    !looksLikeMoneyInput(text) ||
+    /\b(bao cao|report|tom tat|summary|thong ke|top|so sanh|compare)\b/.test(
+      normalized,
+    )
+  );
 }
 
 function parseReportRange(text: string) {
@@ -1193,11 +1729,19 @@ function groupSum<T>(
     .sort((a, b) => b.value - a.value);
 }
 
-function reportLinesForTop(title: string, rows: Array<{ name: string; value: number }>, limit = 5) {
+function reportLinesForTop(
+  title: string,
+  rows: Array<{ name: string; value: number }>,
+  limit = 5,
+) {
   if (rows.length === 0) return [`${title}: -`];
   return [
     `${title}:`,
-    ...rows.slice(0, limit).map((row, index) => `${index + 1}. ${row.name}: ${formatAmount(row.value)}`),
+    ...rows
+      .slice(0, limit)
+      .map(
+        (row, index) => `${index + 1}. ${row.name}: ${formatAmount(row.value)}`,
+      ),
   ];
 }
 
@@ -1237,9 +1781,17 @@ function buildFinancialReportLines(summary: FinancialReportSummary) {
         ...reportLinesForTop("Top danh mục", topCategories),
         "",
         ...reportLinesForTop("Top ví chi tiêu", topWallets, 3),
-        ...(topContacts.length ? ["", ...reportLinesForTop("Top người liên quan", topContacts, 3)] : []),
+        ...(topContacts.length
+          ? ["", ...reportLinesForTop("Top người liên quan", topContacts, 3)]
+          : []),
         ...(monthly.length > 1
-          ? ["", "Theo tháng:", ...monthly.map((item) => `- ${item.name}: ${formatAmount(item.value)}`)]
+          ? [
+              "",
+              "Theo tháng:",
+              ...monthly.map(
+                (item) => `- ${item.name}: ${formatAmount(item.value)}`,
+              ),
+            ]
           : []),
       ]
     : [
@@ -1261,9 +1813,17 @@ function buildFinancialReportLines(summary: FinancialReportSummary) {
         ...reportLinesForTop("Top categories", topCategories),
         "",
         ...reportLinesForTop("Top spending wallets", topWallets, 3),
-        ...(topContacts.length ? ["", ...reportLinesForTop("Top contacts", topContacts, 3)] : []),
+        ...(topContacts.length
+          ? ["", ...reportLinesForTop("Top contacts", topContacts, 3)]
+          : []),
         ...(monthly.length > 1
-          ? ["", "By month:", ...monthly.map((item) => `- ${item.name}: ${formatAmount(item.value)}`)]
+          ? [
+              "",
+              "By month:",
+              ...monthly.map(
+                (item) => `- ${item.name}: ${formatAmount(item.value)}`,
+              ),
+            ]
           : []),
       ];
 }
@@ -1280,7 +1840,9 @@ async function buildFinancialCoachNote(
     language,
     userQuestion: question,
     report: {
-      period: summary.languageIsVietnamese ? summary.range.labelVi : summary.range.labelEn,
+      period: summary.languageIsVietnamese
+        ? summary.range.labelVi
+        : summary.range.labelEn,
       start: summary.range.start,
       end: summary.range.end,
       transactionCount: summary.transactionCount,
@@ -1311,7 +1873,7 @@ async function buildFinancialCoachNote(
   const response = await fetch(aiParseBaseUrl, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${aiParseApiKey}`,
+      Authorization: `Bearer ${aiParseApiKey}`,
       "Content-Type": "application/json",
       "HTTP-Referer": webAppUrl,
       "X-Title": "Budget Manager Telegram Bot",
@@ -1340,24 +1902,40 @@ async function buildFinancialCoachNote(
 function fallbackCoachNote(summary: FinancialReportSummary) {
   const topCategory = summary.topCategories[0];
   if (summary.languageIsVietnamese) {
-    if (!topCategory) return "Nhìn chung dữ liệu còn ít, mình sẽ theo dõi thêm vài giao dịch nữa để đưa insight tốt hơn nhé 🙂";
-    const ratio = summary.totalExpense > 0 ? Math.round((topCategory.value / summary.totalExpense) * 100) : 0;
+    if (!topCategory)
+      return "Nhìn chung dữ liệu còn ít, mình sẽ theo dõi thêm vài giao dịch nữa để đưa insight tốt hơn nhé 🙂";
+    const ratio =
+      summary.totalExpense > 0
+        ? Math.round((topCategory.value / summary.totalExpense) * 100)
+        : 0;
     return `Góc nhìn nhanh: ${topCategory.name} đang chiếm khoảng ${ratio}% tổng chi. Nếu đây là khoản có chủ đích thì ổn; nếu không, mình gợi ý theo dõi nhóm này sát hơn vài ngày tới 🙂`;
   }
-  if (!topCategory) return "There is not much data yet, but I’ll keep tracking and give better insights as you add more transactions 🙂";
-  const ratio = summary.totalExpense > 0 ? Math.round((topCategory.value / summary.totalExpense) * 100) : 0;
+  if (!topCategory)
+    return "There is not much data yet, but I’ll keep tracking and give better insights as you add more transactions 🙂";
+  const ratio =
+    summary.totalExpense > 0
+      ? Math.round((topCategory.value / summary.totalExpense) * 100)
+      : 0;
   return `Quick take: ${topCategory.name} is about ${ratio}% of spending. If that was intentional, you’re fine; otherwise, it’s the first area I’d keep an eye on 🙂`;
 }
 
-async function handleFinancialReport(message: TelegramMessage, link: any, text: string) {
+async function handleFinancialReport(
+  message: TelegramMessage,
+  link: any,
+  text: string,
+) {
   const chatId = asText(message.chat.id);
   const languageIsVietnamese = detectVietnamese(text);
   const range = parseReportRange(text);
   const context = await loadContext(link.user_id, link.default_wallet_id);
-  const categoryById = new Map(context.categories.map((category: any) => [category.id, category]));
+  const categoryById = new Map(
+    context.categories.map((category: any) => [category.id, category]),
+  );
   const { data: rows, error } = await supabase
     .from("transactions")
-    .select("id,type,amount,date,description,wallet_id,category_id,contact_id,wallet:wallets!wallet_id(id,name),category:categories(id,name,parent_id),contact:contacts(id,name)")
+    .select(
+      "id,type,amount,date,description,wallet_id,category_id,contact_id,wallet:wallets!wallet_id(id,name),category:categories(id,name,parent_id),contact:contacts(id,name)",
+    )
     .eq("user_id", link.user_id)
     .gte("date", range.start)
     .lte("date", range.end)
@@ -1378,22 +1956,42 @@ async function handleFinancialReport(message: TelegramMessage, link: any, text: 
 
   const expenses = transactions.filter((tx: any) => tx.type === "expense");
   const incomes = transactions.filter((tx: any) => tx.type === "income");
-  const totalExpense = expenses.reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0);
-  const totalIncome = incomes.reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0);
+  const totalExpense = expenses.reduce(
+    (sum: number, tx: any) => sum + Number(tx.amount || 0),
+    0,
+  );
+  const totalIncome = incomes.reduce(
+    (sum: number, tx: any) => sum + Number(tx.amount || 0),
+    0,
+  );
   const net = totalIncome - totalExpense;
   const categoryName = (tx: any) => {
     const category = tx.category || categoryById.get(tx.category_id);
     return category?.name || "Khác";
   };
   const walletName = (tx: any) => tx.wallet?.name || "Không rõ ví";
-  const contactName = (tx: any) => tx.contact?.name || "Không có người liên quan";
-  const topCategories = groupSum(expenses, categoryName, (tx: any) => Number(tx.amount || 0));
-  const topWallets = groupSum(expenses, walletName, (tx: any) => Number(tx.amount || 0));
-  const topContacts = groupSum(expenses.filter((tx: any) => tx.contact_id), contactName, (tx: any) => Number(tx.amount || 0));
-  const monthly = groupSum(transactions, (tx: any) => monthLabel(tx.date), (tx: any) =>
-    tx.type === "income" ? Number(tx.amount || 0) : -Number(tx.amount || 0),
+  const contactName = (tx: any) =>
+    tx.contact?.name || "Không có người liên quan";
+  const topCategories = groupSum(expenses, categoryName, (tx: any) =>
+    Number(tx.amount || 0),
+  );
+  const topWallets = groupSum(expenses, walletName, (tx: any) =>
+    Number(tx.amount || 0),
+  );
+  const topContacts = groupSum(
+    expenses.filter((tx: any) => tx.contact_id),
+    contactName,
+    (tx: any) => Number(tx.amount || 0),
+  );
+  const monthly = groupSum(
+    transactions,
+    (tx: any) => monthLabel(tx.date),
+    (tx: any) =>
+      tx.type === "income" ? Number(tx.amount || 0) : -Number(tx.amount || 0),
   ).sort((a, b) => a.name.localeCompare(b.name));
-  const largestExpense = [...expenses].sort((a: any, b: any) => Number(b.amount || 0) - Number(a.amount || 0))[0];
+  const largestExpense = [...expenses].sort(
+    (a: any, b: any) => Number(b.amount || 0) - Number(a.amount || 0),
+  )[0];
   const summary: FinancialReportSummary = {
     range,
     languageIsVietnamese,
@@ -1414,7 +2012,9 @@ async function handleFinancialReport(message: TelegramMessage, link: any, text: 
       : undefined,
   };
   const lines = buildFinancialReportLines(summary);
-  const coachNote = await buildFinancialCoachNote(text, summary).catch(() => null);
+  const coachNote = await buildFinancialCoachNote(text, summary).catch(
+    () => null,
+  );
   const finalNote = coachNote || fallbackCoachNote(summary);
 
   await sendMessage(
@@ -1533,19 +2133,27 @@ async function resolveParsedTransaction(
   context: Awaited<ReturnType<typeof loadContext>>,
 ) {
   const memories = await loadAiMemories(context.userId);
-  const aiEnabled = Boolean(aiParseApiKey) && aiParseMode !== "local" && aiParseMode !== "off";
-  const aiParsed = aiEnabled ? await parseTransactionWithAi(text, context, memories) : null;
+  const profile = await loadSpendingPatternProfile(context.userId, text);
+  const aiEnabled =
+    Boolean(aiParseApiKey) && aiParseMode !== "local" && aiParseMode !== "off";
+  const aiParsed = aiEnabled
+    ? await parseTransactionWithAi(text, context, memories, profile)
+    : null;
   if (aiParsed?.ok) {
     return {
-      parsed: aiParsed,
+      parsed: applySpendingPatternProfile(aiParsed, profile, context, text),
       parser: "ai" as const,
+      profile,
     };
   }
 
   const localParsed = parseTelegramTransaction(text, context);
   return {
-    parsed: localParsed,
+    parsed: localParsed.ok
+      ? applySpendingPatternProfile(localParsed, profile, context, text)
+      : localParsed,
     parser: "local" as const,
+    profile,
   };
 }
 
@@ -1558,8 +2166,13 @@ async function handleTransaction(
   const context = await loadContext(link.user_id, link.default_wallet_id);
   const pendingDraft = await loadPendingDraft(message);
   const sourceText = pendingDraft?.source_text || text;
-  const textToParse = pendingDraft ? `${pendingDraft.source_text} ${text}` : text;
-  const { parsed, parser } = await resolveParsedTransaction(textToParse, context);
+  const textToParse = pendingDraft
+    ? `${pendingDraft.source_text} ${text}`
+    : text;
+  const { parsed, parser } = await resolveParsedTransaction(
+    textToParse,
+    context,
+  );
   const languageIsVietnamese = detectVietnamese(text);
 
   if (!parsed.ok) {
@@ -1569,18 +2182,50 @@ async function handleTransaction(
         defaultWalletId: "__missing_wallet__",
       });
       if (draftParsed.ok) {
-        await savePendingDraft(link, message, text, draftParsed);
-        await sendMessage(
+        await savePendingDraft(
+          link,
+          message,
+          text,
+          {
+            ...draftParsed,
+            walletId: "",
+            unmatched: ["wallet", ...draftParsed.unmatched],
+          },
+          ["wallet", ...draftParsed.unmatched],
+        );
+        await askDraftField(
           chatId,
-          detectVietnamese(text)
-            ? `Mình hiểu rồi: ${formatAmount(draftParsed.amount)} cho “${draftParsed.description}” 👍\nCòn thiếu ví thôi. Nhắn tiếp tên ví, ví dụ “tài khoản”, “tiền mặt”, hoặc “momo”.`
-            : `I understood ${formatAmount(draftParsed.amount)} for “${draftParsed.description}” 👍\nI still need the wallet. Send just the wallet name, like “cash” or “Techcombank”.`,
           asText(message.message_id),
+          {
+            ...draftParsed,
+            walletId: "",
+            unmatched: ["wallet", ...draftParsed.unmatched],
+          },
+          "wallet",
+          context,
+          detectVietnamese(text),
         );
         return;
       }
     }
     await sendMessage(chatId, parsed.reason, asText(message.message_id));
+    return;
+  }
+
+  if (
+    !pendingDraft &&
+    parsed.type !== "transfer" &&
+    parsed.unmatched.includes("category")
+  ) {
+    await savePendingDraft(link, message, sourceText, parsed, parsed.unmatched);
+    await askDraftField(
+      chatId,
+      asText(message.message_id),
+      parsed,
+      "category",
+      context,
+      languageIsVietnamese,
+    );
     return;
   }
 
@@ -1628,6 +2273,118 @@ async function handleTransaction(
   if (pendingDraft) await clearPendingDraft(message);
 }
 
+async function handleCallbackQuery(callback: TelegramCallbackQuery) {
+  const data = callback.data || "";
+  const message = callback.message;
+  if (!message || !data.startsWith("draft:")) {
+    await answerCallbackQuery(callback.id);
+    return;
+  }
+
+  const chatId = asText(message.chat.id);
+  const link = await getLinkByTelegramUserId(asText(callback.from.id));
+  if (!link) {
+    await answerCallbackQuery(callback.id, "Bạn cần link tài khoản trước nha.");
+    return;
+  }
+
+  const draft = await loadPendingDraftForTelegramUser(
+    asText(callback.from.id),
+    chatId,
+  );
+  if (!draft) {
+    await answerCallbackQuery(
+      callback.id,
+      "Draft này hết hạn rồi, gửi lại giao dịch giúp mình nha.",
+    );
+    await editMessageText(
+      chatId,
+      asText(message.message_id),
+      "Draft này hết hạn rồi. Bạn gửi lại giao dịch giúp mình nha.",
+    ).catch(() => null);
+    return;
+  }
+
+  const [, field, value] = data.split(":");
+  const context = await loadContext(link.user_id, link.default_wallet_id);
+  const parsed = parsedFromDraftPayload(draft.parsed_payload || {});
+  if (field === "wallet") {
+    const wallet = context.wallets.find((item: any) => item.id === value);
+    if (!wallet) {
+      await answerCallbackQuery(callback.id, "Ví này không còn tồn tại.");
+      return;
+    }
+    parsed.walletId = wallet.id;
+    parsed.unmatched = parsed.unmatched.filter((item) => item !== "wallet");
+    await editMessageText(
+      chatId,
+      asText(message.message_id),
+      `Đã chọn ví: ${wallet.name}`,
+    );
+  } else if (field === "category") {
+    if (value === "skip") {
+      parsed.categoryId = null;
+      parsed.unmatched = parsed.unmatched.filter((item) => item !== "category");
+      await editMessageText(
+        chatId,
+        asText(message.message_id),
+        "Đã bỏ qua danh mục cho giao dịch này.",
+      );
+    } else {
+      const category = context.categories.find(
+        (item: any) => item.id === value,
+      );
+      if (!category) {
+        await answerCallbackQuery(
+          callback.id,
+          "Danh mục này không còn tồn tại.",
+        );
+        return;
+      }
+      parsed.categoryId = category.id;
+      parsed.unmatched = parsed.unmatched.filter((item) => item !== "category");
+      await editMessageText(
+        chatId,
+        asText(message.message_id),
+        `Đã chọn danh mục: ${category.name}`,
+      );
+    }
+  } else {
+    await answerCallbackQuery(callback.id);
+    return;
+  }
+
+  await answerCallbackQuery(callback.id, "Đã nhận lựa chọn.");
+  const missingWallet = !parsed.walletId;
+  const missingCategory =
+    parsed.type !== "transfer" && parsed.unmatched.includes("category");
+  if (missingWallet || missingCategory) {
+    await supabase
+      .from("telegram_pending_transaction_drafts")
+      .update({
+        parsed_payload: {
+          ...parsedPayload(parsed),
+          missing_fields: parsed.unmatched,
+          field_confidence: parsed.fieldConfidence || {},
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", draft.id)
+      .eq("user_id", link.user_id);
+    await askDraftField(
+      chatId,
+      draft.source_message_id,
+      parsed,
+      missingWallet ? "wallet" : "category",
+      context,
+      detectVietnamese(draft.source_text),
+    );
+    return;
+  }
+
+  await saveParsedTransactionFromDraft(callback, link, draft, parsed);
+}
+
 Deno.serve(async (req) => {
   try {
     if (!telegramToken || !webhookSecret || !serviceRoleKey || !supabaseUrl) {
@@ -1648,6 +2405,11 @@ Deno.serve(async (req) => {
     if (processedError && processedError.code === "23505")
       return jsonResponse({ ok: true, duplicate: true });
     if (processedError) throw processedError;
+
+    if (update.callback_query) {
+      await handleCallbackQuery(update.callback_query);
+      return jsonResponse({ ok: true });
+    }
 
     const message = update.message;
     const text = message?.text?.trim();
