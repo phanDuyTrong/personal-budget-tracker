@@ -187,7 +187,9 @@ function TelegramBotSettings() {
 
   const linkCommand = linkCode ? "/link " + linkCode.code : "";
   const templateCommand =
-    "/template add Nhận lương tháng => nhận lương 20tr vào Techcombank; cho mẹ 5tr từ tài khoản";
+    "/template create Nhận lương tháng => nhận lương 20tr vào Techcombank; cho mẹ 5tr từ tài khoản";
+  const templateEditCommand =
+    "/template edit Nhận lương tháng => nhận lương 25tr vào Techcombank; cho mẹ 6tr từ tài khoản";
 
   const formatTemplateAmount = (amount) =>
     Number(amount || 0).toLocaleString("vi-VN") + "₫";
@@ -295,7 +297,8 @@ function TelegramBotSettings() {
           </p>
           <p className="text-xs font-medium text-neutral-500 mt-1">
             Create routines in Telegram, then trigger many transactions with one
-            message. Example: <span className="font-mono">Nhận lương tháng</span>.
+            message. Example:{" "}
+            <span className="font-mono">Nhận lương tháng</span>.
           </p>
         </div>
 
@@ -306,11 +309,16 @@ function TelegramBotSettings() {
           <p className="mt-2 font-mono text-xs md:text-sm font-bold text-primary break-words">
             {templateCommand}
           </p>
+          <p className="mt-2 font-mono text-xs md:text-sm font-bold text-neutral-500 break-words">
+            {templateEditCommand}
+          </p>
           <p className="mt-2 text-xs text-neutral-500">
-            Then send <span className="font-mono">Nhận lương tháng</span> anytime
-            to create both transactions. Use <span className="font-mono">/templates</span>
-            to list or <span className="font-mono">/template delete 1</span> to delete
-            from Telegram.
+            Then send <span className="font-mono">Nhận lương tháng</span>{" "}
+            anytime to create both transactions. Use{" "}
+            <span className="font-mono">/templates</span> to list,{" "}
+            <span className="font-mono">/template edit ...</span> to edit, or{" "}
+            <span className="font-mono">/template delete 1</span> to delete from
+            Telegram.
           </p>
         </div>
 
@@ -331,7 +339,8 @@ function TelegramBotSettings() {
                       {template.name}
                     </p>
                     <p className="text-xs text-neutral-500">
-                      Trigger: <span className="font-mono">{template.trigger_text}</span>
+                      Trigger:{" "}
+                      <span className="font-mono">{template.trigger_text}</span>
                     </p>
                   </div>
                   <Button
