@@ -1375,16 +1375,23 @@ async function deleteTemplateByName(
   );
 }
 
-function parseTemplateCreate(text: string) {
+function looksLikeTemplateCreate(text: string) {
   const normalized = normalizeText(text);
-  const startsWithCommand =
+  return (
     normalized.startsWith("/template add ") ||
     normalized.startsWith("/template tao ") ||
+    normalized.startsWith("/template tạo ") ||
     normalized.startsWith("/template create ") ||
     normalized.startsWith("tao mau ") ||
+    normalized.startsWith("tạo mẫu ") ||
     normalized.startsWith("tao template ") ||
-    normalized.startsWith("create template ");
-  if (!startsWithCommand) return null;
+    normalized.startsWith("tạo template ") ||
+    normalized.startsWith("create template ")
+  );
+}
+
+function parseTemplateCreate(text: string) {
+  if (!looksLikeTemplateCreate(text)) return null;
 
   let cleaned = text
     .replace(/^\/template\s+(?:add|create|tao|tạo)\s+/i, "")
@@ -1414,18 +1421,46 @@ async function createTemplateFromMessage(
 ) {
   const chatId = asText(message.chat.id);
   const parsedCreate = parseTemplateCreate(text);
-  if (!parsedCreate) return false;
-
-  const context = await loadContext(link.user_id, link.default_wallet_id);
-  const parsedItems = parsedCreate.itemTexts.map((itemText) => ({
-    source: itemText,
-    parsed: parseTelegramTransaction(itemText, context),
-  }));
-  const failed = parsedItems.find((item) => !item.parsed.ok);
-  if (failed || parsedItems.some((item) => !item.parsed.ok)) {
+  if (!parsedCreate) {
+    if (!looksLikeTemplateCreate(text)) return false;
     await sendMessage(
       chatId,
-      `Mình chưa hiểu một dòng trong template: "${failed?.source || ""}". Hãy viết mỗi dòng như một giao dịch bình thường, ví dụ "nhận lương 20tr vào Techcombank".`,
+      detectVietnamese(text)
+        ? [
+            "Mình nhận ra bạn muốn tạo template, nhưng còn thiếu danh sách giao dịch á.",
+            "",
+            "Bạn gửi theo mẫu này nha:",
+            "/template add Nhận lương tháng => nhận lương 20tr vào tài khoản; cho mẹ 5tr từ tài khoản; chuyển 3tr từ tài khoản sang tiết kiệm",
+            "",
+            "Mỗi giao dịch cách nhau bằng dấu `;`.",
+          ].join("\n")
+        : [
+            "I can tell you want to create a template, but I still need the transaction list.",
+            "",
+            "Use this format:",
+            "/template add Monthly salary => received salary 20m to bank; give mom 5m from bank; transfer 3m from bank to savings",
+            "",
+            "Separate each transaction with `;`.",
+          ].join("\n"),
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const context = await loadContext(link.user_id, link.default_wallet_id);
+  const parsedItems = await Promise.all(
+    parsedCreate.itemTexts.map(async (itemText) => ({
+      source: itemText,
+      ...(await resolveParsedTransaction(itemText, context)),
+    })),
+  );
+  const failed = parsedItems.find((item) => !item.parsed.ok);
+  if (failed || parsedItems.some((item) => !item.parsed.ok)) {
+    const failedReason =
+      failed && !failed.parsed.ok ? failed.parsed.reason : "";
+    await sendMessage(
+      chatId,
+      `Mình chưa hiểu một dòng trong template: "${failed?.source || ""}".\n${failedReason}\n\nHãy viết mỗi dòng như một giao dịch bình thường, ví dụ "nhận lương 20tr vào Techcombank".`,
       asText(message.message_id),
     );
     return true;
