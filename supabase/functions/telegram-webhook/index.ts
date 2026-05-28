@@ -2810,16 +2810,17 @@ async function handleEdit(message: TelegramMessage, link: any, text: string) {
     .eq("chat_id", chatId)
     .eq("telegram_user_id", asText(message.from?.id));
   eventQuery = botMessageId
-    ? eventQuery.eq("bot_message_id", botMessageId)
+    ? eventQuery
+        .eq("bot_message_id", botMessageId)
+        .order("created_at", { ascending: true })
     : eventQuery
         .gte("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
         .order("created_at", { ascending: false })
         .limit(1);
 
-  const { data: event, error } = await eventQuery.maybeSingle();
-
+  const { data: events, error } = await eventQuery;
   if (error) throw error;
-  if (!event) {
+  if (!events || events.length === 0) {
     await sendMessage(
       chatId,
       "I could not find the transaction for that replied message.",
@@ -2828,34 +2829,60 @@ async function handleEdit(message: TelegramMessage, link: any, text: string) {
     return;
   }
 
+  const event = events[0];
+  const transactionIds = [...new Set(events.map((item) => item.transaction_id))];
+  const isBatchReply = transactionIds.length > 1;
+
   const context = await loadContext(link.user_id, link.default_wallet_id);
   if (/^(sua|sửa|edit|change|update)\s*$/i.test(normalizeText(text))) {
     await sendMessage(
       chatId,
       detectVietnamese(text)
         ? [
-            "Đang nhắm đúng giao dịch bạn vừa reply đó nha 👍",
+            isBatchReply
+              ? `Mình đang nhắm vào ${transactionIds.length} giao dịch trong tin template đó nha 👍`
+              : "Đang nhắm đúng giao dịch bạn vừa reply đó nha 👍",
             "",
-            "Bạn có thể sửa theo cú pháp:",
-            "- sửa tiền 90000",
-            "- sửa ví tài khoản",
-            "- sửa danh mục mua quà",
-            "- sửa người liên quan đồng nghiệp",
-            "- sửa mô tả góp tiền mua gà vịt",
-            "- sửa ngày hôm qua",
-            "- xóa",
+            ...(isBatchReply
+              ? [
+                  "Hiện tại với reply nhiều giao dịch, mình hỗ trợ:",
+                  "- xóa",
+                  "",
+                  "Nếu muốn sửa, mình sẽ nâng tiếp theo kiểu bulk edit riêng cho Telegram.",
+                ]
+              : [
+                  "Bạn có thể sửa theo cú pháp:",
+                  "- sửa tiền 90000",
+                  "- sửa ví tài khoản",
+                  "- sửa danh mục mua quà",
+                  "- sửa người liên quan đồng nghiệp",
+                  "- sửa mô tả góp tiền mua gà vịt",
+                  "- sửa ngày hôm qua",
+                  "- xóa",
+                ]),
           ].join("\n")
         : [
-            "I’m targeting the exact transaction you replied to 👍",
+            isBatchReply
+              ? `I’m targeting ${transactionIds.length} transactions from that template reply 👍`
+              : "I’m targeting the exact transaction you replied to 👍",
             "",
-            "You can edit it with:",
-            "- change amount 90000",
-            "- change wallet cash",
-            "- change category gifts",
-            "- change contact colleague",
-            "- change description lunch with team",
-            "- change date yesterday",
-            "- delete",
+            ...(isBatchReply
+              ? [
+                  "For multi-transaction replies, I currently support:",
+                  "- delete",
+                  "",
+                  "I can add Telegram bulk edit next.",
+                ]
+              : [
+                  "You can edit it with:",
+                  "- change amount 90000",
+                  "- change wallet cash",
+                  "- change category gifts",
+                  "- change contact colleague",
+                  "- change description lunch with team",
+                  "- change date yesterday",
+                  "- delete",
+                ]),
           ].join("\n"),
       asText(message.message_id),
     );
@@ -2866,12 +2893,29 @@ async function handleEdit(message: TelegramMessage, link: any, text: string) {
     const { error: deleteError } = await supabase
       .from("transactions")
       .delete()
-      .eq("id", event.transaction_id)
+      .in("id", transactionIds)
       .eq("user_id", event.user_id);
     if (deleteError) throw deleteError;
     await sendMessage(
       chatId,
-      detectVietnamese(text) ? "Đã xóa transaction." : "Transaction deleted.",
+      detectVietnamese(text)
+        ? isBatchReply
+          ? `Đã xóa ${transactionIds.length} giao dịch từ template này.`
+          : "Đã xóa transaction."
+        : isBatchReply
+          ? `Deleted ${transactionIds.length} transactions from that template.`
+          : "Transaction deleted.",
+      asText(message.message_id),
+    );
+    return;
+  }
+
+  if (isBatchReply) {
+    await sendMessage(
+      chatId,
+      detectVietnamese(text)
+        ? "Tin reply này đang gắn với nhiều giao dịch từ template. Hiện tại mình mới hỗ trợ `xóa` cả cụm; phần sửa hàng loạt mình sẽ nâng tiếp."
+        : "That reply is linked to multiple template-created transactions. For now I support deleting the whole batch; bulk edit can be added next.",
       asText(message.message_id),
     );
     return;
