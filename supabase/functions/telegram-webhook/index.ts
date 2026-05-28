@@ -2979,6 +2979,9 @@ async function handleBudgetInsights(
     text,
     [(item: any) => item.category?.name],
   );
+  const totalBudgetLimit = enriched.reduce((sum: number, budget: any) => sum + Number(budget.limit || 0), 0);
+  const totalBudgetSpent = enriched.reduce((sum: number, budget: any) => sum + Number(budget.spent || 0), 0);
+  const totalBudgetRatio = totalBudgetLimit > 0 ? totalBudgetSpent / totalBudgetLimit : 0;
   const rows = requestedBudget ? [requestedBudget] : [...enriched].sort((a, b) => b.ratio - a.ratio);
   const tableRows = rows.slice(0, requestedBudget ? 1 : 7).map((budget: any) => {
     const name = (withEmoji(budget.category?.name || (languageIsVietnamese ? "Khác" : "Other"))
@@ -2994,6 +2997,9 @@ async function handleBudgetInsights(
         languageIsVietnamese
           ? `<b>Budget của ${escapeHtml(withEmoji(requestedBudget.category?.name || "không rõ"))}</b>`
           : `<b>Budget for ${escapeHtml(withEmoji(requestedBudget.category?.name || "unknown"))}</b>`,
+        languageIsVietnamese
+          ? `Tổng budget: <b>${escapeHtml(formatAmount(totalBudgetLimit))}</b> • Đã tiêu: <b>${escapeHtml(formatAmount(totalBudgetSpent))}</b> ${budgetStatusEmoji(totalBudgetRatio)}`
+          : `Total budget: <b>${escapeHtml(formatAmount(totalBudgetLimit))}</b> • Spent: <b>${escapeHtml(formatAmount(totalBudgetSpent))}</b> ${budgetStatusEmoji(totalBudgetRatio)}`,
         `<pre>${tableRows.join("\n")}</pre>`,
         languageIsVietnamese
           ? `Trạng thái: ${budgetStatusEmoji(requestedBudget.ratio)} ${escapeHtml(requestedBudget.status)}`
@@ -3004,6 +3010,9 @@ async function handleBudgetInsights(
           ? `<b>Tình hình budget ${escapeHtml(range.labelVi)} 📒</b>`
           : `<b>Budget check for ${escapeHtml(range.labelEn)} 📒</b>`,
         escapeHtml(`${range.start} → ${range.end}`),
+        languageIsVietnamese
+          ? `Tổng budget: <b>${escapeHtml(formatAmount(totalBudgetLimit))}</b> • Đã tiêu: <b>${escapeHtml(formatAmount(totalBudgetSpent))}</b> ${budgetStatusEmoji(totalBudgetRatio)}`
+          : `Total budget: <b>${escapeHtml(formatAmount(totalBudgetLimit))}</b> • Spent: <b>${escapeHtml(formatAmount(totalBudgetSpent))}</b> ${budgetStatusEmoji(totalBudgetRatio)}`,
         `<pre>${languageIsVietnamese ? "Màu Mục              Đã chi/Giới hạn   %" : "Lvl Category         Spent/Limit      %"}\n${tableRows.join("\n")}</pre>`,
         languageIsVietnamese
           ? "Legend: 🔴 quá ngân sách • 🟡 trên 80% • 🟢 dưới 80%"

@@ -139,6 +139,20 @@ export function Budgets() {
         return sorted;
     }, [budgets, budgetOrder]);
 
+    const budgetSummary = useMemo(() => {
+        const totalBudget = sortedBudgets.reduce((sum, budget) => sum + Number(budget.amount || 0), 0);
+        const totalSpent = sortedBudgets.reduce((sum, budget) => sum + Number(budget.spent || 0), 0);
+        const totalRemaining = Math.max(totalBudget - totalSpent, 0);
+        const totalPct = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
+
+        return {
+            totalBudget,
+            totalSpent,
+            totalRemaining,
+            totalPct,
+        };
+    }, [sortedBudgets]);
+
     const handleDragEnd = (result) => {
         if (!result.destination) return;
         const items = Array.from(sortedBudgets);
@@ -201,6 +215,45 @@ export function Budgets() {
                 </div>
             </div>
 
+            {!isLoading && sortedBudgets.length > 0 && (
+                <GlassCard className="px-5 py-4">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-neutral-500">
+                                Budget Overview
+                            </p>
+                            <h2 className="mt-2 text-xl font-black text-neutral-900 dark:text-white">
+                                {fmt(budgetSummary.totalSpent)} / {fmt(budgetSummary.totalBudget)}
+                            </h2>
+                            <p className="mt-1 text-sm text-neutral-500">
+                                You have used {budgetSummary.totalPct}% of your full budget pool this period.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+                            <div className="rounded-2xl border border-black/5 bg-neutral-100/70 px-4 py-3 dark:border-white/10 dark:bg-neutral-900/70">
+                                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-neutral-500">Total budget</p>
+                                <p className="mt-2 text-lg font-black text-neutral-900 dark:text-white">
+                                    {fmt(budgetSummary.totalBudget)}
+                                </p>
+                            </div>
+                            <div className="rounded-2xl border border-black/5 bg-neutral-100/70 px-4 py-3 dark:border-white/10 dark:bg-neutral-900/70">
+                                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-neutral-500">Spent</p>
+                                <p className="mt-2 text-lg font-black text-neutral-900 dark:text-white">
+                                    {fmt(budgetSummary.totalSpent)}
+                                </p>
+                            </div>
+                            <div className="rounded-2xl border border-black/5 bg-neutral-100/70 px-4 py-3 dark:border-white/10 dark:bg-neutral-900/70">
+                                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-neutral-500">Remaining</p>
+                                <p className="mt-2 text-lg font-black text-neutral-900 dark:text-white">
+                                    {fmt(budgetSummary.totalRemaining)}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </GlassCard>
+            )}
+
             {isLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {Array(8).fill(0).map((_, i) => <Skeleton key={i} className="h-48 rounded-3xl" />)}
@@ -231,7 +284,10 @@ export function Budgets() {
                                                     <GlassCard className={`relative space-y-6 group ${snapshot.isDragging ? 'shadow-2xl scale-105 rotate-1 ring-4 ring-primary/20' : ''}`}>
                                                         <div className="flex items-start justify-between">
                                                             <div className="flex items-center gap-2">
-                                                                <div {...provided.dragHandleProps} className="cursor-grab opacity-0 group-hover:opacity-100 transition-opacity text-neutral-400">
+                                                                <div
+                                                                    {...provided.dragHandleProps}
+                                                                    className="cursor-grab rounded-full border border-black/5 bg-neutral-100/80 p-1 text-neutral-400 transition-colors hover:text-neutral-600 dark:border-white/10 dark:bg-neutral-900/80 dark:hover:text-neutral-200"
+                                                                >
                                                                     <EllipsisVerticalIcon className="h-5 w-5" />
                                                                 </div>
                                                                 <div>
