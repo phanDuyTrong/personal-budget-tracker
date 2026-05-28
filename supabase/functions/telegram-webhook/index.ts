@@ -2423,6 +2423,12 @@ function guidedShortcutType(text: string) {
   return null;
 }
 
+function looksLikeEditReply(text: string) {
+  return /^(xoa|xóa|delete|remove|sua|sửa|doi|đổi|change|update|edit)\b/i.test(
+    normalizeText(text),
+  );
+}
+
 function parseReportRange(text: string) {
   const normalized = normalizeText(text);
   const today = todayInTimeZone();
@@ -3490,15 +3496,19 @@ Deno.serve(async (req) => {
     }
 
     if (message.reply_to_message) {
-      const casual = await buildCasualChatReply(text, link);
-      if (casual.isCasual) {
-        await sendMessage(
-          chatId,
-          casual.reply || localCasualReply(text, detectVietnamese(text)),
-          asText(message.message_id),
-        );
-      } else {
+      if (looksLikeEditReply(text)) {
         await handleEdit(message, link, text);
+      } else {
+        const casual = await buildCasualChatReply(text, link);
+        if (casual.isCasual) {
+          await sendMessage(
+            chatId,
+            casual.reply || localCasualReply(text, detectVietnamese(text)),
+            asText(message.message_id),
+          );
+        } else {
+          await handleEdit(message, link, text);
+        }
       }
     } else if (await handleTemplateCommand(message, link, text)) {
       // handled
