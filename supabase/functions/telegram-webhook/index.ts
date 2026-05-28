@@ -91,7 +91,7 @@ type InlineKeyboardButton = {
 
 type SendMessageOptions = {
   replyToMessageId?: string;
-  replyMarkup?: { inline_keyboard: InlineKeyboardButton[][] };
+  replyMarkup?: Record<string, unknown>;
 };
 
 type FieldSuggestion = {
@@ -149,6 +149,20 @@ type CasualChatResult = {
   reply: string | null;
 };
 
+type GuidedDraftPayload = {
+  draft_kind: "guided";
+  guided_type: "expense" | "income" | "transfer";
+  guided_stage:
+    | "amount"
+    | "wallet"
+    | "toWallet"
+    | "category"
+    | "contact"
+    | "description";
+  language: "vi" | "en";
+  transaction: Omit<ParsedOkTransaction, "ok">;
+};
+
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const telegramToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
@@ -175,6 +189,16 @@ const webAppUrl =
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+const BOT_SHORTCUT_KEYBOARD = {
+  keyboard: [
+    [{ text: "💸 Ghi chi tiêu" }, { text: "💰 Ghi nhận tiền" }],
+    [{ text: "🔁 Ghi chuyển tiền" }, { text: "📚 Templates" }],
+    [{ text: "📊 Báo cáo tháng này" }, { text: "❓ Hướng dẫn" }],
+  ],
+  resize_keyboard: true,
+  is_persistent: true,
+};
+
 function aiRequestHeaders() {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${aiParseApiKey}`,
@@ -185,6 +209,27 @@ function aiRequestHeaders() {
     headers["X-Title"] = "Budget Manager Telegram Bot";
   }
   return headers;
+}
+
+function isVietnameseLanguage(text: string) {
+  return detectVietnamese(text);
+}
+
+function baseDraftTransaction(
+  type: "expense" | "income" | "transfer",
+): Omit<ParsedOkTransaction, "ok"> {
+  return {
+    type,
+    amount: 0,
+    date: todayInTimeZone(),
+    description: "",
+    walletId: "",
+    toWalletId: null,
+    categoryId: null,
+    contactId: null,
+    unmatched: [],
+    fieldConfidence: {},
+  };
 }
 
 function asText(value: number | string | undefined | null) {
@@ -477,6 +522,47 @@ async function editMessageText(
   return payload.result as TelegramMessage;
 }
 
+async function setTelegramCommands() {
+  const commands = [
+    { command: "start", description: "Khởi động bot" },
+    { command: "help", description: "Hướng dẫn nhanh" },
+    { command: "expense", description: "Ghi chi tiêu từng bước" },
+    { command: "income", description: "Ghi nhận tiền từng bước" },
+    { command: "transfer", description: "Ghi chuyển tiền từng bước" },
+    { command: "templates", description: "Xem và chạy templates" },
+    { command: "report", description: "Gợi ý lệnh báo cáo" },
+  ];
+  await fetch(`https://api.telegram.org/bot${telegramToken}/setMyCommands`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ commands }),
+  }).catch(() => null);
+
+  await fetch(
+    `https://api.telegram.org/bot${telegramToken}/setMyDescription`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        description:
+          "Bot ghi chi tiêu, nhận tiền, chuyển ví, chạy template và tóm tắt tài chính ngay trong Telegram.",
+      }),
+    },
+  ).catch(() => null);
+
+  await fetch(
+    `https://api.telegram.org/bot${telegramToken}/setMyShortDescription`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        short_description:
+          "Ghi giao dịch + xem báo cáo tài chính cá nhân trong Telegram.",
+      }),
+    },
+  ).catch(() => null);
+}
+
 async function loadContext(userId: string, defaultWalletId?: string | null) {
   const [
     { data: wallets, error: walletError },
@@ -746,6 +832,79 @@ async function clearPendingDraft(message: TelegramMessage) {
     .eq("chat_id", asText(message.chat.id));
 }
 
+function guidedPromptText(
+  payload: GuidedDraftPayload,
+  stageOverride?: GuidedDraftPayload["guided_stage"],
+) {
+  const stage = stageOverride || payload.guided_stage;
+  const vi = payload.language === "vi";
+  if (stage === "amount") {
+    return vi
+      ? `Okie, mình ghi ${payload.guided_type === "expense" ? "chi tiêu" : payload.guided_type === "income" ? "nhận tiền" : "chuyển tiền"} theo từng bước nha.\n\nBước 1: gửi số tiền, ví dụ \`85k\`, \`1.2tr\`, \`200000\`.`
+      : `Alright, let's capture a ${payload.guided_type} step by step.\n\nStep 1: send the amount, for example \`85k\`, \`1.2m\`, or \`200000\`.`;
+  }
+  if (stage === "description") {
+    return vi
+      ? "Bước cuối: gõ mô tả ngắn cho giao dịch này, hoặc bấm Lưu ngay nếu chưa muốn ghi note."
+      : "Last step: type a short description for this transaction, or tap Save now if you want to skip the note.";
+  }
+  return vi ? "Chọn tiếp giúp mình nha." : "Pick the next field for me.";
+}
+
+function guidedDescriptionKeyboard(language: "vi" | "en") {
+  return {
+    inline_keyboard: [
+      [
+        {
+          text: language === "vi" ? "Lưu ngay" : "Save now",
+          callback_data: "guided:description:skip",
+        },
+        {
+          text: language === "vi" ? "Hủy" : "Cancel",
+          callback_data: "guided:cancel",
+        },
+      ],
+    ],
+  };
+}
+
+function normalizeGuidedDraftPayload(payload: any): GuidedDraftPayload | null {
+  if (!payload || payload.draft_kind !== "guided") return null;
+  return {
+    draft_kind: "guided",
+    guided_type: payload.guided_type || "expense",
+    guided_stage: payload.guided_stage || "amount",
+    language: payload.language === "en" ? "en" : "vi",
+    transaction: {
+      ...baseDraftTransaction(payload.guided_type || "expense"),
+      ...(payload.transaction || {}),
+      unmatched: dedupeDraftFields(payload?.transaction?.unmatched || []),
+      fieldConfidence: payload?.transaction?.fieldConfidence || {},
+    },
+  };
+}
+
+async function saveGuidedDraft(
+  link: any,
+  message: TelegramMessage,
+  payload: GuidedDraftPayload,
+) {
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  await supabase.from("telegram_pending_transaction_drafts").upsert(
+    {
+      user_id: link.user_id,
+      telegram_user_id: asText(message.from?.id),
+      chat_id: asText(message.chat.id),
+      source_message_id: asText(message.message_id),
+      source_text: payload.guided_type,
+      parsed_payload: payload,
+      expires_at: expiresAt,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "telegram_user_id,chat_id" },
+  );
+}
+
 function keyboardRows(
   items: Array<{ id: string; name: string }>,
   prefix: string,
@@ -842,9 +1001,20 @@ async function askDraftField(
   languageIsVietnamese: boolean,
   sourceText: string,
   profile?: SpendingPatternProfile,
+  callbackNamespace: "draft" | "guided" = "draft",
 ) {
   const summary = `${formatAmount(parsed.amount)} - ${parsed.description || "-"}`;
   if (field === "wallet") {
+    const rows = keyboardRows(
+      walletOptions(context, sourceText, profile?.wallet?.id),
+      `${callbackNamespace}:wallet`,
+    );
+    rows.push([
+      {
+        text: languageIsVietnamese ? "Hủy" : "Cancel",
+        callback_data: "guided:cancel",
+      },
+    ]);
     await sendMessage(
       chatId,
       languageIsVietnamese
@@ -852,18 +1022,23 @@ async function askDraftField(
         : `I understood this transaction: ${summary} 👍\nPick the wallet to save it:`,
       {
         replyToMessageId,
-        replyMarkup: {
-          inline_keyboard: keyboardRows(
-            walletOptions(context, sourceText, profile?.wallet?.id),
-            "draft:wallet",
-          ),
-        },
+        replyMarkup: { inline_keyboard: rows },
       },
     );
     return;
   }
 
   if (field === "toWallet") {
+    const rows = keyboardRows(
+      toWalletOptions(context, sourceText, parsed),
+      `${callbackNamespace}:toWallet`,
+    );
+    rows.push([
+      {
+        text: languageIsVietnamese ? "Hủy" : "Cancel",
+        callback_data: "guided:cancel",
+      },
+    ]);
     await sendMessage(
       chatId,
       languageIsVietnamese
@@ -871,12 +1046,7 @@ async function askDraftField(
         : `I got that this is a transfer: ${summary}\nPick the destination wallet so I can save it properly:`,
       {
         replyToMessageId,
-        replyMarkup: {
-          inline_keyboard: keyboardRows(
-            toWalletOptions(context, sourceText, parsed),
-            "draft:toWallet",
-          ),
-        },
+        replyMarkup: { inline_keyboard: rows },
       },
     );
     return;
@@ -885,12 +1055,16 @@ async function askDraftField(
   if (field === "category") {
     const rows = keyboardRows(
       categoryOptions(context, sourceText, profile?.category?.id),
-      "draft:category",
+      `${callbackNamespace}:category`,
     );
     rows.push([
       {
         text: languageIsVietnamese ? "Bỏ qua danh mục" : "Skip category",
-        callback_data: "draft:category:skip",
+        callback_data: `${callbackNamespace}:category:skip`,
+      },
+      {
+        text: languageIsVietnamese ? "Hủy" : "Cancel",
+        callback_data: "guided:cancel",
       },
     ]);
     await sendMessage(
@@ -908,12 +1082,16 @@ async function askDraftField(
 
   const rows = keyboardRows(
     contactOptions(context, sourceText, profile?.contact?.id),
-    "draft:contact",
+    `${callbackNamespace}:contact`,
   );
   rows.push([
     {
       text: languageIsVietnamese ? "Bỏ qua người liên quan" : "Skip contact",
-      callback_data: "draft:contact:skip",
+      callback_data: `${callbackNamespace}:contact:skip`,
+    },
+    {
+      text: languageIsVietnamese ? "Hủy" : "Cancel",
+      callback_data: "guided:cancel",
     },
   ]);
   await sendMessage(
@@ -925,6 +1103,70 @@ async function askDraftField(
       replyToMessageId,
       replyMarkup: { inline_keyboard: rows },
     },
+  );
+}
+
+function nextGuidedStage(payload: GuidedDraftPayload) {
+  const tx = payload.transaction;
+  if (!tx.amount || tx.amount <= 0) return "amount" as const;
+  if (!tx.walletId) return "wallet" as const;
+  if (payload.guided_type === "transfer" && !tx.toWalletId) {
+    return "toWallet" as const;
+  }
+  if (payload.guided_type !== "transfer" && !tx.categoryId) {
+    return "category" as const;
+  }
+  if (!tx.contactId) return "contact" as const;
+  if (!tx.description) return "description" as const;
+  return null;
+}
+
+async function promptGuidedStage(
+  link: any,
+  message: TelegramMessage,
+  context: Awaited<ReturnType<typeof loadContext>>,
+  payload: GuidedDraftPayload,
+) {
+  const stage = nextGuidedStage(payload);
+  payload.guided_stage = stage || "description";
+  payload.transaction.unmatched = dedupeDraftFields(
+    [
+      !payload.transaction.walletId ? "wallet" : "",
+      payload.guided_type === "transfer" && !payload.transaction.toWalletId
+        ? "toWallet"
+        : "",
+      payload.guided_type !== "transfer" && !payload.transaction.categoryId
+        ? "category"
+        : "",
+      !payload.transaction.contactId ? "contact" : "",
+    ].filter(Boolean),
+  );
+  await saveGuidedDraft(link, message, payload);
+
+  if (!stage || stage === "description") {
+    await sendMessage(
+      asText(message.chat.id),
+      guidedPromptText(payload, "description"),
+      {
+        replyToMessageId: asText(message.message_id),
+        replyMarkup: guidedDescriptionKeyboard(payload.language),
+      },
+    );
+    return;
+  }
+
+  await askDraftField(
+    asText(message.chat.id),
+    asText(message.message_id),
+    { ok: true, ...payload.transaction },
+    stage,
+    context,
+    payload.language === "vi",
+    payload.transaction.description ||
+      payload.transaction.type ||
+      payload.guided_type,
+    undefined,
+    "guided",
   );
 }
 
@@ -952,7 +1194,33 @@ async function saveParsedTransactionFromDraft(
   draft: any,
   parsed: ParsedOkTransaction,
 ) {
-  const chatId = asText(callback.message?.chat.id);
+  await insertTransactionAndReply(
+    link,
+    {
+      ...callback.message!,
+      from: callback.from,
+      message_id: Number(draft.source_message_id || callback.message?.message_id),
+    },
+    parsed,
+    draft.source_text,
+    "local",
+    parsed.unmatched,
+  );
+  await supabase
+    .from("telegram_pending_transaction_drafts")
+    .delete()
+    .eq("id", draft.id)
+    .eq("user_id", link.user_id);
+}
+
+async function insertTransactionAndReply(
+  link: any,
+  message: TelegramMessage,
+  parsed: ParsedOkTransaction,
+  sourceText: string,
+  parser: "local" | "ai" | "template" | "guided",
+  unmatched: string[] = [],
+) {
   const context = await loadContext(link.user_id, link.default_wallet_id);
   const { data: tx, error } = await supabase
     .from("transactions")
@@ -969,40 +1237,37 @@ async function saveParsedTransactionFromDraft(
       is_recurring: false,
       is_debt: false,
     })
-    .select()
+    .select(
+      "*, wallet:wallets!wallet_id(name), to_wallet:wallets!to_wallet_id(name), category:categories(name), contact:contacts(name)",
+    )
     .single();
   if (error) throw error;
 
   await rememberParse(
     link.user_id,
-    draft.source_text,
-    "local",
+    sourceText,
+    parser === "guided" ? "local" : parser,
     parsedPayloadWithNames(parsed, context),
     tx.id,
   );
+
   const reply = await sendMessage(
-    chatId,
-    summarizeTransaction(
-      tx,
-      detectVietnamese(draft.source_text),
-      parsed.unmatched,
-    ),
-    draft.source_message_id,
+    asText(message.chat.id),
+    summarizeTransaction(tx, detectVietnamese(sourceText), unmatched),
+    asText(message.message_id),
   );
+
   await supabase.from("telegram_transaction_events").insert({
     user_id: link.user_id,
-    telegram_user_id: asText(callback.from.id),
-    chat_id: chatId,
-    source_message_id: draft.source_message_id,
+    telegram_user_id: asText(message.from?.id),
+    chat_id: asText(message.chat.id),
+    source_message_id: asText(message.message_id),
     bot_message_id: asText(reply.message_id),
     transaction_id: tx.id,
-    source_text: draft.source_text,
+    source_text: sourceText,
   });
-  await supabase
-    .from("telegram_pending_transaction_drafts")
-    .delete()
-    .eq("id", draft.id)
-    .eq("user_id", link.user_id);
+
+  return tx;
 }
 
 function compactItems(
@@ -1499,7 +1764,10 @@ async function handleLink(message: TelegramMessage, code: string) {
   await sendMessage(
     chatId,
     "Linked rồi nha ✅\nTừ giờ cứ nhắn tự nhiên kiểu “ăn trưa 85k bằng tiền mặt”, tạo template, hoặc hỏi mình “tóm tắt chi tiêu tháng này”. Mình lo phần ghi chép cho gọn 😄",
-    asText(message.message_id),
+    {
+      replyToMessageId: asText(message.message_id),
+      replyMarkup: BOT_SHORTCUT_KEYBOARD,
+    },
   );
 }
 
@@ -1538,9 +1806,22 @@ function summarizeTransaction(
     unmatched.length > 0
       ? `\n${languageIsVietnamese ? "Mình chưa khớp chắc" : "Not confidently matched"}: ${unmatched.join(", ")}`
       : "";
+  const walletLine = tx.type === "transfer"
+    ? languageIsVietnamese
+      ? `Ví: ${tx.wallet?.name || "-"} -> ${tx.to_wallet?.name || "-"}`
+      : `Wallets: ${tx.wallet?.name || "-"} -> ${tx.to_wallet?.name || "-"}`
+    : languageIsVietnamese
+      ? `Ví: ${tx.wallet?.name || "-"}`
+      : `Wallet: ${tx.wallet?.name || "-"}`
+  const categoryLine = languageIsVietnamese
+    ? `Danh mục: ${tx.category?.name || "-"}`
+    : `Category: ${tx.category?.name || "-"}`
+  const contactLine = languageIsVietnamese
+    ? `Cho ai / liên quan: ${tx.contact?.name || "-"}`
+    : `For / contact: ${tx.contact?.name || "-"}`
   return languageIsVietnamese
-    ? `Done, mình ghi rồi nha ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nNgày: ${tx.date}\nMô tả: ${tx.description || "-"}${warnings}\n\nCần chỉnh thì reply tin này với “sửa ...” hoặc “xóa”. Mình sẽ học từ lần sửa đó để lần sau bắt vibe đúng hơn.`
-    : `Saved for you ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nDate: ${tx.date}\nDescription: ${tx.description || "-"}${warnings}\n\nIf you need to fix it, reply with “change ...” or “delete”. I’ll learn from the correction for next time.`;
+    ? `Done, mình ghi rồi nha ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nNgày: ${tx.date}\n${walletLine}\n${categoryLine}\n${contactLine}\nMô tả: ${tx.description || "-"}${warnings}\n\nCần chỉnh thì reply đúng tin này với “sửa ...” hoặc “xóa”. Nếu chỉ gõ “sửa”, mình sẽ gợi ý cú pháp luôn.`
+    : `Saved for you ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nDate: ${tx.date}\n${walletLine}\n${categoryLine}\n${contactLine}\nDescription: ${tx.description || "-"}${warnings}\n\nTo edit this exact transaction, reply to this message with “change ...” or “delete”. If you just send “edit”, I’ll show examples.`;
 }
 
 function itemSummary(item: TemplateItem, languageIsVietnamese: boolean) {
@@ -1598,10 +1879,19 @@ async function listTemplates(message: TelegramMessage, link: any) {
       .join("\n");
     return `${index + 1}. ${template.name} (${template.items?.length || 0})\n${items}`;
   });
+  const rows = templates.slice(0, 12).map((template) => [
+    {
+      text: `${languageIsVietnamese ? "Chạy" : "Run"}: ${template.name}`,
+      callback_data: `template:run:${template.id}`,
+    },
+  ]);
   await sendMessage(
     chatId,
     `${languageIsVietnamese ? "Template hiện có" : "Templates"}:\n${lines.join("\n\n")}`,
-    asText(message.message_id),
+    {
+      replyToMessageId: asText(message.message_id),
+      replyMarkup: rows.length ? { inline_keyboard: rows } : undefined,
+    },
   );
 }
 
@@ -2005,6 +2295,42 @@ async function runTemplate(
   );
 }
 
+async function startGuidedDraft(
+  message: TelegramMessage,
+  link: any,
+  type: "expense" | "income" | "transfer",
+  language: "vi" | "en",
+) {
+  const payload: GuidedDraftPayload = {
+    draft_kind: "guided",
+    guided_type: type,
+    guided_stage: "amount",
+    language,
+    transaction: baseDraftTransaction(type),
+  };
+  await saveGuidedDraft(link, message, payload);
+  await sendMessage(
+    asText(message.chat.id),
+    guidedPromptText(payload, "amount"),
+    {
+      replyToMessageId: asText(message.message_id),
+      replyMarkup: BOT_SHORTCUT_KEYBOARD,
+    },
+  );
+}
+
+function extractSingleAmount(text: string) {
+  const parsed = parseTelegramTransaction(`tmp ${text}`, {
+    wallets: [],
+    categories: [],
+    contacts: [],
+    defaultWalletId: "__tmp__",
+    timeZone,
+  });
+  if (!parsed.ok) return null;
+  return parsed.amount;
+}
+
 async function handleTemplateCommand(
   message: TelegramMessage,
   link: any,
@@ -2069,6 +2395,32 @@ function isReportRequest(text: string) {
       normalized,
     )
   );
+}
+
+function guidedShortcutType(text: string) {
+  const normalized = normalizeText(text);
+  if (
+    normalized === "/expense" ||
+    normalized === "ghi chi tieu" ||
+    normalized === "ghi chi tiêu"
+  ) {
+    return "expense" as const;
+  }
+  if (
+    normalized === "/income" ||
+    normalized === "ghi nhan tien" ||
+    normalized === "ghi nhận tiền"
+  ) {
+    return "income" as const;
+  }
+  if (
+    normalized === "/transfer" ||
+    normalized === "ghi chuyen tien" ||
+    normalized === "ghi chuyển tiền"
+  ) {
+    return "transfer" as const;
+  }
+  return null;
 }
 
 function parseReportRange(text: string) {
@@ -2471,6 +2823,38 @@ async function handleEdit(message: TelegramMessage, link: any, text: string) {
   }
 
   const context = await loadContext(link.user_id, link.default_wallet_id);
+  if (/^(sua|sửa|edit|change|update)\s*$/i.test(normalizeText(text))) {
+    await sendMessage(
+      chatId,
+      detectVietnamese(text)
+        ? [
+            "Đang nhắm đúng giao dịch bạn vừa reply đó nha 👍",
+            "",
+            "Bạn có thể sửa theo cú pháp:",
+            "- sửa tiền 90000",
+            "- sửa ví tài khoản",
+            "- sửa danh mục mua quà",
+            "- sửa người liên quan đồng nghiệp",
+            "- sửa mô tả góp tiền mua gà vịt",
+            "- sửa ngày hôm qua",
+            "- xóa",
+          ].join("\n")
+        : [
+            "I’m targeting the exact transaction you replied to 👍",
+            "",
+            "You can edit it with:",
+            "- change amount 90000",
+            "- change wallet cash",
+            "- change category gifts",
+            "- change contact colleague",
+            "- change description lunch with team",
+            "- change date yesterday",
+            "- delete",
+          ].join("\n"),
+      asText(message.message_id),
+    );
+    return;
+  }
   const parsed = parseTelegramEdit(text, context);
   if (parsed.action === "delete") {
     const { error: deleteError } = await supabase
@@ -2519,7 +2903,9 @@ async function handleEdit(message: TelegramMessage, link: any, text: string) {
     .update(updatePayload)
     .eq("id", event.transaction_id)
     .eq("user_id", event.user_id)
-    .select()
+    .select(
+      "*, wallet:wallets!wallet_id(name), to_wallet:wallets!to_wallet_id(name), category:categories(name), contact:contacts(name)",
+    )
     .single();
   if (updateError) throw updateError;
   await rememberParse(
@@ -2551,6 +2937,54 @@ async function handleEdit(message: TelegramMessage, link: any, text: string) {
     summarizeTransaction(tx, detectVietnamese(text)),
     asText(message.message_id),
   );
+}
+
+async function handleGuidedDraftMessage(
+  message: TelegramMessage,
+  link: any,
+  draft: any,
+  text: string,
+) {
+  const payload = normalizeGuidedDraftPayload(draft.parsed_payload);
+  if (!payload) return false;
+  const context = await loadContext(link.user_id, link.default_wallet_id);
+  const amount = extractSingleAmount(text);
+  if (payload.guided_stage === "amount") {
+    if (!amount || amount <= 0) {
+      await sendMessage(
+        asText(message.chat.id),
+        payload.language === "vi"
+          ? "Mình chưa thấy số tiền rõ lắm. Bạn thử kiểu `85k`, `1.2tr`, `200000` nha."
+          : "I still could not read the amount clearly. Try something like `85k`, `1.2m`, or `200000`.",
+        asText(message.message_id),
+      );
+      return true;
+    }
+    payload.transaction.amount = amount;
+    payload.transaction.description = payload.transaction.description || "";
+    await promptGuidedStage(link, message, context, payload);
+    return true;
+  }
+
+  if (payload.guided_stage === "description") {
+    payload.transaction.description = text.trim();
+    payload.transaction.unmatched = [];
+    const parsed: ParsedOkTransaction = {
+      ok: true,
+      ...payload.transaction,
+    };
+    await insertTransactionAndReply(
+      link,
+      message,
+      parsed,
+      payload.transaction.description || payload.guided_type,
+      "guided",
+    );
+    await clearPendingDraft(message);
+    return true;
+  }
+
+  return true;
 }
 
 async function resolveParsedTransaction(
@@ -2634,54 +3068,21 @@ async function handleTransaction(
     return;
   }
 
-  const { data: tx, error } = await supabase
-    .from("transactions")
-    .insert({
-      user_id: link.user_id,
-      wallet_id: parsed.walletId,
-      to_wallet_id: parsed.toWalletId,
-      category_id: parsed.categoryId,
-      contact_id: parsed.contactId,
-      amount: parsed.amount,
-      type: parsed.type,
-      description: parsed.description,
-      date: parsed.date,
-      is_recurring: false,
-      is_debt: false,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-
-  await rememberParse(
-    link.user_id,
+  await insertTransactionAndReply(
+    link,
+    message,
+    parsed,
     sourceText,
     parser,
-    parsedPayloadWithNames(parsed, context),
-    tx.id,
+    parsed.unmatched,
   );
-
-  const reply = await sendMessage(
-    chatId,
-    summarizeTransaction(tx, languageIsVietnamese, parsed.unmatched),
-    asText(message.message_id),
-  );
-  await supabase.from("telegram_transaction_events").insert({
-    user_id: link.user_id,
-    telegram_user_id: asText(message.from?.id),
-    chat_id: chatId,
-    source_message_id: asText(message.message_id),
-    bot_message_id: asText(reply.message_id),
-    transaction_id: tx.id,
-    source_text: sourceText,
-  });
   if (pendingDraft) await clearPendingDraft(message);
 }
 
 async function handleCallbackQuery(callback: TelegramCallbackQuery) {
   const data = callback.data || "";
   const message = callback.message;
-  if (!message || !data.startsWith("draft:")) {
+  if (!message) {
     await answerCallbackQuery(callback.id);
     return;
   }
@@ -2690,6 +3091,31 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
   const link = await getLinkByTelegramUserId(asText(callback.from.id));
   if (!link) {
     await answerCallbackQuery(callback.id, "Bạn cần link tài khoản trước nha.");
+    return;
+  }
+
+  if (data.startsWith("template:run:")) {
+    const templateId = data.split(":")[2];
+    const templates = await loadTemplates(link.user_id);
+    const template = templates.find((item) => item.id === templateId);
+    if (!template) {
+      await answerCallbackQuery(callback.id, "Template này không còn nữa.");
+      return;
+    }
+    await answerCallbackQuery(callback.id, "Đang chạy template...");
+    await runTemplate(
+      {
+        ...message,
+        from: callback.from,
+      },
+      link,
+      template,
+    );
+    return;
+  }
+
+  if (!data.startsWith("draft:") && !data.startsWith("guided:")) {
+    await answerCallbackQuery(callback.id);
     return;
   }
 
@@ -2710,8 +3136,92 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
     return;
   }
 
-  const [, field, value] = data.split(":");
   const context = await loadContext(link.user_id, link.default_wallet_id);
+  const guidedPayload = normalizeGuidedDraftPayload(draft.parsed_payload);
+  if (data === "guided:cancel") {
+    await supabase
+      .from("telegram_pending_transaction_drafts")
+      .delete()
+      .eq("id", draft.id)
+      .eq("user_id", link.user_id);
+    await answerCallbackQuery(callback.id, "Đã hủy.");
+    await editMessageText(
+      chatId,
+      asText(message.message_id),
+      guidedPayload?.language === "en"
+        ? "Cancelled. Start again anytime with /expense, /income, or /transfer."
+        : "Đã hủy nha. Khi nào cần thì gọi lại bằng /expense, /income hoặc /transfer.",
+    ).catch(() => null);
+    return;
+  }
+
+  if (data.startsWith("guided:") && guidedPayload) {
+    const [, field, value] = data.split(":");
+    const languageIsVietnamese = guidedPayload.language === "vi";
+    if (field === "description" && value === "skip") {
+      guidedPayload.transaction.description =
+        guidedPayload.transaction.description ||
+        (languageIsVietnamese
+          ? guidedPayload.guided_type === "expense"
+            ? "Chi tiêu"
+            : guidedPayload.guided_type === "income"
+              ? "Nhận tiền"
+              : "Chuyển tiền"
+          : guidedPayload.guided_type);
+      const parsed: ParsedOkTransaction = {
+        ok: true,
+        ...guidedPayload.transaction,
+      };
+      await insertTransactionAndReply(
+        link,
+        { ...message, from: callback.from },
+        parsed,
+        guidedPayload.transaction.description,
+        "guided",
+      );
+      await supabase
+        .from("telegram_pending_transaction_drafts")
+        .delete()
+        .eq("id", draft.id)
+        .eq("user_id", link.user_id);
+      await answerCallbackQuery(callback.id, "Đã lưu.");
+      await editMessageText(
+        chatId,
+        asText(message.message_id),
+        languageIsVietnamese
+          ? "Đã lưu giao dịch bằng guided flow."
+          : "Saved via guided flow.",
+      ).catch(() => null);
+      return;
+    }
+
+    const chosenMessage = { ...message, from: callback.from };
+    if (field === "wallet") {
+      guidedPayload.transaction.walletId = value;
+    } else if (field === "toWallet") {
+      guidedPayload.transaction.toWalletId = value;
+    } else if (field === "category") {
+      guidedPayload.transaction.categoryId = value === "skip" ? null : value;
+    } else if (field === "contact") {
+      guidedPayload.transaction.contactId = value === "skip" ? null : value;
+    } else {
+      await answerCallbackQuery(callback.id);
+      return;
+    }
+
+    await answerCallbackQuery(callback.id, "Đã nhận lựa chọn.");
+    await editMessageText(
+      chatId,
+      asText(message.message_id),
+      languageIsVietnamese
+        ? "Đã lưu lựa chọn, mình hỏi bước tiếp theo nè."
+        : "Saved your choice. Moving to the next step.",
+    ).catch(() => null);
+    await promptGuidedStage(link, chosenMessage, context, guidedPayload);
+    return;
+  }
+
+  const [, field, value] = data.split(":");
   const parsed = parsedFromDraftPayload(draft.parsed_payload || {});
   const languageIsVietnamese = detectVietnamese(draft.source_text || "");
   if (field === "wallet") {
@@ -2886,9 +3396,38 @@ Deno.serve(async (req) => {
     }
 
     if (text.startsWith("/start")) {
+      await setTelegramCommands();
       await sendMessage(
         chatId,
-        "Mình đây, trợ lý tài chính cá nhân bản dễ tính của bạn 😄\n\nĐể bắt đầu: mở Budget Manager Settings, tạo Telegram link code, rồi gửi /link 123456 ở đây.\n\nSau khi link xong, bạn cứ nhắn tự nhiên để ghi giao dịch, tạo template, hoặc hỏi mình: “tóm tắt chi tiêu tháng này”.",
+        "Mình đây, trợ lý tài chính cá nhân bản dễ tính của bạn 😄\n\nĐể bắt đầu: mở Budget Manager Settings, tạo Telegram link code, rồi gửi /link 123456 ở đây.\n\nSau khi link xong, bạn có thể:\n- dùng menu lệnh `/expense`, `/income`, `/transfer`\n- bấm keyboard nhanh như `💸 Ghi chi tiêu`\n- nhắn tự nhiên để mình tự parse\n- hỏi report kiểu `tóm tắt chi tiêu tháng này`",
+        { replyMarkup: BOT_SHORTCUT_KEYBOARD },
+      );
+      return jsonResponse({ ok: true });
+    }
+
+    if (text === "/help" || normalizeText(text) === "huong dan" || text === "❓ Hướng dẫn") {
+      await setTelegramCommands();
+      await sendMessage(
+        chatId,
+        [
+          "Mình hỗ trợ 3 kiểu dùng chính nè:",
+          "",
+          "1. Nhắn tự nhiên",
+          "- ăn trưa 85k bằng tiền mặt",
+          "- nhận lương 20tr vào tài khoản",
+          "- chuyển 2tr từ tiền mặt sang tiết kiệm",
+          "",
+          "2. Ghi từng bước",
+          "- /expense hoặc bấm `💸 Ghi chi tiêu`",
+          "- /income hoặc bấm `💰 Ghi nhận tiền`",
+          "- /transfer hoặc bấm `🔁 Ghi chuyển tiền`",
+          "",
+          "3. Template + báo cáo",
+          "- /templates",
+          "- /template create ...",
+          "- tóm tắt chi tiêu tháng này",
+        ].join("\n"),
+        { replyToMessageId: asText(message.message_id), replyMarkup: BOT_SHORTCUT_KEYBOARD },
       );
       return jsonResponse({ ok: true });
     }
@@ -2896,6 +3435,7 @@ Deno.serve(async (req) => {
     const linkMatch = text.match(/^\/link\s+(\d{6})/);
     if (linkMatch) {
       await handleLink(message, linkMatch[1]);
+      await setTelegramCommands();
       return jsonResponse({ ok: true });
     }
 
@@ -2915,6 +3455,37 @@ Deno.serve(async (req) => {
         "This Telegram account is not linked yet. Open Budget Manager Settings and generate a link code.",
         asText(message.message_id),
       );
+      return jsonResponse({ ok: true });
+    }
+
+    if (text === "/report" || text === "📊 Báo cáo tháng này") {
+      await sendMessage(
+        chatId,
+        "Bạn có thể hỏi mình kiểu:\n- tóm tắt chi tiêu tháng này\n- tóm tắt chi tiêu 7 ngày qua\n- báo cáo tài chính 3 tháng gần đây\n- lĩnh vực tôi chi nhiều nhất tháng này là gì",
+        { replyToMessageId: asText(message.message_id), replyMarkup: BOT_SHORTCUT_KEYBOARD },
+      );
+      return jsonResponse({ ok: true });
+    }
+
+    if (text === "📚 Templates") {
+      await listTemplates(message, link);
+      return jsonResponse({ ok: true });
+    }
+
+    const guidedType = guidedShortcutType(text);
+    if (guidedType) {
+      await startGuidedDraft(
+        message,
+        link,
+        guidedType,
+        isVietnameseLanguage(text) ? "vi" : "en",
+      );
+      return jsonResponse({ ok: true });
+    }
+
+    const pendingDraft = await loadPendingDraft(message);
+    if (pendingDraft && normalizeGuidedDraftPayload(pendingDraft.parsed_payload)) {
+      await handleGuidedDraftMessage(message, link, pendingDraft, text);
       return jsonResponse({ ok: true });
     }
 
