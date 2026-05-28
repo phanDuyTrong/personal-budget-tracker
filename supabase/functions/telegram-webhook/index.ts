@@ -92,6 +92,7 @@ type InlineKeyboardButton = {
 type SendMessageOptions = {
   replyToMessageId?: string;
   replyMarkup?: Record<string, unknown>;
+  parseMode?: "HTML" | "MarkdownV2";
 };
 
 type FieldSuggestion = {
@@ -412,6 +413,27 @@ function formatAmount(amount: number) {
   return `${new Intl.NumberFormat("vi-VN").format(amount)}₫`;
 }
 
+function formatCompactAmount(amount: number) {
+  const abs = Math.abs(amount);
+  if (abs >= 1_000_000_000) {
+    return `${(amount / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}b`;
+  }
+  if (abs >= 1_000_000) {
+    return `${(amount / 1_000_000).toFixed(1).replace(/\.0$/, "")}m`;
+  }
+  if (abs >= 1_000) {
+    return `${(amount / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
+  }
+  return `${Math.round(amount)}`;
+}
+
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function todayInTimeZone(now = new Date(), tz = timeZone) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
@@ -474,6 +496,7 @@ async function sendMessage(
           : undefined,
         allow_sending_without_reply: true,
         reply_markup: options.replyMarkup,
+        parse_mode: options.parseMode,
       }),
     },
   );
@@ -2512,6 +2535,12 @@ function budgetStatusLabel(ratio: number, languageIsVietnamese: boolean) {
   return languageIsVietnamese ? "Vẫn an toàn" : "Still safe";
 }
 
+function budgetStatusEmoji(ratio: number) {
+  if (ratio >= 1) return "🔴";
+  if (ratio >= 0.8) return "🟡";
+  return "🟢";
+}
+
 function goalStatusLabel(goal: any, languageIsVietnamese: boolean) {
   if (Number(goal.percentage || 0) >= 100) {
     return languageIsVietnamese ? "Đã hoàn thành" : "Completed";
@@ -2917,28 +2946,34 @@ async function handleBudgetInsights(
     [(item: any) => item.category?.name],
   );
   const rows = requestedBudget ? [requestedBudget] : [...enriched].sort((a, b) => b.ratio - a.ratio);
-
+  const tableRows = rows.slice(0, requestedBudget ? 1 : 7).map((budget: any) => {
+    const name = ((budget.category?.name || (languageIsVietnamese ? "Khác" : "Other"))
+      .slice(0, 16)
+      .padEnd(16, " "));
+    const spentLimit = `${formatCompactAmount(budget.spent)}/${formatCompactAmount(budget.limit)}`
+      .padEnd(15, " ");
+    const percent = `${Math.round((budget.ratio || 0) * 100)}%`.padStart(4, " ");
+    return `${budgetStatusEmoji(budget.ratio)} ${escapeHtml(name)} ${escapeHtml(spentLimit)} ${escapeHtml(percent)}`;
+  });
   const lines = requestedBudget
     ? [
         languageIsVietnamese
-          ? `Budget của ${requestedBudget.category?.name || "không rõ"} trong ${range.labelVi}:`
-          : `Budget for ${requestedBudget.category?.name || "unknown"} in ${range.labelEn}:`,
-        `${formatAmount(requestedBudget.spent)} / ${formatAmount(requestedBudget.limit)}`,
+          ? `<b>Budget của ${escapeHtml(requestedBudget.category?.name || "không rõ")}</b>`
+          : `<b>Budget for ${escapeHtml(requestedBudget.category?.name || "unknown")}</b>`,
+        `<pre>${tableRows.join("\n")}</pre>`,
         languageIsVietnamese
-          ? `Trạng thái: ${requestedBudget.status}`
-          : `Status: ${requestedBudget.status}`,
+          ? `Trạng thái: ${budgetStatusEmoji(requestedBudget.ratio)} ${escapeHtml(requestedBudget.status)}`
+          : `Status: ${budgetStatusEmoji(requestedBudget.ratio)} ${escapeHtml(requestedBudget.status)}`,
       ]
     : [
         languageIsVietnamese
-          ? `Tình hình budget ${range.labelVi} 📒`
-          : `Budget check for ${range.labelEn} 📒`,
-        `${range.start} → ${range.end}`,
-        "",
-        ...rows.slice(0, 5).map((budget: any, index: number) =>
-          languageIsVietnamese
-            ? `${index + 1}. ${budget.category?.name || "Khác"}: ${formatAmount(budget.spent)} / ${formatAmount(budget.limit)} • ${budget.status}`
-            : `${index + 1}. ${budget.category?.name || "Other"}: ${formatAmount(budget.spent)} / ${formatAmount(budget.limit)} • ${budget.status}`,
-        ),
+          ? `<b>Tình hình budget ${escapeHtml(range.labelVi)} 📒</b>`
+          : `<b>Budget check for ${escapeHtml(range.labelEn)} 📒</b>`,
+        escapeHtml(`${range.start} → ${range.end}`),
+        `<pre>${languageIsVietnamese ? "Màu Mục              Đã chi/Giới hạn   %" : "Lvl Category         Spent/Limit      %"}\n${tableRows.join("\n")}</pre>`,
+        languageIsVietnamese
+          ? "Legend: 🔴 quá ngân sách • 🟡 trên 80% • 🟢 dưới 80%"
+          : "Legend: 🔴 over • 🟡 above 80% • 🟢 below 80%",
       ];
 
   const coachNote =
@@ -2958,8 +2993,8 @@ async function handleBudgetInsights(
 
   await sendMessage(
     chatId,
-    `${lines.join("\n")}\n\n${languageIsVietnamese ? "Nhận xét của mình" : "My take"}:\n${coachNote}`,
-    asText(message.message_id),
+    `${lines.join("\n")}\n\n${languageIsVietnamese ? "<b>Nhận xét của mình</b>" : "<b>My take</b>"}:\n${escapeHtml(coachNote)}`,
+    { replyToMessageId: asText(message.message_id), parseMode: "HTML" },
   );
   return true;
 }
@@ -3052,8 +3087,6 @@ async function handleTravelInsights(
   link: any,
   text: string,
 ) {
-  if (!isTravelRequest(text)) return false;
-
   const chatId = asText(message.chat.id);
   const languageIsVietnamese = detectVietnamese(text);
   const context = await loadContext(link.user_id, link.default_wallet_id);
@@ -3080,6 +3113,8 @@ async function handleTravelInsights(
     text,
     [(item: any) => item.name, (item: any) => item.destination],
   );
+
+  if (!isTravelRequest(text) && !requestedTrip) return false;
 
   if (!requestedTrip) {
     const tripIds = trips.map((trip: any) => trip.id);
