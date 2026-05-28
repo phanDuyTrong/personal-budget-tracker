@@ -82,6 +82,8 @@ type ParsedOkTransaction = {
   fieldConfidence?: Record<string, number>;
 };
 
+type DraftField = "wallet" | "toWallet" | "category" | "contact";
+
 type InlineKeyboardButton = {
   text: string;
   callback_data: string;
@@ -152,16 +154,38 @@ const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const telegramToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const webhookSecret = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") || "";
 const timeZone = Deno.env.get("BOT_TIME_ZONE") || "Asia/Ho_Chi_Minh";
-const aiParseApiKey = Deno.env.get("AI_PARSE_API_KEY") || "";
+const openAiApiKey = Deno.env.get("OPENAI_API_KEY") || "";
+const openAiModel = Deno.env.get("OPENAI_MODEL") || "";
+const useOpenAiDefaults =
+  !Deno.env.get("AI_PARSE_API_KEY") &&
+  !Deno.env.get("AI_PARSE_BASE_URL") &&
+  !Deno.env.get("AI_PARSE_MODEL") &&
+  Boolean(openAiApiKey && openAiModel);
+const aiParseApiKey = Deno.env.get("AI_PARSE_API_KEY") || openAiApiKey;
 const aiParseBaseUrl =
   Deno.env.get("AI_PARSE_BASE_URL") ||
-  "https://openrouter.ai/api/v1/chat/completions";
-const aiParseModel = Deno.env.get("AI_PARSE_MODEL") || "openrouter/free";
+  (useOpenAiDefaults
+    ? "https://api.openai.com/v1/chat/completions"
+    : "https://openrouter.ai/api/v1/chat/completions");
+const aiParseModel =
+  Deno.env.get("AI_PARSE_MODEL") || openAiModel || "openrouter/free";
 const aiParseMode = Deno.env.get("AI_PARSE_MODE") || "assist";
 const webAppUrl =
   Deno.env.get("WEB_APP_URL") || "https://budget-manager-a4482.web.app";
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+function aiRequestHeaders() {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${aiParseApiKey}`,
+    "Content-Type": "application/json",
+  };
+  if (aiParseBaseUrl.includes("openrouter.ai")) {
+    headers["HTTP-Referer"] = webAppUrl;
+    headers["X-Title"] = "Budget Manager Telegram Bot";
+  }
+  return headers;
+}
 
 function asText(value: number | string | undefined | null) {
   return value === undefined || value === null ? "" : String(value);
@@ -301,12 +325,7 @@ async function buildCasualChatReply(
 
   const response = await fetch(aiParseBaseUrl, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${aiParseApiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": webAppUrl,
-      "X-Title": "Budget Manager Telegram Bot",
-    },
+    headers: aiRequestHeaders(),
     body: JSON.stringify({
       model: aiParseModel,
       messages: [
@@ -506,15 +525,52 @@ async function loadTemplates(userId: string) {
   }));
 }
 
-async function loadAiMemories(userId: string) {
+async function loadAiMemories(userId: string, text: string) {
   const { data, error } = await supabase
     .from("telegram_ai_parse_memories")
-    .select("source_text,parser,parsed_payload,created_at,transaction_id")
+    .select(
+      "source_text,normalized_text,parser,parsed_payload,created_at,transaction_id",
+    )
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(120);
   if (error) return [];
-  return data || [];
+  const ranked = (data || [])
+    .map((memory: any) => {
+      const parsed = memory.parsed_payload || {};
+      const sourceScore = scoreTextSimilarity(text, memory.source_text || "");
+      const descriptionScore = scoreTextSimilarity(
+        text,
+        parsed.description || "",
+      );
+      const correctionScore = scoreTextSimilarity(
+        text,
+        parsed.corrected_by || "",
+      );
+      const normalizedScore =
+        memory.normalized_text &&
+        normalizeText(text).includes(memory.normalized_text)
+          ? 2
+          : 0;
+      const correctionBonus = parsed.corrected_by ? 1.4 : 0;
+      const parserBonus = memory.parser === "template" ? 0.1 : 0.35;
+      return {
+        memory,
+        score:
+          Math.max(sourceScore, descriptionScore, correctionScore) +
+          normalizedScore +
+          correctionBonus +
+          parserBonus,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const relevant = ranked
+    .filter((item) => item.score > 0.8)
+    .slice(0, 20)
+    .map((item) => item.memory);
+  if (relevant.length > 0) return relevant;
+  return ranked.slice(0, 12).map((item) => item.memory);
 }
 
 async function rememberParse(
@@ -547,6 +603,29 @@ function parsedPayload(parsed: ParsedOkTransaction) {
   };
 }
 
+function parsedPayloadWithNames(
+  parsed: ParsedOkTransaction,
+  context: Awaited<ReturnType<typeof loadContext>>,
+) {
+  const wallet = context.wallets.find((item: any) => item.id === parsed.walletId);
+  const toWallet = context.wallets.find(
+    (item: any) => item.id === parsed.toWalletId,
+  );
+  const category = context.categories.find(
+    (item: any) => item.id === parsed.categoryId,
+  );
+  const contact = context.contacts.find(
+    (item: any) => item.id === parsed.contactId,
+  );
+  return {
+    ...parsedPayload(parsed),
+    wallet_name: wallet?.name || null,
+    to_wallet_name: toWallet?.name || null,
+    category_name: category?.name || null,
+    contact_name: contact?.name || null,
+  };
+}
+
 function compactMemories(memories: any[]) {
   return memories.slice(0, 14).map((memory) => {
     const parsed = memory.parsed_payload || {};
@@ -569,8 +648,40 @@ function compactMemories(memories: any[]) {
   });
 }
 
-function isMissingWalletReason(reason = "") {
-  return normalizeText(reason).includes("could not match a wallet");
+function dedupeDraftFields(fields: string[] = []) {
+  const allowed: DraftField[] = ["wallet", "toWallet", "category", "contact"];
+  return [...new Set(fields.filter((field): field is DraftField => allowed.includes(field as DraftField)))];
+}
+
+function nextDraftField(parsed: ParsedOkTransaction) {
+  const fields = dedupeDraftFields(parsed.unmatched);
+  const order: DraftField[] = ["wallet", "toWallet", "category", "contact"];
+  return order.find((field) => fields.includes(field)) || null;
+}
+
+function extractPotentialContactSegment(text: string) {
+  const normalized = normalizeText(text);
+  const match = normalized.match(
+    /\b(?:cho|gui|tra|voi|with|for|to)\b\s+(.+?)(?=\b(?:bang|with|from|tu|sang|qua|vao|into|hom|today|yesterday)\b|$)/,
+  );
+  return match?.[1]?.trim() || "";
+}
+
+function textSuggestsContact(
+  text: string,
+  context: Awaited<ReturnType<typeof loadContext>>,
+) {
+  const segment = extractPotentialContactSegment(text);
+  if (!segment) return false;
+  const normalizedSegment = normalizeText(segment);
+  const matchesWallet = context.wallets.some((wallet: any) =>
+    normalizeText(wallet.name || "") === normalizedSegment,
+  );
+  if (matchesWallet) return false;
+  if (normalizedSegment.split(" ").length >= 2) return true;
+  return /\b(?:anh|chi|em|me|ba|ma|team|sep|dong nghiep|khach|doi tac|friend|mom|dad|boss|client|colleague)\b/i.test(
+    normalizedSegment,
+  );
 }
 
 async function savePendingDraft(
@@ -590,7 +701,7 @@ async function savePendingDraft(
       source_text: sourceText,
       parsed_payload: {
         ...parsedPayload(parsed),
-        missing_fields: missingFields,
+        missing_fields: dedupeDraftFields(missingFields),
         field_confidence: parsed.fieldConfidence || {},
       },
       expires_at: expiresAt,
@@ -650,32 +761,87 @@ function keyboardRows(
   return rows;
 }
 
-function categoryOptions(context: Awaited<ReturnType<typeof loadContext>>) {
+function rankDraftOptions(
+  items: Array<{ id: string; name: string }>,
+  sourceText: string,
+  preferredId?: string | null,
+  excludeIds: string[] = [],
+) {
+  return items
+    .filter((item) => !excludeIds.includes(item.id))
+    .map((item) => ({
+      item,
+      score:
+        scoreTextSimilarity(sourceText, item.name || "") +
+        (normalizeText(sourceText).includes(normalizeText(item.name || ""))
+          ? 3
+          : 0) +
+        (preferredId && item.id === preferredId ? 4 : 0),
+    }))
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.item.name.localeCompare(b.item.name);
+    })
+    .map((entry) => entry.item);
+}
+
+function categoryOptions(
+  context: Awaited<ReturnType<typeof loadContext>>,
+  sourceText: string,
+  preferredId?: string | null,
+) {
   const expenseCategories = context.categories.filter(
     (category: any) => !category.type || category.type === "expense",
   );
   const childCategories = expenseCategories.filter(
     (category: any) => category.parent_id,
   );
-  return (childCategories.length ? childCategories : expenseCategories).slice(
-    0,
-    10,
+  const pool = childCategories.length ? childCategories : expenseCategories;
+  return rankDraftOptions(pool, sourceText, preferredId).slice(0, 10);
+}
+
+function walletOptions(
+  context: Awaited<ReturnType<typeof loadContext>>,
+  sourceText: string,
+  preferredId?: string | null,
+) {
+  return rankDraftOptions(
+    context.wallets.filter((wallet: any) => !wallet.type || wallet.type !== "deleted"),
+    sourceText,
+    preferredId,
+  ).slice(0, 10);
+}
+
+function toWalletOptions(
+  context: Awaited<ReturnType<typeof loadContext>>,
+  sourceText: string,
+  parsed: ParsedOkTransaction,
+) {
+  return walletOptions(context, sourceText, null).filter(
+    (wallet) => wallet.id !== parsed.walletId,
   );
 }
 
-function walletOptions(context: Awaited<ReturnType<typeof loadContext>>) {
-  return context.wallets
-    .filter((wallet: any) => !wallet.type || wallet.type !== "deleted")
-    .slice(0, 10);
+function contactOptions(
+  context: Awaited<ReturnType<typeof loadContext>>,
+  sourceText: string,
+  preferredId?: string | null,
+) {
+  return rankDraftOptions(context.contacts, sourceText, preferredId).slice(
+    0,
+    10,
+  );
 }
 
 async function askDraftField(
   chatId: string,
   replyToMessageId: string | undefined,
   parsed: ParsedOkTransaction,
-  field: "wallet" | "category",
+  field: DraftField,
   context: Awaited<ReturnType<typeof loadContext>>,
   languageIsVietnamese: boolean,
+  sourceText: string,
+  profile?: SpendingPatternProfile,
 ) {
   const summary = `${formatAmount(parsed.amount)} - ${parsed.description || "-"}`;
   if (field === "wallet") {
@@ -687,25 +853,74 @@ async function askDraftField(
       {
         replyToMessageId,
         replyMarkup: {
-          inline_keyboard: keyboardRows(walletOptions(context), "draft:wallet"),
+          inline_keyboard: keyboardRows(
+            walletOptions(context, sourceText, profile?.wallet?.id),
+            "draft:wallet",
+          ),
         },
       },
     );
     return;
   }
 
-  const rows = keyboardRows(categoryOptions(context), "draft:category");
+  if (field === "toWallet") {
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? `Mình đã hiểu đây là chuyển ví: ${summary}\nChọn ví nhận để mình lưu cho chuẩn nha:`
+        : `I got that this is a transfer: ${summary}\nPick the destination wallet so I can save it properly:`,
+      {
+        replyToMessageId,
+        replyMarkup: {
+          inline_keyboard: keyboardRows(
+            toWalletOptions(context, sourceText, parsed),
+            "draft:toWallet",
+          ),
+        },
+      },
+    );
+    return;
+  }
+
+  if (field === "category") {
+    const rows = keyboardRows(
+      categoryOptions(context, sourceText, profile?.category?.id),
+      "draft:category",
+    );
+    rows.push([
+      {
+        text: languageIsVietnamese ? "Bỏ qua danh mục" : "Skip category",
+        callback_data: "draft:category:skip",
+      },
+    ]);
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? `Mình chưa chắc danh mục cho: ${summary}\nChọn nhanh một danh mục nha, hoặc bỏ qua nếu chưa cần.`
+        : `I’m not fully sure about the category for: ${summary}\nPick one quickly, or skip it for now.`,
+      {
+        replyToMessageId,
+        replyMarkup: { inline_keyboard: rows },
+      },
+    );
+    return;
+  }
+
+  const rows = keyboardRows(
+    contactOptions(context, sourceText, profile?.contact?.id),
+    "draft:contact",
+  );
   rows.push([
     {
-      text: languageIsVietnamese ? "Bỏ qua danh mục" : "Skip category",
-      callback_data: "draft:category:skip",
+      text: languageIsVietnamese ? "Bỏ qua người liên quan" : "Skip contact",
+      callback_data: "draft:contact:skip",
     },
   ]);
   await sendMessage(
     chatId,
     languageIsVietnamese
-      ? `Mình chưa chắc danh mục cho: ${summary}\nChọn nhanh một danh mục nha, hoặc bỏ qua nếu chưa cần.`
-      : `I’m not fully sure about the category for: ${summary}\nPick one quickly, or skip it for now.`,
+      ? `Mình thấy câu này có vẻ đang nhắc tới người liên quan: ${summary}\nNếu muốn, chọn luôn để mình học đúng pattern của bạn nha.`
+      : `This message seems to mention a related person/contact: ${summary}\nIf you want, pick one so I can learn your pattern better.`,
     {
       replyToMessageId,
       replyMarkup: { inline_keyboard: rows },
@@ -724,9 +939,9 @@ function parsedFromDraftPayload(payload: any): ParsedOkTransaction {
     contactId: payload.contact_id || null,
     description: payload.description || "",
     date: payload.date || todayInTimeZone(),
-    unmatched: Array.isArray(payload.missing_fields)
-      ? payload.missing_fields
-      : [],
+    unmatched: dedupeDraftFields(
+      Array.isArray(payload.missing_fields) ? payload.missing_fields : [],
+    ),
     fieldConfidence: payload.field_confidence || {},
   };
 }
@@ -738,6 +953,7 @@ async function saveParsedTransactionFromDraft(
   parsed: ParsedOkTransaction,
 ) {
   const chatId = asText(callback.message?.chat.id);
+  const context = await loadContext(link.user_id, link.default_wallet_id);
   const { data: tx, error } = await supabase
     .from("transactions")
     .insert({
@@ -761,7 +977,7 @@ async function saveParsedTransactionFromDraft(
     link.user_id,
     draft.source_text,
     "local",
-    parsedPayload(parsed),
+    parsedPayloadWithNames(parsed, context),
     tx.id,
   );
   const reply = await sendMessage(
@@ -903,14 +1119,23 @@ async function loadSpendingPatternProfile(
   userId: string,
   text: string,
 ): Promise<SpendingPatternProfile> {
-  const { data, error } = await supabase
-    .from("transactions")
-    .select(
-      "id,type,amount,description,wallet_id,category_id,contact_id,wallet:wallets!wallet_id(name),category:categories(name),contact:contacts(name)",
-    )
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(250);
+  const [{ data, error }, { data: memoryRows, error: memoryError }] =
+    await Promise.all([
+      supabase
+        .from("transactions")
+        .select(
+          "id,type,amount,description,wallet_id,category_id,contact_id,wallet:wallets!wallet_id(name),category:categories(name),contact:contacts(name)",
+        )
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(250),
+      supabase
+        .from("telegram_ai_parse_memories")
+        .select("source_text,parsed_payload,created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(120),
+    ]);
   if (error) return { examples: [] };
 
   const categoryScores = new Map<
@@ -963,6 +1188,60 @@ async function loadSpendingPatternProfile(
       `similar past note: ${description}`,
     );
   });
+
+  if (!memoryError) {
+    (memoryRows || []).forEach((memory: any) => {
+      const parsed = memory.parsed_payload || {};
+      const sourceText = memory.source_text || "";
+      const correctedBy = parsed.corrected_by || "";
+      const similarity = Math.max(
+        scoreTextSimilarity(text, sourceText),
+        scoreTextSimilarity(text, correctedBy),
+        scoreTextSimilarity(text, parsed.description || ""),
+      );
+      if (similarity <= 0) return;
+      const correctionBonus = correctedBy ? 1.4 : 0.6;
+      const score = similarity + correctionBonus;
+
+      if (examples.length < 8) {
+        examples.push({
+          description: parsed.description || sourceText,
+          amount: Number(parsed.amount || 0),
+          categoryName: parsed.category_name || null,
+          contactName: parsed.contact_name || null,
+          walletName: parsed.wallet_name || null,
+        });
+      }
+
+      addSuggestionScore(
+        categoryScores,
+        parsed.category_id,
+        parsed.category_name,
+        score,
+        correctedBy
+          ? `corrected pattern: ${correctedBy}`
+          : `memory pattern: ${sourceText}`,
+      );
+      addSuggestionScore(
+        contactScores,
+        parsed.contact_id,
+        parsed.contact_name,
+        score,
+        correctedBy
+          ? `corrected pattern: ${correctedBy}`
+          : `memory pattern: ${sourceText}`,
+      );
+      addSuggestionScore(
+        walletScores,
+        parsed.wallet_id,
+        parsed.wallet_name,
+        Math.max(0, score - 0.4),
+        correctedBy
+          ? `corrected pattern: ${correctedBy}`
+          : `memory pattern: ${sourceText}`,
+      );
+    });
+  }
 
   return {
     category: suggestionFromScores(categoryScores),
@@ -1026,23 +1305,7 @@ function aiToParsedTransaction(
   const wallet = findByName(context.wallets, ai.walletName) || null;
   const toWallet =
     type === "transfer" ? findByName(context.wallets, ai.toWalletName) : null;
-  const walletId = wallet?.id || context.defaultWalletId || null;
-  if (!walletId) {
-    return {
-      ok: false as const,
-      reason: detectVietnamese(text)
-        ? "Mình hiểu ý rồi, nhưng chưa match được ví. Bạn thêm kiểu “bằng tiền mặt”, “vào Techcombank”, hoặc “from cash” nha."
-        : "I got the idea, but could not match a wallet yet. Please add one like “from cash” or “to Techcombank”.",
-    };
-  }
-  if (type === "transfer" && !toWallet) {
-    return {
-      ok: false as const,
-      reason: detectVietnamese(text)
-        ? "Giao dịch chuyển tiền cần ví nhận nữa nha. Bạn gửi lại kiểu “chuyển 2tr từ tiền mặt sang tiết kiệm”."
-        : "A transfer needs a destination wallet too. Please resend like “transfer 2m from cash to savings”.",
-    };
-  }
+  const walletId = wallet?.id || context.defaultWalletId || "";
 
   const category =
     type === "transfer"
@@ -1051,6 +1314,12 @@ function aiToParsedTransaction(
   const contact = findByName(context.contacts, ai.contactName);
   const today = todayInTimeZone();
   const date = /^20\d{2}-\d{2}-\d{2}$/.test(ai.date || "") ? ai.date! : today;
+  const unmatched = dedupeDraftFields([
+    !walletId ? "wallet" : "",
+    type === "transfer" && !toWallet ? "toWallet" : "",
+    !category && type !== "transfer" ? "category" : "",
+    !contact && textSuggestsContact(text, context) ? "contact" : "",
+  ]);
 
   return {
     ok: true as const,
@@ -1062,9 +1331,7 @@ function aiToParsedTransaction(
     toWalletId: toWallet?.id || null,
     categoryId: category?.id || null,
     contactId: contact?.id || null,
-    unmatched: [!category && type !== "transfer" ? "category" : null].filter(
-      Boolean,
-    ) as string[],
+    unmatched,
   };
 }
 
@@ -1110,12 +1377,7 @@ async function parseTransactionWithAi(
 
   const response = await fetch(aiParseBaseUrl, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${aiParseApiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": webAppUrl,
-      "X-Title": "Budget Manager Telegram Bot",
-    },
+    headers: aiRequestHeaders(),
     body: JSON.stringify({
       model: aiParseModel,
       messages: [
@@ -1166,6 +1428,7 @@ function applySpendingPatternProfile(
   ) {
     next.contactId = profile.contact.id;
     next.fieldConfidence.contact = profile.contact.confidence;
+    next.unmatched = next.unmatched.filter((field) => field !== "contact");
   }
   const walletWasOnlyFallback =
     Boolean(context.defaultWalletId) &&
@@ -1180,7 +1443,9 @@ function applySpendingPatternProfile(
   ) {
     next.walletId = profile.wallet.id;
     next.fieldConfidence.wallet = profile.wallet.confidence;
+    next.unmatched = next.unmatched.filter((field) => field !== "wallet");
   }
+  next.unmatched = dedupeDraftFields(next.unmatched);
   return next;
 }
 
@@ -2030,12 +2295,7 @@ async function buildFinancialCoachNote(
 
   const response = await fetch(aiParseBaseUrl, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${aiParseApiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": webAppUrl,
-      "X-Title": "Budget Manager Telegram Bot",
-    },
+    headers: aiRequestHeaders(),
     body: JSON.stringify({
       model: aiParseModel,
       messages: [
@@ -2267,14 +2527,21 @@ async function handleEdit(message: TelegramMessage, link: any, text: string) {
     event.source_text || text,
     "local",
     {
-      type: tx.type,
-      amount: Number(tx.amount),
-      wallet_id: tx.wallet_id,
-      to_wallet_id: tx.to_wallet_id,
-      category_id: tx.category_id,
-      contact_id: tx.contact_id,
-      description: tx.description,
-      date: tx.date,
+      ...parsedPayloadWithNames(
+        {
+          ok: true,
+          type: tx.type,
+          amount: Number(tx.amount),
+          walletId: tx.wallet_id,
+          toWalletId: tx.to_wallet_id,
+          categoryId: tx.category_id,
+          contactId: tx.contact_id,
+          description: tx.description || "",
+          date: tx.date,
+          unmatched: [],
+        },
+        context,
+      ),
       corrected_by: text,
     },
     tx.id,
@@ -2290,7 +2557,7 @@ async function resolveParsedTransaction(
   text: string,
   context: Awaited<ReturnType<typeof loadContext>>,
 ) {
-  const memories = await loadAiMemories(context.userId);
+  const memories = await loadAiMemories(context.userId, text);
   const profile = await loadSpendingPatternProfile(context.userId, text);
   const aiEnabled =
     Boolean(aiParseApiKey) && aiParseMode !== "local" && aiParseMode !== "off";
@@ -2341,55 +2608,28 @@ async function handleTransaction(
   const languageIsVietnamese = detectVietnamese(text);
 
   if (!parsed.ok) {
-    if (!pendingDraft && isMissingWalletReason(parsed.reason)) {
-      const draftParsed = parseTelegramTransaction(text, {
-        ...context,
-        defaultWalletId: "__missing_wallet__",
-      });
-      if (draftParsed.ok) {
-        await savePendingDraft(
-          link,
-          message,
-          text,
-          {
-            ...draftParsed,
-            walletId: "",
-            unmatched: ["wallet", ...draftParsed.unmatched],
-          },
-          ["wallet", ...draftParsed.unmatched],
-        );
-        await askDraftField(
-          chatId,
-          asText(message.message_id),
-          {
-            ...draftParsed,
-            walletId: "",
-            unmatched: ["wallet", ...draftParsed.unmatched],
-          },
-          "wallet",
-          context,
-          detectVietnamese(text),
-        );
-        return;
-      }
-    }
     await sendMessage(chatId, parsed.reason, asText(message.message_id));
     return;
   }
 
-  if (
-    !pendingDraft &&
-    parsed.type !== "transfer" &&
-    parsed.unmatched.includes("category")
-  ) {
-    await savePendingDraft(link, message, sourceText, parsed, parsed.unmatched);
+  const missingField = nextDraftField(parsed);
+  if (missingField) {
+    await savePendingDraft(
+      link,
+      message,
+      sourceText,
+      parsed,
+      dedupeDraftFields(parsed.unmatched),
+    );
     await askDraftField(
       chatId,
       asText(message.message_id),
       parsed,
-      "category",
+      missingField,
       context,
       languageIsVietnamese,
+      sourceText,
+      profile,
     );
     return;
   }
@@ -2417,7 +2657,7 @@ async function handleTransaction(
     link.user_id,
     sourceText,
     parser,
-    parsedPayload(parsed),
+    parsedPayloadWithNames(parsed, context),
     tx.id,
   );
 
@@ -2473,6 +2713,7 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
   const [, field, value] = data.split(":");
   const context = await loadContext(link.user_id, link.default_wallet_id);
   const parsed = parsedFromDraftPayload(draft.parsed_payload || {});
+  const languageIsVietnamese = detectVietnamese(draft.source_text || "");
   if (field === "wallet") {
     const wallet = context.wallets.find((item: any) => item.id === value);
     if (!wallet) {
@@ -2484,7 +2725,24 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
     await editMessageText(
       chatId,
       asText(message.message_id),
-      `Đã chọn ví: ${wallet.name}`,
+      languageIsVietnamese
+        ? `Đã chọn ví nguồn: ${wallet.name}`
+        : `Source wallet selected: ${wallet.name}`,
+    );
+  } else if (field === "toWallet") {
+    const wallet = context.wallets.find((item: any) => item.id === value);
+    if (!wallet) {
+      await answerCallbackQuery(callback.id, "Ví nhận này không còn tồn tại.");
+      return;
+    }
+    parsed.toWalletId = wallet.id;
+    parsed.unmatched = parsed.unmatched.filter((item) => item !== "toWallet");
+    await editMessageText(
+      chatId,
+      asText(message.message_id),
+      languageIsVietnamese
+        ? `Đã chọn ví nhận: ${wallet.name}`
+        : `Destination wallet selected: ${wallet.name}`,
     );
   } else if (field === "category") {
     if (value === "skip") {
@@ -2493,7 +2751,9 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
       await editMessageText(
         chatId,
         asText(message.message_id),
-        "Đã bỏ qua danh mục cho giao dịch này.",
+        languageIsVietnamese
+          ? "Đã bỏ qua danh mục cho giao dịch này."
+          : "Skipped category for this transaction.",
       );
     } else {
       const category = context.categories.find(
@@ -2511,7 +2771,39 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
       await editMessageText(
         chatId,
         asText(message.message_id),
-        `Đã chọn danh mục: ${category.name}`,
+        languageIsVietnamese
+          ? `Đã chọn danh mục: ${category.name}`
+          : `Category selected: ${category.name}`,
+      );
+    }
+  } else if (field === "contact") {
+    if (value === "skip") {
+      parsed.contactId = null;
+      parsed.unmatched = parsed.unmatched.filter((item) => item !== "contact");
+      await editMessageText(
+        chatId,
+        asText(message.message_id),
+        languageIsVietnamese
+          ? "Đã bỏ qua người liên quan cho giao dịch này."
+          : "Skipped contact for this transaction.",
+      );
+    } else {
+      const contact = context.contacts.find((item: any) => item.id === value);
+      if (!contact) {
+        await answerCallbackQuery(
+          callback.id,
+          "Người liên quan này không còn tồn tại.",
+        );
+        return;
+      }
+      parsed.contactId = contact.id;
+      parsed.unmatched = parsed.unmatched.filter((item) => item !== "contact");
+      await editMessageText(
+        chatId,
+        asText(message.message_id),
+        languageIsVietnamese
+          ? `Đã chọn người liên quan: ${contact.name}`
+          : `Contact selected: ${contact.name}`,
       );
     }
   } else {
@@ -2520,16 +2812,18 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
   }
 
   await answerCallbackQuery(callback.id, "Đã nhận lựa chọn.");
-  const missingWallet = !parsed.walletId;
-  const missingCategory =
-    parsed.type !== "transfer" && parsed.unmatched.includes("category");
-  if (missingWallet || missingCategory) {
+  const remainingMissingFields = dedupeDraftFields(parsed.unmatched);
+  const nextField = nextDraftField({
+    ...parsed,
+    unmatched: remainingMissingFields,
+  });
+  if (nextField) {
     await supabase
       .from("telegram_pending_transaction_drafts")
       .update({
         parsed_payload: {
           ...parsedPayload(parsed),
-          missing_fields: parsed.unmatched,
+          missing_fields: remainingMissingFields,
           field_confidence: parsed.fieldConfidence || {},
         },
         updated_at: new Date().toISOString(),
@@ -2539,10 +2833,14 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
     await askDraftField(
       chatId,
       draft.source_message_id,
-      parsed,
-      missingWallet ? "wallet" : "category",
+      {
+        ...parsed,
+        unmatched: remainingMissingFields,
+      },
+      nextField,
       context,
-      detectVietnamese(draft.source_text),
+      languageIsVietnamese,
+      draft.source_text || parsed.description,
     );
     return;
   }

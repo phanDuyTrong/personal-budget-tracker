@@ -312,6 +312,23 @@ function findContactFromSegment(contacts: TelegramItem[], text: string) {
   return findBest(contacts, match[1], 30);
 }
 
+function extractContactSegment(text: string) {
+  const normalized = normalizeText(text);
+  const match = normalized.match(
+    /\b(?:cho|gui|tra|voi|with|for|to)\b\s+(.+?)(?=\b(?:bang|with|from|tu|sang|qua|vao|into|hom|today|yesterday)\b|$)/,
+  );
+  return match?.[1]?.trim() || "";
+}
+
+function looksLikeContactIntent(text: string) {
+  const segment = extractContactSegment(text);
+  if (!segment) return false;
+  if (segment.split(" ").length >= 2) return true;
+  return /\b(?:anh|chi|chị|em|me|mẹ|ba|má|team|sep|sếp|dong nghiep|đồng nghiệp|khach|khách|doi tac|đối tác|friend|mom|dad|boss|client|colleague)\b/i.test(
+    segment,
+  );
+}
+
 function cleanDescription(
   text: string,
   amountRaw: string,
@@ -398,32 +415,20 @@ export function parseTelegramTransaction(
         ]) || connectorWallets.toWallet
       : null;
 
-  if (type === "transfer" && !toWallet) {
-    return {
-      ok: false,
-      reason:
-        "Transfer needs a destination wallet. Please resend with “from wallet A to wallet B” or “từ ví A sang ví B”.",
-    };
-  }
-
   const category = type === "transfer" ? null : findBest(categories, input, 55);
   const contact =
     findContactFromSegment(contacts, input) || findBest(contacts, input, 60);
-  const walletId = fromWallet?.item.id || context.defaultWalletId || null;
-  if (!walletId) {
-    return {
-      ok: false,
-      reason:
-        "I could not match a wallet. Please mention one, like “bằng tiền mặt”, “vào Techcombank”, or “from cash”.",
-    };
-  }
+  const walletId = fromWallet?.item.id || context.defaultWalletId || "";
   const description = cleanDescription(input, amount.raw, [
     fromWallet,
     toWallet,
     contact,
   ]);
   const unmatched: string[] = [];
+  if (!walletId) unmatched.push("wallet");
+  if (type === "transfer" && !toWallet) unmatched.push("toWallet");
   if (!category && type !== "transfer") unmatched.push("category");
+  if (!contact && looksLikeContactIntent(input)) unmatched.push("contact");
 
   return {
     ok: true,
