@@ -26,6 +26,27 @@ function formatCompactAmount(amount: number) {
   return `${Math.round(amount)}`;
 }
 
+function emojiForLabel(name?: string | null) {
+  const normalized = (name || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (!normalized) return "🏷️";
+  if (/(khach san|homestay|hotel|resort|luu tru)/.test(normalized)) return "🏨";
+  if (/(an uong|an sang|an trua|an toi|food|drink|cafe|tra sua|pizza|burger|nuoc)/.test(normalized)) return "🍕";
+  if (/(ve may bay|san bay|plane|flight|airfare)/.test(normalized)) return "✈️";
+  if (/(taxi|grab|xe om|bus|tau|ve xe|thue xe|xang xe|parking|gui xe)/.test(normalized)) return "🚕";
+  if (/(mua qua|qua|gift|shopping|mua sam|quan ao|my pham)/.test(normalized)) return "🎁";
+  if (/(giai tri|xem phim|karaoke|game|concert|tour|vui choi)/.test(normalized)) return "🎉";
+  if (/(suc khoe|benh|thuoc|y te|kham)/.test(normalized)) return "💊";
+  if (/(ca nhan|hair|toc|nail|spa|skin|cham soc)/.test(normalized)) return "🧴";
+  if (/(cho tien|nguoi than|gia dinh|tu thien|charity|donate)/.test(normalized)) return "💌";
+  if (/(luong|salary|bonus|thuong|income|refund|hoan tien)/.test(normalized)) return "💰";
+  if (/(debt|cong no|tra no|cho muon|muon tien)/.test(normalized)) return "🤝";
+  if (/(du lich|trip|travel)/.test(normalized)) return "🧳";
+  return "🏷️";
+}
+
 function todayInTimeZone(now = new Date(), tz = timeZone) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
@@ -208,7 +229,7 @@ async function buildWeeklyAlert(userId: string) {
     lines.push("", "📒 Budget:");
     budgetRows.slice(0, 6).forEach((budget: any) => {
       lines.push(
-        `${budgetEmoji(budget.ratio)} ${budget.name}: ${formatCompactAmount(budget.spent)}/${formatCompactAmount(budget.limit)} (${Math.round(budget.ratio * 100)}%) • ${budgetLabel(budget.ratio)}`,
+        `${budgetEmoji(budget.ratio)} ${emojiForLabel(budget.name)} ${budget.name}: ${formatCompactAmount(budget.spent)}/${formatCompactAmount(budget.limit)} (${Math.round(budget.ratio * 100)}%) • ${budgetLabel(budget.ratio)}`,
       );
     });
   }

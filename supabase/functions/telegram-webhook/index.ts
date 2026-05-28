@@ -434,6 +434,40 @@ function escapeHtml(text: string) {
     .replace(/>/g, "&gt;");
 }
 
+function emojiForLabel(name?: string | null) {
+  const normalized = normalizeText(name || "");
+  if (!normalized) return "🏷️";
+  if (/(khach san|homestay|hotel|resort|luu tru|lưu trú)/.test(normalized))
+    return "🏨";
+  if (/(an uong|ăn uống|an sang|an trua|an toi|food|drink|cafe|ca phe|tra sua|pizza|burger|lau|nuoc)/.test(normalized))
+    return "🍕";
+  if (/(ve may bay|san bay|plane|flight|air|airfare)/.test(normalized))
+    return "✈️";
+  if (/(taxi|grab|xe om|bus|tau|tàu|ve xe|thue xe|thuê xe|xang xe|parking|gui xe|gửi xe)/.test(normalized))
+    return "🚕";
+  if (/(mua qua|qua|gift|shopping|mua sam|mua sắm|quan ao|quần áo|my pham|mỹ phẩm)/.test(normalized))
+    return "🎁";
+  if (/(giai tri|entertain|xem phim|karaoke|game|concert|tour|vui choi|vui chơi)/.test(normalized))
+    return "🎉";
+  if (/(suc khoe|sức khỏe|benh|bệnh|thuoc|thuốc|y te|y tế|kham|khám)/.test(normalized))
+    return "💊";
+  if (/(ca nhan|cá nhân|hair|toc|tóc|nail|spa|skin|cham soc|chăm sóc)/.test(normalized))
+    return "🧴";
+  if (/(cho tien|nguoi than|gia dinh|gia đình|tu thien|từ thiện|charity|donate)/.test(normalized))
+    return "💌";
+  if (/(luong|lương|salary|bonus|thuong|thưởng|income|refund|hoan tien|hoàn tiền)/.test(normalized))
+    return "💰";
+  if (/(debt|cong no|công nợ|tra no|trả nợ|cho muon|cho mượn|muon tien|mượn tiền)/.test(normalized))
+    return "🤝";
+  if (/(du lich|du lịch|trip|travel)/.test(normalized)) return "🧳";
+  return "🏷️";
+}
+
+function withEmoji(name?: string | null) {
+  const label = name || "-";
+  return `${emojiForLabel(label)} ${label}`;
+}
+
 function todayInTimeZone(now = new Date(), tz = timeZone) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
@@ -1837,8 +1871,8 @@ function summarizeTransaction(
       ? `Ví: ${tx.wallet?.name || "-"}`
       : `Wallet: ${tx.wallet?.name || "-"}`
   const categoryLine = languageIsVietnamese
-    ? `Danh mục: ${tx.category?.name || "-"}`
-    : `Category: ${tx.category?.name || "-"}`
+    ? `Danh mục: ${withEmoji(tx.category?.name || "-")}`
+    : `Category: ${withEmoji(tx.category?.name || "-")}`
   const contactLine = languageIsVietnamese
     ? `Cho ai / liên quan: ${tx.contact?.name || "-"}`
     : `For / contact: ${tx.contact?.name || "-"}`
@@ -2646,7 +2680,7 @@ function reportLinesForTop(
     ...rows
       .slice(0, limit)
       .map(
-        (row, index) => `${index + 1}. ${row.name}: ${formatAmount(row.value)}`,
+        (row, index) => `${index + 1}. ${withEmoji(row.name)}: ${formatAmount(row.value)}`,
       ),
   ];
 }
@@ -2947,9 +2981,9 @@ async function handleBudgetInsights(
   );
   const rows = requestedBudget ? [requestedBudget] : [...enriched].sort((a, b) => b.ratio - a.ratio);
   const tableRows = rows.slice(0, requestedBudget ? 1 : 7).map((budget: any) => {
-    const name = ((budget.category?.name || (languageIsVietnamese ? "Khác" : "Other"))
-      .slice(0, 16)
-      .padEnd(16, " "));
+    const name = (withEmoji(budget.category?.name || (languageIsVietnamese ? "Khác" : "Other"))
+      .slice(0, 18)
+      .padEnd(18, " "));
     const spentLimit = `${formatCompactAmount(budget.spent)}/${formatCompactAmount(budget.limit)}`
       .padEnd(15, " ");
     const percent = `${Math.round((budget.ratio || 0) * 100)}%`.padStart(4, " ");
@@ -2958,8 +2992,8 @@ async function handleBudgetInsights(
   const lines = requestedBudget
     ? [
         languageIsVietnamese
-          ? `<b>Budget của ${escapeHtml(requestedBudget.category?.name || "không rõ")}</b>`
-          : `<b>Budget for ${escapeHtml(requestedBudget.category?.name || "unknown")}</b>`,
+          ? `<b>Budget của ${escapeHtml(withEmoji(requestedBudget.category?.name || "không rõ"))}</b>`
+          : `<b>Budget for ${escapeHtml(withEmoji(requestedBudget.category?.name || "unknown"))}</b>`,
         `<pre>${tableRows.join("\n")}</pre>`,
         languageIsVietnamese
           ? `Trạng thái: ${budgetStatusEmoji(requestedBudget.ratio)} ${escapeHtml(requestedBudget.status)}`
@@ -3141,8 +3175,8 @@ async function handleTravelInsights(
       languageIsVietnamese ? "Tổng quan chi tiêu du lịch ✈️" : "Travel spending overview ✈️",
       ...summaryTrips.slice(0, 5).map((trip: any, index: number) =>
         languageIsVietnamese
-          ? `${index + 1}. ${trip.name}: ${formatAmount(trip.total)}`
-          : `${index + 1}. ${trip.name}: ${formatAmount(trip.total)}`,
+          ? `${index + 1}. 🧳 ${trip.name}: ${formatAmount(trip.total)}`
+          : `${index + 1}. 🧳 ${trip.name}: ${formatAmount(trip.total)}`,
       ),
     ];
     const coachNote =
@@ -3193,8 +3227,8 @@ async function handleTravelInsights(
 
   const lines = [
     languageIsVietnamese
-      ? `Chi tiêu cho chuyến "${requestedTrip.name}" ${categoryMatch ? `• ${categoryMatch.name}` : ""}`
-      : `Spending for "${requestedTrip.name}" ${categoryMatch ? `• ${categoryMatch.name}` : ""}`,
+      ? `Chi tiêu cho chuyến "🧳 ${requestedTrip.name}" ${categoryMatch ? `• ${withEmoji(categoryMatch.name)}` : ""}`
+      : `Spending for trip "🧳 ${requestedTrip.name}" ${categoryMatch ? `• ${withEmoji(categoryMatch.name)}` : ""}`,
     `${requestedTrip.start_date} → ${requestedTrip.end_date}`,
     languageIsVietnamese
       ? `Tổng chi: ${formatAmount(total)} • ${filtered.length} giao dịch`
