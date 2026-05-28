@@ -269,7 +269,7 @@ function hasFinanceSignal(text: string) {
   const normalized = normalizedPlainText(text);
   return (
     hasMoneySignal(text) ||
-    /\b(an|uống|uong|mua|tra|trả|thanh toan|chi|tieu|tiêu|nhan|nhận|luong|lương|thu|refund|salary|income|expense|spent|paid|pay|buy|bought|transfer|chuyen|chuyển|tu|từ|sang|vao|vào|bang|bằng|vi|ví|wallet|cash|card|bank|tai khoan|tài khoản|momo|techcombank|vcb|mb|visa|date|ngay|ngày|hom qua|hôm qua|today|yesterday)\b/i.test(
+    /\b(an|uống|uong|mua|tra|trả|thanh toan|chi|tieu|tiêu|nhan|nhận|luong|lương|thu|refund|salary|income|expense|spent|paid|pay|buy|bought|transfer|chuyen|chuyển|tu|từ|sang|vao|vào|bang|bằng|vi|ví|wallet|cash|card|bank|tai khoan|tài khoản|momo|techcombank|vcb|mb|visa|date|ngay|ngày|hom qua|hôm qua|today|yesterday|budget|ngan sach|ngân sách|goal|muc tieu|mục tiêu|trip|travel|du lich|du lịch|chuyen di|chuyến đi|debt|cong no|công nợ|no ai|nợ ai|danh muc|danh mục|category)\b/i.test(
       normalized,
     )
   );
@@ -356,7 +356,7 @@ async function buildCasualChatReply(
     botRole:
       "Budget Manager Telegram bot: records transactions, manages templates, and answers personal-finance reports.",
     rules: [
-      "If the message includes a money amount, wallet, transfer, report request, template command, or edit/delete instruction, set isCasual=false.",
+      "If the message includes a money amount, wallet, transfer, report request, template command, budget, goal, trip, debt, category command, or edit/delete instruction, set isCasual=false.",
       "If it is greeting, thanks, help, small talk, encouragement, or a general non-finance chat, set isCasual=true.",
       "When replying in Vietnamese, use friendly light Gen Z tone, supportive, not cringe, max 2 emojis.",
       "Do not pretend you can do things outside Budget Manager.",
@@ -2429,6 +2429,102 @@ function looksLikeEditReply(text: string) {
   );
 }
 
+function isBudgetRequest(text: string) {
+  return /\b(budget|ngan sach|ngân sách|qua budget|vuot ngan sach|vượt ngân sách|safe budget|an toan budget|an toàn ngân sách)\b/i.test(
+    normalizeText(text),
+  );
+}
+
+function isGoalRequest(text: string) {
+  return /\b(goal|muc tieu|mục tiêu|tien do goal|tiến độ goal|dat muc tieu|đạt mục tiêu|saving goal)\b/i.test(
+    normalizeText(text),
+  );
+}
+
+function isTravelRequest(text: string) {
+  return /\b(trip|travel|du lich|du lịch|chuyen di|chuyến đi|tour)\b/i.test(
+    normalizeText(text),
+  );
+}
+
+function isDebtRequest(text: string) {
+  return /\b(debt|cong no|công nợ|no ai|nợ ai|ban no|bạn nợ|owes|owe)\b/i.test(
+    normalizeText(text),
+  );
+}
+
+function looksLikeCategoryCommand(text: string) {
+  return /^\/category\b/i.test(text) || /\b(danh muc|danh mục)\b/i.test(normalizeText(text));
+}
+
+function collectCategoryIds(
+  categories: Array<{ id: string; parent_id?: string | null }>,
+  rootId?: string | null,
+) {
+  if (!rootId) return [];
+  const ids = new Set<string>();
+  const stack = [rootId];
+  while (stack.length) {
+    const current = stack.pop();
+    if (!current || ids.has(current)) continue;
+    ids.add(current);
+    categories.forEach((category) => {
+      if (category.parent_id === current) stack.push(category.id);
+    });
+  }
+  return [...ids];
+}
+
+function findBestNamedItem<T>(
+  items: T[],
+  text: string,
+  valueFns: Array<(item: T) => string | null | undefined>,
+) {
+  const normalized = normalizeText(text);
+  let best: T | null = null;
+  let bestScore = 0;
+
+  items.forEach((item) => {
+    let score = 0;
+    valueFns.forEach((valueFn) => {
+      const raw = valueFn(item);
+      const name = normalizeText(raw || "");
+      if (!name) return;
+      let nextScore = scoreTextSimilarity(normalized, name);
+      if (normalized.includes(name)) nextScore += 1.4;
+      if (name.includes(normalized)) nextScore += 0.15;
+      score = Math.max(score, nextScore);
+    });
+    if (score > bestScore) {
+      bestScore = score;
+      best = item;
+    }
+  });
+
+  return bestScore >= 1.15 ? best : null;
+}
+
+function budgetStatusLabel(ratio: number, languageIsVietnamese: boolean) {
+  if (ratio >= 1) return languageIsVietnamese ? "Quá ngân sách" : "Over budget";
+  if (ratio >= 0.9)
+    return languageIsVietnamese ? "Sát ngưỡng" : "Very close to the limit";
+  if (ratio >= 0.8) return languageIsVietnamese ? "Cần canh" : "Watch closely";
+  return languageIsVietnamese ? "Vẫn an toàn" : "Still safe";
+}
+
+function goalStatusLabel(goal: any, languageIsVietnamese: boolean) {
+  if (Number(goal.percentage || 0) >= 100) {
+    return languageIsVietnamese ? "Đã hoàn thành" : "Completed";
+  }
+  if (goal.daysLeft !== null && goal.daysLeft !== undefined && goal.daysLeft < 0) {
+    return languageIsVietnamese ? "Đã quá hạn" : "Past deadline";
+  }
+  if (Number(goal.percentage || 0) >= 80) {
+    return languageIsVietnamese ? "Sắp chạm đích" : "Close to the finish line";
+  }
+  return languageIsVietnamese ? "Đang theo dõi" : "In progress";
+}
+
 function parseReportRange(text: string) {
   const normalized = normalizeText(text);
   const today = todayInTimeZone();
@@ -2693,6 +2789,770 @@ function fallbackCoachNote(summary: FinancialReportSummary) {
       ? Math.round((topCategory.value / summary.totalExpense) * 100)
       : 0;
   return `Quick take: ${topCategory.name} is about ${ratio}% of spending. If that was intentional, you’re fine; otherwise, it’s the first area I’d keep an eye on 🙂`;
+}
+
+function enrichGoalRecord(goal: any, today = new Date()) {
+  const target = Number(goal.target_amount || 0);
+  const current = Number(goal.current_amount || 0);
+  const percentage =
+    target > 0 ? Math.min(Math.round((current / target) * 100), 100) : 0;
+  const remaining = Math.max(target - current, 0);
+  let requiredMonthlySaving: number | null = null;
+  let daysLeft: number | null = null;
+  if (goal.deadline) {
+    const deadline = new Date(goal.deadline);
+    const monthsLeft =
+      (deadline.getFullYear() - today.getFullYear()) * 12 +
+      (deadline.getMonth() - today.getMonth());
+    daysLeft = Math.ceil((deadline.getTime() - today.getTime()) / 86400000);
+    requiredMonthlySaving = monthsLeft > 0 ? Math.ceil(remaining / monthsLeft) : remaining;
+  }
+  return {
+    ...goal,
+    percentage,
+    remaining,
+    requiredMonthlySaving,
+    daysLeft,
+  };
+}
+
+async function buildDomainCoachNote(
+  question: string,
+  languageIsVietnamese: boolean,
+  domain: string,
+  facts: Record<string, unknown>,
+) {
+  if (!aiParseApiKey) return null;
+
+  const response = await fetch(aiParseBaseUrl, {
+    method: "POST",
+    headers: aiRequestHeaders(),
+    body: JSON.stringify({
+      model: aiParseModel,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a supportive personal finance coach with light Gen Z warmth. Use only supplied facts, be concise, practical, and non-judgmental. Max 3 short lines and 2 emojis.",
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            task: "Summarize the financial situation and give a short practical note.",
+            language: languageIsVietnamese ? "Vietnamese" : "English",
+            domain,
+            userQuestion: question,
+            facts,
+          }),
+        },
+      ],
+      temperature: 0.35,
+    }),
+  });
+
+  if (!response.ok) return null;
+  const payload = await response.json().catch(() => null);
+  const note = payload?.choices?.[0]?.message?.content?.trim();
+  if (!note || note.length > 900) return null;
+  return note;
+}
+
+async function handleBudgetInsights(
+  message: TelegramMessage,
+  link: any,
+  text: string,
+) {
+  if (!isBudgetRequest(text)) return false;
+
+  const chatId = asText(message.chat.id);
+  const languageIsVietnamese = detectVietnamese(text);
+  const range = parseReportRange(text);
+  const context = await loadContext(link.user_id, link.default_wallet_id);
+  const { data: budgets, error: budgetError } = await supabase
+    .from("budgets")
+    .select("id,amount,period,start_date,category_id,category:categories(id,name,parent_id)")
+    .eq("user_id", link.user_id)
+    .order("created_at", { ascending: false });
+  if (budgetError) throw budgetError;
+
+  if (!budgets || budgets.length === 0) {
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? "Bạn chưa có budget nào để mình kiểm tra cả."
+        : "You do not have any budgets yet.",
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const { data: expenseRows, error: txError } = await supabase
+    .from("transactions")
+    .select("amount,category_id")
+    .eq("user_id", link.user_id)
+    .eq("type", "expense")
+    .gte("date", range.start)
+    .lte("date", range.end);
+  if (txError) throw txError;
+
+  const enriched = (budgets || []).map((budget: any) => {
+    const categoryIds = collectCategoryIds(context.categories, budget.category_id);
+    const spent = (expenseRows || [])
+      .filter((tx: any) => categoryIds.includes(tx.category_id))
+      .reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0);
+    const limit = Number(budget.amount || 0);
+    const ratio = limit > 0 ? spent / limit : 0;
+    return {
+      ...budget,
+      spent,
+      limit,
+      ratio,
+      status: budgetStatusLabel(ratio, languageIsVietnamese),
+    };
+  });
+
+  const requestedBudget = findBestNamedItem(
+    enriched,
+    text,
+    [(item: any) => item.category?.name],
+  );
+  const rows = requestedBudget ? [requestedBudget] : [...enriched].sort((a, b) => b.ratio - a.ratio);
+
+  const lines = requestedBudget
+    ? [
+        languageIsVietnamese
+          ? `Budget của ${requestedBudget.category?.name || "không rõ"} trong ${range.labelVi}:`
+          : `Budget for ${requestedBudget.category?.name || "unknown"} in ${range.labelEn}:`,
+        `${formatAmount(requestedBudget.spent)} / ${formatAmount(requestedBudget.limit)}`,
+        languageIsVietnamese
+          ? `Trạng thái: ${requestedBudget.status}`
+          : `Status: ${requestedBudget.status}`,
+      ]
+    : [
+        languageIsVietnamese
+          ? `Tình hình budget ${range.labelVi} 📒`
+          : `Budget check for ${range.labelEn} 📒`,
+        `${range.start} → ${range.end}`,
+        "",
+        ...rows.slice(0, 5).map((budget: any, index: number) =>
+          languageIsVietnamese
+            ? `${index + 1}. ${budget.category?.name || "Khác"}: ${formatAmount(budget.spent)} / ${formatAmount(budget.limit)} • ${budget.status}`
+            : `${index + 1}. ${budget.category?.name || "Other"}: ${formatAmount(budget.spent)} / ${formatAmount(budget.limit)} • ${budget.status}`,
+        ),
+      ];
+
+  const coachNote =
+    (await buildDomainCoachNote(text, languageIsVietnamese, "budget", {
+      range,
+      budgets: rows.slice(0, 5).map((budget: any) => ({
+        category: budget.category?.name || null,
+        spent: budget.spent,
+        limit: budget.limit,
+        ratio: budget.ratio,
+        status: budget.status,
+      })),
+    }).catch(() => null)) ||
+    (languageIsVietnamese
+      ? "Mình sẽ canh kỹ nhất các budget đang sát ngưỡng hoặc vượt ngưỡng để nhắc bạn sớm hơn nha."
+      : "I’ll keep the closest-to-limit budgets at the top so you can react early.");
+
+  await sendMessage(
+    chatId,
+    `${lines.join("\n")}\n\n${languageIsVietnamese ? "Nhận xét của mình" : "My take"}:\n${coachNote}`,
+    asText(message.message_id),
+  );
+  return true;
+}
+
+async function handleGoalInsights(
+  message: TelegramMessage,
+  link: any,
+  text: string,
+) {
+  if (!isGoalRequest(text)) return false;
+
+  const chatId = asText(message.chat.id);
+  const languageIsVietnamese = detectVietnamese(text);
+  const { data: goals, error } = await supabase
+    .from("goals")
+    .select("*, wallet:wallets(id,name)")
+    .eq("user_id", link.user_id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  const enriched = (goals || []).map((goal: any) => enrichGoalRecord(goal));
+  if (enriched.length === 0) {
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? "Bạn chưa có goal nào để mình theo dõi."
+        : "You do not have any goals yet.",
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const requestedGoal = findBestNamedItem(
+    enriched,
+    text,
+    [(item: any) => item.name, (item: any) => item.wallet?.name],
+  );
+  const rows = requestedGoal
+    ? [requestedGoal]
+    : [...enriched].sort((a, b) => Number(b.percentage || 0) - Number(a.percentage || 0));
+
+  const lines = requestedGoal
+    ? [
+        languageIsVietnamese
+          ? `Goal "${requestedGoal.name}" hiện tại:`
+          : `Current status for "${requestedGoal.name}":`,
+        `${formatAmount(Number(requestedGoal.current_amount || 0))} / ${formatAmount(Number(requestedGoal.target_amount || 0))}`,
+        languageIsVietnamese
+          ? `Tiến độ: ${requestedGoal.percentage}% • ${goalStatusLabel(requestedGoal, true)}`
+          : `Progress: ${requestedGoal.percentage}% • ${goalStatusLabel(requestedGoal, false)}`,
+        requestedGoal.deadline
+          ? languageIsVietnamese
+            ? `Còn lại: ${formatAmount(Number(requestedGoal.remaining || 0))} • ${requestedGoal.daysLeft} ngày`
+            : `Remaining: ${formatAmount(Number(requestedGoal.remaining || 0))} • ${requestedGoal.daysLeft} days`
+          : "",
+      ].filter(Boolean)
+    : [
+        languageIsVietnamese ? "Tổng quan goals 🎯" : "Goal overview 🎯",
+        ...rows.slice(0, 5).map((goal: any, index: number) =>
+          languageIsVietnamese
+            ? `${index + 1}. ${goal.name}: ${goal.percentage}% • còn ${formatAmount(Number(goal.remaining || 0))} • ${goalStatusLabel(goal, true)}`
+            : `${index + 1}. ${goal.name}: ${goal.percentage}% • ${formatAmount(Number(goal.remaining || 0))} left • ${goalStatusLabel(goal, false)}`,
+        ),
+      ];
+
+  const coachNote =
+    (await buildDomainCoachNote(text, languageIsVietnamese, "goal", {
+      goals: rows.slice(0, 5).map((goal: any) => ({
+        name: goal.name,
+        percentage: goal.percentage,
+        remaining: goal.remaining,
+        requiredMonthlySaving: goal.requiredMonthlySaving,
+        daysLeft: goal.daysLeft,
+      })),
+    }).catch(() => null)) ||
+    (languageIsVietnamese
+      ? "Goal nào còn xa đích thì mình sẽ ưu tiên nhắc theo phần còn thiếu và deadline, để bạn dễ canh hơn."
+      : "I’ll focus on the goals with the biggest gap and nearest deadline so the priorities stay clear.");
+
+  await sendMessage(
+    chatId,
+    `${lines.join("\n")}\n\n${languageIsVietnamese ? "Nhận xét của mình" : "My take"}:\n${coachNote}`,
+    asText(message.message_id),
+  );
+  return true;
+}
+
+async function handleTravelInsights(
+  message: TelegramMessage,
+  link: any,
+  text: string,
+) {
+  if (!isTravelRequest(text)) return false;
+
+  const chatId = asText(message.chat.id);
+  const languageIsVietnamese = detectVietnamese(text);
+  const context = await loadContext(link.user_id, link.default_wallet_id);
+  const { data: trips, error: tripError } = await supabase
+    .from("trips")
+    .select("*")
+    .eq("user_id", link.user_id)
+    .order("start_date", { ascending: false });
+  if (tripError) throw tripError;
+
+  if (!trips || trips.length === 0) {
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? "Bạn chưa có chuyến đi nào để mình phân tích."
+        : "You do not have any trips yet.",
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const requestedTrip = findBestNamedItem(
+    trips,
+    text,
+    [(item: any) => item.name, (item: any) => item.destination],
+  );
+
+  if (!requestedTrip) {
+    const tripIds = trips.map((trip: any) => trip.id);
+    const { data: rows, error } = await supabase
+      .from("transactions")
+      .select("trip_id,amount")
+      .eq("user_id", link.user_id)
+      .eq("type", "expense")
+      .in("trip_id", tripIds);
+    if (error) throw error;
+
+    const totals = new Map<string, number>();
+    (rows || []).forEach((row: any) => {
+      totals.set(row.trip_id, (totals.get(row.trip_id) || 0) + Number(row.amount || 0));
+    });
+    const summaryTrips = trips
+      .map((trip: any) => ({
+        ...trip,
+        total: totals.get(trip.id) || 0,
+      }))
+      .sort((a: any, b: any) => b.total - a.total);
+
+    const lines = [
+      languageIsVietnamese ? "Tổng quan chi tiêu du lịch ✈️" : "Travel spending overview ✈️",
+      ...summaryTrips.slice(0, 5).map((trip: any, index: number) =>
+        languageIsVietnamese
+          ? `${index + 1}. ${trip.name}: ${formatAmount(trip.total)}`
+          : `${index + 1}. ${trip.name}: ${formatAmount(trip.total)}`,
+      ),
+    ];
+    const coachNote =
+      (await buildDomainCoachNote(text, languageIsVietnamese, "travel", {
+        trips: summaryTrips.slice(0, 5).map((trip: any) => ({
+          name: trip.name,
+          total: trip.total,
+          destination: trip.destination,
+        })),
+      }).catch(() => null)) ||
+      (languageIsVietnamese
+        ? "Nếu bạn muốn, mình có thể bóc riêng từng chuyến để xem ăn uống, đi lại, ở đâu đang tốn nhiều nhất."
+        : "If you want, I can break down any specific trip by category next.");
+    await sendMessage(
+      chatId,
+      `${lines.join("\n")}\n\n${languageIsVietnamese ? "Nhận xét của mình" : "My take"}:\n${coachNote}`,
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const { data: txs, error: txError } = await supabase
+    .from("transactions")
+    .select("id,amount,type,date,description,category_id,category:categories(id,name,parent_id)")
+    .eq("user_id", link.user_id)
+    .eq("trip_id", requestedTrip.id)
+    .eq("type", "expense")
+    .order("date", { ascending: false });
+  if (txError) throw txError;
+
+  const categoryMatch = findBestNamedItem(
+    context.categories,
+    text,
+    [(item: any) => item.name],
+  );
+  const categoryIds = categoryMatch
+    ? collectCategoryIds(context.categories, categoryMatch.id)
+    : [];
+  const filtered = categoryIds.length
+    ? (txs || []).filter((tx: any) => categoryIds.includes(tx.category_id))
+    : txs || [];
+  const total = filtered.reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0);
+  const byCategory = groupSum(
+    filtered,
+    (tx: any) => tx.category?.name || "Khác",
+    (tx: any) => Number(tx.amount || 0),
+  );
+
+  const lines = [
+    languageIsVietnamese
+      ? `Chi tiêu cho chuyến "${requestedTrip.name}" ${categoryMatch ? `• ${categoryMatch.name}` : ""}`
+      : `Spending for "${requestedTrip.name}" ${categoryMatch ? `• ${categoryMatch.name}` : ""}`,
+    `${requestedTrip.start_date} → ${requestedTrip.end_date}`,
+    languageIsVietnamese
+      ? `Tổng chi: ${formatAmount(total)} • ${filtered.length} giao dịch`
+      : `Total: ${formatAmount(total)} • ${filtered.length} transactions`,
+    "",
+    ...reportLinesForTop(
+      languageIsVietnamese ? "Top danh mục" : "Top categories",
+      byCategory,
+      5,
+    ),
+  ];
+
+  const coachNote =
+    (await buildDomainCoachNote(text, languageIsVietnamese, "travel", {
+      trip: requestedTrip.name,
+      total,
+      transactionCount: filtered.length,
+      categories: byCategory.slice(0, 5),
+      categoryFilter: categoryMatch?.name || null,
+    }).catch(() => null)) ||
+    (languageIsVietnamese
+      ? "Muốn soi kỹ hơn nữa thì bạn hỏi riêng kiểu “ăn uống trong chuyến Đà Lạt” hoặc “top khoản chi của chuyến này” nha."
+      : "For a deeper cut, ask something like “food spending in this trip” or “top expenses in this trip”.");
+
+  await sendMessage(
+    chatId,
+    `${lines.join("\n")}\n\n${languageIsVietnamese ? "Nhận xét của mình" : "My take"}:\n${coachNote}`,
+    asText(message.message_id),
+  );
+  return true;
+}
+
+async function handleDebtInsights(
+  message: TelegramMessage,
+  link: any,
+  text: string,
+) {
+  if (!isDebtRequest(text)) return false;
+
+  const chatId = asText(message.chat.id);
+  const languageIsVietnamese = detectVietnamese(text);
+  const { data: contacts, error: contactError } = await supabase
+    .from("contacts")
+    .select("*")
+    .eq("user_id", link.user_id);
+  if (contactError) throw contactError;
+  const { data: txs, error: txError } = await supabase
+    .from("transactions")
+    .select("amount,type,contact_id,date,description")
+    .eq("user_id", link.user_id)
+    .eq("is_debt", true);
+  if (txError) throw txError;
+
+  const balances: Record<string, any> = {};
+  (contacts || []).forEach((contact: any) => {
+    balances[contact.id] = { ...contact, balance: 0, debtTxs: [] };
+  });
+  (txs || []).forEach((tx: any) => {
+    if (!tx.contact_id || !balances[tx.contact_id]) return;
+    const amount = Number(tx.amount || 0);
+    if (tx.type === "expense") balances[tx.contact_id].balance += amount;
+    else if (tx.type === "income") balances[tx.contact_id].balance -= amount;
+    balances[tx.contact_id].debtTxs.push(tx);
+  });
+
+  const debtRows = Object.values(balances).filter(
+    (row: any) => row.balance !== 0 || row.debtTxs.length > 0,
+  );
+  if (debtRows.length === 0) {
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? "Hiện chưa có công nợ nào đang mở."
+        : "You do not have any active debts right now.",
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const requestedContact = findBestNamedItem(
+    debtRows,
+    text,
+    [(item: any) => item.name],
+  );
+
+  const totalOwedToYou = debtRows
+    .filter((row: any) => row.balance > 0)
+    .reduce((sum: number, row: any) => sum + row.balance, 0);
+  const totalYouOwe = debtRows
+    .filter((row: any) => row.balance < 0)
+    .reduce((sum: number, row: any) => sum + Math.abs(row.balance), 0);
+
+  const lines = requestedContact
+    ? [
+        languageIsVietnamese
+          ? `Công nợ với ${requestedContact.name}:`
+          : `Debt status with ${requestedContact.name}:`,
+        `${requestedContact.balance > 0 ? "+" : ""}${formatAmount(Math.abs(Number(requestedContact.balance || 0)))}`,
+        languageIsVietnamese
+          ? requestedContact.balance > 0
+            ? "Họ đang nợ bạn"
+            : "Bạn đang nợ họ"
+          : requestedContact.balance > 0
+            ? "They owe you"
+            : "You owe them",
+      ]
+    : [
+        languageIsVietnamese ? "Tổng quan công nợ 🤝" : "Debt overview 🤝",
+        languageIsVietnamese
+          ? `Người đang nợ bạn: ${formatAmount(totalOwedToYou)}`
+          : `Others owe you: ${formatAmount(totalOwedToYou)}`,
+        languageIsVietnamese
+          ? `Bạn đang nợ: ${formatAmount(totalYouOwe)}`
+          : `You owe: ${formatAmount(totalYouOwe)}`,
+        "",
+        ...debtRows
+          .sort((a: any, b: any) => Math.abs(b.balance) - Math.abs(a.balance))
+          .slice(0, 5)
+          .map((row: any, index: number) =>
+            languageIsVietnamese
+              ? `${index + 1}. ${row.name}: ${row.balance > 0 ? "+" : "-"}${formatAmount(Math.abs(Number(row.balance || 0)))}`
+              : `${index + 1}. ${row.name}: ${row.balance > 0 ? "+" : "-"}${formatAmount(Math.abs(Number(row.balance || 0)))}`,
+          ),
+      ];
+
+  const coachNote =
+    (await buildDomainCoachNote(text, languageIsVietnamese, "debt", {
+      totalOwedToYou,
+      totalYouOwe,
+      debts: debtRows.slice(0, 5).map((row: any) => ({
+        name: row.name,
+        balance: row.balance,
+        transactions: row.debtTxs.length,
+      })),
+    }).catch(() => null)) ||
+    (languageIsVietnamese
+      ? "Các khoản công nợ lớn hoặc kéo dài là chỗ mình ưu tiên nhắc để bạn không bị quên dòng tiền."
+      : "Large or aging debt balances are the first ones I’d keep visible so cash flow does not get fuzzy.");
+
+  await sendMessage(
+    chatId,
+    `${lines.join("\n")}\n\n${languageIsVietnamese ? "Nhận xét của mình" : "My take"}:\n${coachNote}`,
+    asText(message.message_id),
+  );
+  return true;
+}
+
+function categoryTypeLabel(type: string, languageIsVietnamese: boolean) {
+  if (type === "income") return languageIsVietnamese ? "Thu nhập" : "Income";
+  return languageIsVietnamese ? "Chi tiêu" : "Expense";
+}
+
+function categoryPathLabel(
+  categories: Array<{ id: string; name?: string | null; parent_id?: string | null }>,
+  categoryId?: string | null,
+) {
+  if (!categoryId) return "-";
+  const byId = new Map(categories.map((category) => [category.id, category]));
+  const parts: string[] = [];
+  let current = categoryId;
+  while (current && byId.get(current)) {
+    const row = byId.get(current);
+    parts.unshift(row?.name || "");
+    current = row?.parent_id || "";
+  }
+  return parts.filter(Boolean).join(" > ");
+}
+
+async function handleCategoryCommand(
+  message: TelegramMessage,
+  link: any,
+  text: string,
+) {
+  const normalized = normalizeText(text);
+  if (
+    !/^\/category\b/i.test(text) &&
+    normalized !== "danh sach danh muc" &&
+    normalized !== "danh sach danh muc chi tieu" &&
+    normalized !== "danh sach danh muc thu nhap"
+  ) {
+    return false;
+  }
+
+  const chatId = asText(message.chat.id);
+  const languageIsVietnamese = detectVietnamese(text);
+  const context = await loadContext(link.user_id, link.default_wallet_id);
+
+  if (
+    /^\/category\s*$/.test(text) ||
+    /^\/category\s+help$/i.test(text)
+  ) {
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? [
+            "Mình hỗ trợ category qua các lệnh này nè:",
+            "- /category list",
+            "- /category create expense Ăn uống > Ăn khuya",
+            "- /category create income Thưởng",
+            "- /category edit Ăn khuya => Ăn tối muộn",
+            "- /category delete Ăn tối muộn",
+          ].join("\n")
+        : [
+            "Here are the category commands I support:",
+            "- /category list",
+            "- /category create expense Food > Late night food",
+            "- /category create income Bonus",
+            "- /category edit Late night food => Supper",
+            "- /category delete Supper",
+          ].join("\n"),
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  if (
+    /^\/category\s+list$/i.test(text) ||
+    normalized === "danh sach danh muc" ||
+    normalized === "danh sach danh muc chi tieu" ||
+    normalized === "danh sach danh muc thu nhap"
+  ) {
+    const typeFilter =
+      normalized.includes("thu nhap") ? "income" : normalized.includes("chi tieu") ? "expense" : null;
+    const rows = (context.categories || [])
+      .filter((category: any) => !typeFilter || category.type === typeFilter)
+      .sort((a: any, b: any) => (a.parent_id ? 1 : 0) - (b.parent_id ? 1 : 0) || (a.name || "").localeCompare(b.name || ""));
+    await sendMessage(
+      chatId,
+      [
+        languageIsVietnamese ? "Danh sách category:" : "Category list:",
+        ...rows.map((category: any) => `- ${categoryPathLabel(context.categories, category.id)} [${categoryTypeLabel(category.type, languageIsVietnamese)}]`),
+      ].join("\n"),
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const createMatch = text.match(/^\/category\s+create\s+(expense|income)\s+(.+)$/i);
+  if (createMatch) {
+    const type = createMatch[1].toLowerCase();
+    const rawPath = createMatch[2].trim();
+    const segments = rawPath.split(">").map((part) => part.trim()).filter(Boolean);
+    if (segments.length === 0) {
+      await sendMessage(chatId, languageIsVietnamese ? "Mình chưa thấy tên category." : "I could not see the category name.", asText(message.message_id));
+      return true;
+    }
+    const name = segments[segments.length - 1];
+    let parentId: string | null = null;
+    if (segments.length > 1) {
+      const parentName = segments.slice(0, -1).join(" > ");
+      const parent = findBestNamedItem(context.categories, parentName, [(item: any) => categoryPathLabel(context.categories, item.id), (item: any) => item.name]);
+      if (!parent) {
+        await sendMessage(
+          chatId,
+          languageIsVietnamese
+            ? `Mình chưa tìm thấy category cha "${parentName}".`
+            : `I could not find the parent category "${parentName}".`,
+          asText(message.message_id),
+        );
+        return true;
+      }
+      parentId = parent.id;
+    }
+
+    const duplicate = (context.categories || []).find(
+      (category: any) =>
+        normalizeText(category.name || "") === normalizeText(name) &&
+        (category.parent_id || null) === parentId &&
+        category.type === type,
+    );
+    if (duplicate) {
+      await sendMessage(
+        chatId,
+        languageIsVietnamese
+          ? "Category này đã tồn tại rồi nha."
+          : "That category already exists.",
+        asText(message.message_id),
+      );
+      return true;
+    }
+
+    const { data, error } = await supabase
+      .from("categories")
+      .insert({
+        user_id: link.user_id,
+        name,
+        type,
+        parent_id: parentId,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? `Đã tạo category: ${categoryPathLabel([...context.categories, data], data.id)}`
+        : `Created category: ${categoryPathLabel([...context.categories, data], data.id)}`,
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const editMatch = text.match(/^\/category\s+edit\s+(.+?)\s*=>\s*(.+)$/i);
+  if (editMatch) {
+    const existing = findBestNamedItem(
+      context.categories,
+      editMatch[1].trim(),
+      [(item: any) => categoryPathLabel(context.categories, item.id), (item: any) => item.name],
+    );
+    if (!existing) {
+      await sendMessage(
+        chatId,
+        languageIsVietnamese ? "Mình chưa tìm thấy category cần sửa." : "I could not find the category to edit.",
+        asText(message.message_id),
+      );
+      return true;
+    }
+
+    const { error } = await supabase
+      .from("categories")
+      .update({ name: editMatch[2].trim(), updated_at: new Date().toISOString() })
+      .eq("id", existing.id)
+      .eq("user_id", link.user_id);
+    if (error) throw error;
+
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? `Đã đổi tên category thành "${editMatch[2].trim()}".`
+        : `Renamed category to "${editMatch[2].trim()}".`,
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const deleteMatch = text.match(/^\/category\s+(?:delete|remove|xoa|xóa)\s+(.+)$/i);
+  if (deleteMatch) {
+    const target = findBestNamedItem(
+      context.categories,
+      deleteMatch[1].trim(),
+      [(item: any) => categoryPathLabel(context.categories, item.id), (item: any) => item.name],
+    );
+    if (!target) {
+      await sendMessage(
+        chatId,
+        languageIsVietnamese ? "Mình chưa tìm thấy category cần xóa." : "I could not find the category to delete.",
+        asText(message.message_id),
+      );
+      return true;
+    }
+
+    const { count } = await supabase
+      .from("transactions")
+      .select("id", { head: true, count: "exact" })
+      .eq("user_id", link.user_id)
+      .eq("category_id", target.id);
+    if ((count || 0) > 0) {
+      await sendMessage(
+        chatId,
+        languageIsVietnamese
+          ? `Category này đang gắn với ${count} giao dịch, nên mình chưa xóa để tránh mất link dữ liệu.`
+          : `This category is still linked to ${count} transactions, so I’m not deleting it yet.`,
+        asText(message.message_id),
+      );
+      return true;
+    }
+
+    const { error } = await supabase
+      .from("categories")
+      .delete()
+      .eq("id", target.id)
+      .eq("user_id", link.user_id);
+    if (error) throw error;
+
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? `Đã xóa category "${target.name}".`
+        : `Deleted category "${target.name}".`,
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  await sendMessage(
+    chatId,
+    languageIsVietnamese
+      ? "Mình chưa hiểu lệnh category này. Gửi `/category` để xem cú pháp nha."
+      : "I could not understand that category command. Send `/category` to see the syntax.",
+    asText(message.message_id),
+  );
+  return true;
 }
 
 async function handleFinancialReport(
@@ -3555,6 +4415,16 @@ Deno.serve(async (req) => {
         }
       }
     } else if (await handleTemplateCommand(message, link, text)) {
+      // handled
+    } else if (await handleCategoryCommand(message, link, text)) {
+      // handled
+    } else if (await handleBudgetInsights(message, link, text)) {
+      // handled
+    } else if (await handleGoalInsights(message, link, text)) {
+      // handled
+    } else if (await handleTravelInsights(message, link, text)) {
+      // handled
+    } else if (await handleDebtInsights(message, link, text)) {
       // handled
     } else if (isReportRequest(text)) {
       await handleFinancialReport(message, link, text);
