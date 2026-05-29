@@ -332,7 +332,7 @@ function TelegramBotSettings() {
             <span className="font-mono">60.000đ</span>, wallet{" "}
             <span className="font-mono">Tiền mặt</span>, category{" "}
             <span className="font-mono">Xăng xe</span>, and note format{" "}
-            <span className="font-mono">đổ xăng [n]</span> with monthly reset.
+            <span className="font-mono">đổ xăng lần [n]</span> with monthly reset.
           </p>
         </div>
 

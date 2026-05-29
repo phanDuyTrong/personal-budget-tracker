@@ -178,6 +178,13 @@ type GuidedDraftPayload = {
   transaction: Omit<ParsedOkTransaction, "ok">;
 };
 
+type QuickEditDraftPayload = {
+  draft_kind: "quick_edit";
+  field: "amount";
+  transaction_id: string;
+  language: "vi" | "en";
+};
+
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const telegramToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
@@ -939,6 +946,26 @@ function guidedDescriptionKeyboard(language: "vi" | "en") {
   };
 }
 
+function transactionQuickEditKeyboard(
+  transactionId: string,
+  languageIsVietnamese: boolean,
+) {
+  return {
+    inline_keyboard: [
+      [
+        {
+          text: languageIsVietnamese ? "💸 Sửa số tiền" : "💸 Change amount",
+          callback_data: `quickedit:amount:${transactionId}`,
+        },
+        {
+          text: languageIsVietnamese ? "👛 Sửa ví" : "👛 Change wallet",
+          callback_data: `quickedit:wallet:${transactionId}`,
+        },
+      ],
+    ],
+  };
+}
+
 function normalizeGuidedDraftPayload(payload: any): GuidedDraftPayload | null {
   if (!payload || payload.draft_kind !== "guided") return null;
   return {
@@ -955,6 +982,20 @@ function normalizeGuidedDraftPayload(payload: any): GuidedDraftPayload | null {
   };
 }
 
+function normalizeQuickEditDraftPayload(
+  payload: any,
+): QuickEditDraftPayload | null {
+  if (!payload || payload.draft_kind !== "quick_edit") return null;
+  if (payload.field !== "amount") return null;
+  if (!payload.transaction_id) return null;
+  return {
+    draft_kind: "quick_edit",
+    field: "amount",
+    transaction_id: payload.transaction_id,
+    language: payload.language === "en" ? "en" : "vi",
+  };
+}
+
 async function saveGuidedDraft(
   link: any,
   message: TelegramMessage,
@@ -968,6 +1009,27 @@ async function saveGuidedDraft(
       chat_id: asText(message.chat.id),
       source_message_id: asText(message.message_id),
       source_text: payload.guided_type,
+      parsed_payload: payload,
+      expires_at: expiresAt,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "telegram_user_id,chat_id" },
+  );
+}
+
+async function saveQuickEditDraft(
+  link: any,
+  message: TelegramMessage,
+  payload: QuickEditDraftPayload,
+) {
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  await supabase.from("telegram_pending_transaction_drafts").upsert(
+    {
+      user_id: link.user_id,
+      telegram_user_id: asText(message.from?.id),
+      chat_id: asText(message.chat.id),
+      source_message_id: asText(message.message_id),
+      source_text: payload.field,
       parsed_payload: payload,
       expires_at: expiresAt,
       updated_at: new Date().toISOString(),
@@ -1325,7 +1387,13 @@ async function insertTransactionAndReply(
   const reply = await sendMessage(
     asText(message.chat.id),
     summarizeTransaction(tx, detectVietnamese(sourceText), unmatched),
-    asText(message.message_id),
+    {
+      replyToMessageId: asText(message.message_id),
+      replyMarkup: transactionQuickEditKeyboard(
+        tx.id,
+        detectVietnamese(sourceText),
+      ),
+    },
   );
 
   await supabase.from("telegram_transaction_events").insert({
@@ -1891,8 +1959,8 @@ function summarizeTransaction(
     ? `Cho ai / liên quan: ${tx.contact?.name || "-"}`
     : `For / contact: ${tx.contact?.name || "-"}`
   return languageIsVietnamese
-    ? `Done, mình ghi rồi nha ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nNgày: ${tx.date}\n${walletLine}\n${categoryLine}\n${contactLine}\nMô tả: ${tx.description || "-"}${warnings}\n\nCần chỉnh thì reply đúng tin này với “sửa ...” hoặc “xóa”. Nếu chỉ gõ “sửa”, mình sẽ gợi ý cú pháp luôn.`
-    : `Saved for you ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nDate: ${tx.date}\n${walletLine}\n${categoryLine}\n${contactLine}\nDescription: ${tx.description || "-"}${warnings}\n\nTo edit this exact transaction, reply to this message with “change ...” or “delete”. If you just send “edit”, I’ll show examples.`;
+    ? `Done, mình ghi rồi nha ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nNgày: ${tx.date}\n${walletLine}\n${categoryLine}\n${contactLine}\nMô tả: ${tx.description || "-"}${warnings}\n\nBạn có thể bấm nút bên dưới để sửa nhanh số tiền hoặc ví. Nếu cần, vẫn có thể reply tin này với “sửa ...” hoặc “xóa”.`
+    : `Saved for you ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nDate: ${tx.date}\n${walletLine}\n${categoryLine}\n${contactLine}\nDescription: ${tx.description || "-"}${warnings}\n\nUse the buttons below to quickly change the amount or wallet. You can also reply with “change ...” or “delete”.`;
 }
 
 function itemSummary(item: TemplateItem, languageIsVietnamese: boolean) {
@@ -1997,12 +2065,12 @@ function buildTemplatePresetRows(
           to_wallet_id: null,
           category_id: category.id,
           contact_id: null,
-          description: "đổ xăng",
+          description: "đổ xăng lần",
           date_offset_days: 0,
           smart_config: {
             kind: "monthly_sequence_description",
             sequence_key: "fuel-refill",
-            prefix_vi: "đổ xăng",
+            prefix_vi: "đổ xăng lần",
             prefix_en: "fuel refill",
             match_prefix: "đổ xăng",
           },
@@ -4112,7 +4180,13 @@ async function handleEdit(message: TelegramMessage, link: any, text: string) {
   await sendMessage(
     chatId,
     summarizeTransaction(tx, detectVietnamese(text)),
-    asText(message.message_id),
+    {
+      replyToMessageId: asText(message.message_id),
+      replyMarkup: transactionQuickEditKeyboard(
+        tx.id,
+        detectVietnamese(text),
+      ),
+    },
   );
 }
 
@@ -4161,6 +4235,69 @@ async function handleGuidedDraftMessage(
     return true;
   }
 
+  return true;
+}
+
+async function handleQuickEditDraftMessage(
+  message: TelegramMessage,
+  link: any,
+  draft: any,
+  text: string,
+) {
+  const payload = normalizeQuickEditDraftPayload(draft.parsed_payload);
+  if (!payload) return false;
+
+  const normalized = normalizeText(text);
+  if (/^(huy|hủy|cancel|thoi|thôi)$/i.test(normalized)) {
+    await clearPendingDraft(message);
+    await sendMessage(
+      asText(message.chat.id),
+      payload.language === "vi"
+        ? "Okie, mình hủy chỉnh nhanh số tiền rồi nha."
+        : "Got it, I cancelled the quick amount edit.",
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const amount = extractSingleAmount(text);
+  if (!amount || amount <= 0) {
+    await sendMessage(
+      asText(message.chat.id),
+      payload.language === "vi"
+        ? "Mình chưa đọc ra số tiền mới rõ lắm. Bạn thử kiểu `60k`, `125000`, `1.2tr` nha."
+        : "I still could not read the new amount clearly. Try `60k`, `125000`, or `1.2m`.",
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const { data: tx, error } = await supabase
+    .from("transactions")
+    .update({
+      amount,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", payload.transaction_id)
+    .eq("user_id", link.user_id)
+    .select(
+      "*, wallet:wallets!wallet_id(name), to_wallet:wallets!to_wallet_id(name), category:categories(name), contact:contacts(name)",
+    )
+    .single();
+  if (error) throw error;
+
+  await clearPendingDraft(message);
+  await sendMessage(
+    asText(message.chat.id),
+    summarizeTransaction(tx, payload.language === "vi"),
+    {
+      replyToMessageId: asText(message.message_id),
+      replyMarkup: transactionQuickEditKeyboard(
+        tx.id,
+        payload.language === "vi",
+      ),
+    },
+  );
   return true;
 }
 
@@ -4289,6 +4426,101 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
       template,
     );
     return;
+  }
+
+  if (data.startsWith("quickedit:")) {
+    const parts = data.split(":");
+    const action = parts[1];
+    const transactionId = parts[2];
+    const languageIsVietnamese = true;
+
+    if (!transactionId) {
+      await answerCallbackQuery(callback.id, "Thiếu giao dịch để sửa.");
+      return;
+    }
+
+    if (action === "amount") {
+      await saveQuickEditDraft(link, { ...message, from: callback.from }, {
+        draft_kind: "quick_edit",
+        field: "amount",
+        transaction_id: transactionId,
+        language: languageIsVietnamese ? "vi" : "en",
+      });
+      await answerCallbackQuery(
+        callback.id,
+        languageIsVietnamese ? "Nhập số tiền mới nha." : "Send the new amount.",
+      );
+      await sendMessage(
+        chatId,
+        languageIsVietnamese
+          ? "Okie, gửi mình số tiền mới cho giao dịch này nha. Ví dụ: `60k`, `125000`, `1.2tr`\nNếu đổi ý thì nhắn `hủy`."
+          : "Send me the new amount for this transaction. For example: `60k`, `125000`, `1.2m`\nIf you change your mind, send `cancel`.",
+        asText(message.message_id),
+      );
+      return;
+    }
+
+    if (action === "wallet") {
+      const context = await loadContext(link.user_id, link.default_wallet_id);
+      const rows = keyboardRows(context.wallets, `quickedit:walletset:${transactionId}`);
+      await answerCallbackQuery(
+        callback.id,
+        languageIsVietnamese ? "Chọn ví mới nha." : "Pick the new wallet.",
+      );
+      await sendMessage(
+        chatId,
+        languageIsVietnamese
+          ? "Chọn ví mới cho giao dịch này nha:"
+          : "Pick the new wallet for this transaction:",
+        {
+          replyToMessageId: asText(message.message_id),
+          replyMarkup: { inline_keyboard: rows },
+        },
+      );
+      return;
+    }
+
+    if (action === "walletset") {
+      const walletId = parts[3];
+      const context = await loadContext(link.user_id, link.default_wallet_id);
+      const wallet = context.wallets.find((item: any) => item.id === walletId);
+      if (!wallet) {
+        await answerCallbackQuery(
+          callback.id,
+          languageIsVietnamese ? "Ví này không còn nữa." : "That wallet no longer exists.",
+        );
+        return;
+      }
+      const { data: tx, error } = await supabase
+        .from("transactions")
+        .update({
+          wallet_id: wallet.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", transactionId)
+        .eq("user_id", link.user_id)
+        .select(
+          "*, wallet:wallets!wallet_id(name), to_wallet:wallets!to_wallet_id(name), category:categories(name), contact:contacts(name)",
+        )
+        .single();
+      if (error) throw error;
+      await answerCallbackQuery(
+        callback.id,
+        languageIsVietnamese ? "Đã đổi ví rồi nha." : "Wallet updated.",
+      );
+      await sendMessage(
+        chatId,
+        summarizeTransaction(tx, languageIsVietnamese),
+        {
+          replyToMessageId: asText(message.message_id),
+          replyMarkup: transactionQuickEditKeyboard(
+            tx.id,
+            languageIsVietnamese,
+          ),
+        },
+      );
+      return;
+    }
   }
 
   if (!data.startsWith("draft:") && !data.startsWith("guided:")) {
@@ -4664,6 +4896,11 @@ Deno.serve(async (req) => {
     const pendingDraft = await loadPendingDraft(message);
     if (pendingDraft && normalizeGuidedDraftPayload(pendingDraft.parsed_payload)) {
       await handleGuidedDraftMessage(message, link, pendingDraft, text);
+      return jsonResponse({ ok: true });
+    }
+
+    if (pendingDraft && normalizeQuickEditDraftPayload(pendingDraft.parsed_payload)) {
+      await handleQuickEditDraftMessage(message, link, pendingDraft, text);
       return jsonResponse({ ok: true });
     }
 
