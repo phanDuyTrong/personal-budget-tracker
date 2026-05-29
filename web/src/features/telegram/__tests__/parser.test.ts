@@ -79,7 +79,7 @@ describe("parseTelegramTransaction", () => {
     expect(en.ok && en.amount).toBe(20000000);
   });
 
-  it("parses transfer wallets and rejects missing destination wallets", () => {
+  it("parses transfer wallets and returns drafts when destination is missing", () => {
     const vi = parseTelegramTransaction(
       "chuyển 2tr từ tiền mặt sang Savings",
       context,
@@ -93,7 +93,12 @@ describe("parseTelegramTransaction", () => {
     expect(vi.ok && vi.toWalletId).toBe("wallet-saving");
     expect(en.ok && en.walletId).toBe("wallet-cash");
     expect(en.ok && en.toWalletId).toBe("wallet-saving");
-    expect(missing.ok).toBe(false);
+    expect(missing.ok).toBe(true);
+    if (!missing.ok) return;
+    expect(missing.type).toBe("transfer");
+    expect(missing.walletId).toBe("wallet-cash");
+    expect(missing.toWalletId).toBeNull();
+    expect(missing.unmatched).toContain("toWallet");
   });
 
   it("parses casual Vietnamese transfer connector wording", () => {
@@ -133,7 +138,7 @@ describe("parseTelegramTransaction", () => {
     expect(en.ok && en.date).toBe("2026-05-14");
   });
 
-  it("requires a wallet when no fallback wallet is configured", () => {
+  it("returns a wallet clarification draft when no fallback wallet is configured", () => {
     const contextWithoutDefault = { ...context, defaultWalletId: null };
     const mentionedWallet = parseTelegramTransaction(
       "ăn trưa 85k bằng tiền mặt",
@@ -145,7 +150,10 @@ describe("parseTelegramTransaction", () => {
     );
 
     expect(mentionedWallet.ok && mentionedWallet.walletId).toBe("wallet-cash");
-    expect(missingWallet.ok).toBe(false);
+    expect(missingWallet.ok).toBe(true);
+    if (!missingWallet.ok) return;
+    expect(missingWallet.walletId).toBe("");
+    expect(missingWallet.unmatched).toContain("wallet");
   });
 
   it("understands Vietnamese gift contribution notes", () => {

@@ -6,6 +6,7 @@ import { useWallets } from '@/features/wallets/hooks';
 import { useCategories } from '@/features/categories/hooks';
 import { useContacts } from '@/features/contacts/hooks';
 import { useTransactionMutations } from '@/features/transactions/hooks';
+import { TRANSACTION_SORT_MODES, sortTransactionsForDisplay } from '@/features/transactions/sort';
 import { TransactionModal } from '@/pages/Transactions';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { 
@@ -201,7 +202,7 @@ function TripDetailView({ trip, onBack, formatAmount }) {
         categoryId: 'all',
         walletId: 'all',
         contactId: 'all',
-        sortDate: 'newest',
+        sortDate: TRANSACTION_SORT_MODES.NEWEST,
     });
     const [txModal, setTxModal] = useState(null);
     const [confirmTxDel, setConfirmTxDel] = useState(null);
@@ -239,17 +240,7 @@ function TripDetailView({ trip, onBack, formatAmount }) {
                 (filters.contactId === 'all' || tx.contact_id === filters.contactId)
             );
         });
-        return [...rows].sort((a, b) => {
-            const aSortTime = new Date(a.created_at || a.date).getTime();
-            const bSortTime = new Date(b.created_at || b.date).getTime();
-            const createdDiff = aSortTime - bSortTime;
-            if (createdDiff !== 0) {
-                return filters.sortDate === 'oldest' ? createdDiff : -createdDiff;
-            }
-
-            const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
-            return filters.sortDate === 'oldest' ? dateDiff : -dateDiff;
-        });
+        return sortTransactionsForDisplay(rows, filters.sortDate);
     }, [expenseTransactions, filters, selectedCategoryIds]);
 
     const kpis = useMemo(() => {
@@ -460,8 +451,10 @@ function TripDetailView({ trip, onBack, formatAmount }) {
                             onSelectionChange={(keys) => updateFilter('sortDate', Array.from(keys)[0])}
                             variant="flat"
                         >
-                            <SelectItem key="newest">Mới nhất</SelectItem>
-                            <SelectItem key="oldest">Cũ nhất</SelectItem>
+                            <SelectItem key={TRANSACTION_SORT_MODES.NEWEST}>Mới nhất</SelectItem>
+                            <SelectItem key={TRANSACTION_SORT_MODES.OLDEST}>Cũ nhất</SelectItem>
+                            <SelectItem key={TRANSACTION_SORT_MODES.UPDATED_NEWEST}>Cập nhật gần nhất</SelectItem>
+                            <SelectItem key={TRANSACTION_SORT_MODES.UPDATED_OLDEST}>Cập nhật xa nhất</SelectItem>
                         </Select>
                     </div>
 

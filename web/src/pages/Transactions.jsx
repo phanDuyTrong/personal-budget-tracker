@@ -36,6 +36,7 @@ import {
   useTransactions,
   useTransactionMutations,
 } from "@/features/transactions/hooks";
+import { TRANSACTION_SORT_MODES } from "@/features/transactions/sort";
 import { useWallets } from "@/features/wallets/hooks";
 import { useCategories } from "@/features/categories/hooks";
 import { useContacts } from "@/features/contacts/hooks";
@@ -968,7 +969,7 @@ export function Transactions() {
     walletId: "all",
     categoryId: "all",
     contactId: "all",
-    sortDate: "newest",
+    sortDate: TRANSACTION_SORT_MODES.NEWEST,
   });
   const [modal, setModal] = useState(null); // null | 'new' | transaction
   const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -1345,8 +1346,10 @@ export function Transactions() {
             }
             variant="flat"
           >
-            <SelectItem key="newest">Newest First</SelectItem>
-            <SelectItem key="oldest">Oldest First</SelectItem>
+            <SelectItem key={TRANSACTION_SORT_MODES.NEWEST}>Newest First</SelectItem>
+            <SelectItem key={TRANSACTION_SORT_MODES.OLDEST}>Oldest First</SelectItem>
+            <SelectItem key={TRANSACTION_SORT_MODES.UPDATED_NEWEST}>Recently Updated</SelectItem>
+            <SelectItem key={TRANSACTION_SORT_MODES.UPDATED_OLDEST}>Least Recently Updated</SelectItem>
           </Select>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

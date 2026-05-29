@@ -1,14 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { nowISO } from '@/features/shared/api';
+import { sortTransactionsForDisplay, TRANSACTION_SORT_MODES } from '@/features/transactions/sort';
 
 // ── Transactions ─────────────────────────────────────────────────
 export const useTransactions = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['transactions', params],
     queryFn: async () => {
         let query = supabase.from('transactions').select('*, wallet:wallets!wallet_id(id,name), to_wallet:wallets!to_wallet_id(id,name), category:categories(id,name,icon,color,parent_id), splits:transaction_splits(*, category:categories(id,name,icon,color)), contact:contacts(id,name)', { count: 'exact' });
-        if (params.sortDate === 'oldest') query = query.order('created_at', { ascending: true }).order('date', { ascending: true });
-        else query = query.order('created_at', { ascending: false }).order('date', { ascending: false });
+        if (params.sortDate === TRANSACTION_SORT_MODES.OLDEST) {
+            query = query.order('date', { ascending: true }).order('created_at', { ascending: true });
+        } else if (params.sortDate === TRANSACTION_SORT_MODES.UPDATED_NEWEST) {
+            query = query
+                .order('updated_at', { ascending: false, nullsFirst: false })
+                .order('date', { ascending: false })
+                .order('created_at', { ascending: false });
+        } else if (params.sortDate === TRANSACTION_SORT_MODES.UPDATED_OLDEST) {
+            query = query
+                .order('updated_at', { ascending: true, nullsFirst: false })
+                .order('date', { ascending: true })
+                .order('created_at', { ascending: true });
+        } else {
+            query = query.order('date', { ascending: false }).order('created_at', { ascending: false });
+        }
         if (params.date_from) query = query.gte('date', params.date_from);
         if (params.date_to) query = query.lte('date', params.date_to);
         if (params.category_ids?.length) query = query.in('category_id', params.category_ids);
@@ -25,7 +39,13 @@ export const useTransactions = (params: Record<string, any> = {}) => useQuery({
         query = query.range(from, from + limit - 1);
         const { data, error, count } = await query;
         if (error) throw error;
-        return { data: data || [], total: count || 0, page, limit, totalPages: Math.ceil((count || 0) / limit) };
+        return {
+            data: sortTransactionsForDisplay(data || [], params.sortDate),
+            total: count || 0,
+            page,
+            limit,
+            totalPages: Math.ceil((count || 0) / limit),
+        };
     },
 });
 
