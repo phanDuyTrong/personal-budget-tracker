@@ -87,7 +87,7 @@ function TelegramBotSettings() {
     const { data, error } = await supabase
       .from("telegram_transaction_templates")
       .select(
-        "id,name,trigger_text,is_active,created_at,items:telegram_transaction_template_items(id,type,amount,description,sort_order,wallet:wallets!wallet_id(id,name),to_wallet:wallets!to_wallet_id(id,name),category:categories(id,name))",
+        "id,name,trigger_text,is_active,created_at,items:telegram_transaction_template_items(id,type,amount,description,sort_order,smart_config,wallet:wallets!wallet_id(id,name),to_wallet:wallets!to_wallet_id(id,name),category:categories(id,name))",
       )
       .order("created_at", { ascending: false });
     if (error) throw error;
@@ -190,6 +190,8 @@ function TelegramBotSettings() {
     "/template create Nhận lương tháng => nhận lương 20tr vào Techcombank; cho mẹ 5tr từ tài khoản";
   const templateEditCommand =
     "/template edit Nhận lương tháng => nhận lương 25tr vào Techcombank; cho mẹ 6tr từ tài khoản";
+  const templateFuelPresetCommand =
+    "/template create Đổ xăng => đổ xăng";
 
   const formatTemplateAmount = (amount) =>
     Number(amount || 0).toLocaleString("vi-VN") + "₫";
@@ -197,7 +199,11 @@ function TelegramBotSettings() {
   const templateItemLabel = (item) => {
     const wallet = item.wallet?.name ? " · " + item.wallet.name : "";
     const category = item.category?.name ? " · " + item.category.name : "";
-    return `${item.type} ${formatTemplateAmount(item.amount)}${wallet}${category}`;
+    const smart =
+      item.smart_config?.kind === "monthly_sequence_description"
+        ? " · auto count/month"
+        : "";
+    return `${item.type} ${formatTemplateAmount(item.amount)}${wallet}${category}${smart}`;
   };
 
   return (
@@ -312,13 +318,21 @@ function TelegramBotSettings() {
           <p className="mt-2 font-mono text-xs md:text-sm font-bold text-neutral-500 break-words">
             {templateEditCommand}
           </p>
+          <p className="mt-2 font-mono text-xs md:text-sm font-bold text-neutral-500 break-words">
+            {templateFuelPresetCommand}
+          </p>
           <p className="mt-2 text-xs text-neutral-500">
             Then send <span className="font-mono">Nhận lương tháng</span>{" "}
             anytime to create both transactions. Use{" "}
             <span className="font-mono">/templates</span> to list,{" "}
             <span className="font-mono">/template edit ...</span> to edit, or{" "}
             <span className="font-mono">/template delete 1</span> to delete from
-            Telegram.
+            Telegram. Fuel preset tip:{" "}
+            <span className="font-mono">Đổ xăng</span> will auto-fill{" "}
+            <span className="font-mono">60.000đ</span>, wallet{" "}
+            <span className="font-mono">Tiền mặt</span>, category{" "}
+            <span className="font-mono">Xăng xe</span>, and note format{" "}
+            <span className="font-mono">đổ xăng [n]</span> with monthly reset.
           </p>
         </div>
 

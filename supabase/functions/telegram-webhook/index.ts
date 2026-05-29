@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { jsonResponse } from "../_shared/cors.ts";
 import {
+  flattenTelegramItems,
   normalizeText,
   parseTelegramEdit,
   parseTelegramTransaction,
@@ -45,6 +46,7 @@ type TemplateItem = {
   contact_id: string | null;
   description: string | null;
   date_offset_days: number | null;
+  smart_config?: TemplateSmartConfig | null;
 };
 
 type TransactionTemplate = {
@@ -54,6 +56,18 @@ type TransactionTemplate = {
   trigger_normalized: string;
   items?: TemplateItem[];
 };
+
+type TemplateSmartConfig = {
+  kind: "monthly_sequence_description";
+  sequence_key: string;
+  prefix_vi: string;
+  prefix_en?: string;
+  match_prefix: string;
+};
+
+type TemplatePresetBuildResult =
+  | { ok: true; rows: Array<Omit<TemplateItem, "id" | "sort_order">> }
+  | { ok: false; reason: string };
 
 type AiParsedTransaction = {
   type?: "expense" | "income" | "transfer";
@@ -1893,8 +1907,138 @@ function itemSummary(item: TemplateItem, languageIsVietnamese: boolean) {
           : "transfer"
         : languageIsVietnamese
           ? "chi"
-          : "expense";
-  return `${label} ${formatAmount(Number(item.amount))}${item.description ? ` - ${item.description}` : ""}`;
+        : "expense";
+  const smartSuffix = item.smart_config?.kind === "monthly_sequence_description"
+    ? languageIsVietnamese
+      ? " (tự tăng số lần theo tháng)"
+      : " (auto-increments monthly)"
+    : "";
+  return `${label} ${formatAmount(Number(item.amount))}${item.description ? ` - ${item.description}` : ""}${smartSuffix}`;
+}
+
+function parseTemplatePresetKey(itemText: string) {
+  const normalized = normalizeText(itemText);
+  if (!normalized) return null;
+  if (
+    [
+      "@preset fuel",
+      "preset fuel",
+      "@preset refuel",
+      "preset refuel",
+      "@preset do xang",
+      "preset do xang",
+      "do xang",
+      "đổ xăng",
+      "template do xang",
+    ].includes(normalized)
+  ) {
+    return "fuel-refill";
+  }
+  return null;
+}
+
+function findItemByAliases(
+  items: Array<{ id: string; name: string }>,
+  aliases: string[],
+) {
+  const normalizedAliases = aliases.map((alias) => normalizeText(alias));
+  return (
+    items.find((item) =>
+      normalizedAliases.includes(normalizeText(item.name || ""))
+    ) || null
+  );
+}
+
+function buildTemplatePresetRows(
+  itemText: string,
+  context: Awaited<ReturnType<typeof loadContext>>,
+  languageIsVietnamese: boolean,
+): TemplatePresetBuildResult | null {
+  const presetKey = parseTemplatePresetKey(itemText);
+  if (!presetKey) return null;
+
+  if (presetKey === "fuel-refill") {
+    const wallet = findItemByAliases(context.wallets, [
+      "Tiền mặt",
+      "Tien mat",
+      "Cash",
+    ]);
+    if (!wallet) {
+      return {
+        ok: false,
+        reason: languageIsVietnamese
+          ? 'Mình cần thấy ví "Tiền mặt" trong app để tạo preset đổ xăng này.'
+          : 'I need a wallet named "Tiền mặt" / "Cash" in your app to create this fuel preset.',
+      };
+    }
+
+    const category = findItemByAliases(flattenTelegramItems(context.categories), [
+      "Xăng xe",
+      "Xang xe",
+      "Fuel",
+      "Gas",
+    ]);
+    if (!category) {
+      return {
+        ok: false,
+        reason: languageIsVietnamese
+          ? 'Mình cần thấy category "Xăng xe" trong app để tạo preset đổ xăng này.'
+          : 'I need a category named "Xăng xe" / "Fuel" in your app to create this fuel preset.',
+      };
+    }
+
+    return {
+      ok: true,
+      rows: [
+        {
+          type: "expense",
+          amount: 60000,
+          wallet_id: wallet.id,
+          to_wallet_id: null,
+          category_id: category.id,
+          contact_id: null,
+          description: "đổ xăng",
+          date_offset_days: 0,
+          smart_config: {
+            kind: "monthly_sequence_description",
+            sequence_key: "fuel-refill",
+            prefix_vi: "đổ xăng",
+            prefix_en: "fuel refill",
+            match_prefix: "đổ xăng",
+          },
+        },
+      ],
+    };
+  }
+
+  return null;
+}
+
+async function resolveTemplateItemDescription(
+  userId: string,
+  template: TransactionTemplate,
+  item: TemplateItem,
+  dateString: string,
+) {
+  const smart = item.smart_config;
+  if (!smart || smart.kind !== "monthly_sequence_description") {
+    return item.description || template.name;
+  }
+
+  const monthStart = startOfMonth(dateString);
+  const monthEnd = addMonths(monthStart, 1);
+  const { count, error } = await supabase
+    .from("transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("type", item.type)
+    .gte("date", monthStart)
+    .lt("date", monthEnd)
+    .ilike("description", `${smart.match_prefix}%`);
+  if (error) throw error;
+
+  const nextIndex = Number(count || 0) + 1;
+  return `${smart.prefix_vi} ${nextIndex}`;
 }
 
 function findTemplateMatch(templates: TransactionTemplate[], text: string) {
@@ -1923,8 +2067,8 @@ async function listTemplates(message: TelegramMessage, link: any) {
     await sendMessage(
       chatId,
       languageIsVietnamese
-        ? "Bạn chưa có template nào. Tạo bằng: /template create Nhận lương tháng => nhận lương 20tr vào Techcombank; cho mẹ 5tr từ tài khoản"
-        : "You do not have templates yet. Create one with: /template create Monthly salary => received salary 20m to Techcombank; give mom 5m from Techcombank",
+        ? "Bạn chưa có template nào. Tạo bằng: /template create Nhận lương tháng => nhận lương 20tr vào Techcombank; cho mẹ 5tr từ tài khoản\nHoặc preset nhanh: /template create Đổ xăng => đổ xăng"
+        : "You do not have templates yet. Create one with: /template create Monthly salary => received salary 20m to Techcombank; give mom 5m from Techcombank\nOr use the quick preset: /template create Fuel refill => fuel",
       asText(message.message_id),
     );
     return;
@@ -2104,6 +2248,7 @@ function templateMutationHelp(
           "",
           "Ví dụ:",
           "/template create Nhận lương tháng => nhận lương 20tr vào tài khoản; cho mẹ 5tr từ tài khoản",
+          "/template create Đổ xăng => đổ xăng",
         ].join("\n")
       : [
           "Templates now use CRUD wording:",
@@ -2112,6 +2257,7 @@ function templateMutationHelp(
           "",
           "Example:",
           "/template create Monthly salary => received salary 20m to bank; give mom 5m from bank",
+          "/template create Fuel refill => fuel",
         ].join("\n");
   }
 
@@ -2121,6 +2267,7 @@ function templateMutationHelp(
         "",
         "Bạn gửi theo mẫu này nha:",
         "/template create Nhận lương tháng => nhận lương 20tr vào tài khoản; cho mẹ 5tr từ tài khoản; chuyển 3tr từ tài khoản sang tiết kiệm",
+        "/template create Đổ xăng => đổ xăng",
         "",
         "Mỗi giao dịch cách nhau bằng dấu `;`.",
       ].join("\n")
@@ -2129,6 +2276,7 @@ function templateMutationHelp(
         "",
         "Use this format:",
         "/template create Monthly salary => received salary 20m to bank; give mom 5m from bank; transfer 3m from bank to savings",
+        "/template create Fuel refill => fuel",
         "",
         "Separate each transaction with `;`.",
       ].join("\n");
@@ -2141,31 +2289,68 @@ async function saveTemplateFromMessage(
 ) {
   const chatId = asText(message.chat.id);
   const mutationMode = getTemplateMutationMode(text);
+  const languageIsVietnamese = detectVietnamese(text);
   const parsedMutation = parseTemplateMutation(text);
   if (!parsedMutation) {
     if (!looksLikeTemplateMutation(text)) return false;
     await sendMessage(
       chatId,
-      templateMutationHelp(mutationMode, detectVietnamese(text)),
+      templateMutationHelp(mutationMode, languageIsVietnamese),
       asText(message.message_id),
     );
     return true;
   }
 
   const context = await loadContext(link.user_id, link.default_wallet_id);
-  const parsedItems = await Promise.all(
-    parsedMutation.itemTexts.map(async (itemText) => ({
-      source: itemText,
-      ...(await resolveParsedTransaction(itemText, context)),
-    })),
-  );
-  const failed = parsedItems.find((item) => !item.parsed.ok);
-  if (failed || parsedItems.some((item) => !item.parsed.ok)) {
+  const builtTemplateRows: Array<Omit<TemplateItem, "id" | "sort_order">> = [];
+
+  for (const itemText of parsedMutation.itemTexts) {
+    const presetBuild = buildTemplatePresetRows(
+      itemText,
+      context,
+      languageIsVietnamese,
+    );
+    if (presetBuild?.ok) {
+      builtTemplateRows.push(...presetBuild.rows);
+      continue;
+    }
+    if (presetBuild && !presetBuild.ok) {
+      await sendMessage(chatId, presetBuild.reason, asText(message.message_id));
+      return true;
+    }
+
+    const resolved = await resolveParsedTransaction(itemText, context);
+    if (!resolved.parsed.ok) {
+      const failedReason = resolved.parsed.reason || "";
+      await sendMessage(
+        chatId,
+        `Mình chưa hiểu một dòng trong template: "${itemText}".\n${failedReason}\n\nHãy viết mỗi dòng như một giao dịch bình thường, ví dụ "nhận lương 20tr vào Techcombank".`,
+        asText(message.message_id),
+      );
+      return true;
+    }
+
+    builtTemplateRows.push({
+      type: resolved.parsed.type,
+      amount: resolved.parsed.amount,
+      wallet_id: resolved.parsed.walletId,
+      to_wallet_id: resolved.parsed.toWalletId,
+      category_id: resolved.parsed.categoryId,
+      contact_id: resolved.parsed.contactId,
+      description: resolved.parsed.description,
+      date_offset_days: 0,
+      smart_config: null,
+    });
+  }
+
+  if (builtTemplateRows.length === 0) {
     const failedReason =
-      failed && !failed.parsed.ok ? failed.parsed.reason : "";
+      languageIsVietnamese
+        ? "Mình chưa thấy giao dịch hợp lệ nào trong template này."
+        : "I could not find any valid transaction rows in this template.";
     await sendMessage(
       chatId,
-      `Mình chưa hiểu một dòng trong template: "${failed?.source || ""}".\n${failedReason}\n\nHãy viết mỗi dòng như một giao dịch bình thường, ví dụ "nhận lương 20tr vào Techcombank".`,
+      failedReason,
       asText(message.message_id),
     );
     return true;
@@ -2180,7 +2365,6 @@ async function saveTemplateFromMessage(
     .maybeSingle();
   if (findError) throw findError;
 
-  const languageIsVietnamese = detectVietnamese(text);
   if (parsedMutation.mode === "create" && existing?.id) {
     await sendMessage(
       chatId,
@@ -2237,25 +2421,20 @@ async function saveTemplateFromMessage(
     templateId = template.id;
   }
 
-  const rows = parsedItems.map((item, index) => {
-    const parsed = item.parsed as Extract<
-      ReturnType<typeof parseTelegramTransaction>,
-      { ok: true }
-    >;
-    return {
+  const rows = builtTemplateRows.map((item, index) => ({
       template_id: templateId,
       user_id: link.user_id,
       sort_order: index,
-      type: parsed.type,
-      amount: parsed.amount,
-      wallet_id: parsed.walletId,
-      to_wallet_id: parsed.toWalletId,
-      category_id: parsed.categoryId,
-      contact_id: parsed.contactId,
-      description: parsed.description,
-      date_offset_days: 0,
-    };
-  });
+      type: item.type,
+      amount: item.amount,
+      wallet_id: item.wallet_id,
+      to_wallet_id: item.to_wallet_id,
+      category_id: item.category_id,
+      contact_id: item.contact_id,
+      description: item.description,
+      date_offset_days: Number(item.date_offset_days || 0),
+      smart_config: item.smart_config || null,
+    }));
   const { error: itemError } = await supabase
     .from("telegram_transaction_template_items")
     .insert(rows);
@@ -2291,19 +2470,29 @@ async function runTemplate(
     return;
   }
 
-  const rows = items.map((item) => ({
-    user_id: link.user_id,
-    wallet_id: item.wallet_id,
-    to_wallet_id: item.to_wallet_id,
-    category_id: item.category_id,
-    contact_id: item.contact_id,
-    amount: item.amount,
-    type: item.type,
-    description: item.description || template.name,
-    date: transactionDate(Number(item.date_offset_days || 0)),
-    is_recurring: false,
-    is_debt: false,
-  }));
+  const rows = await Promise.all(
+    items.map(async (item) => {
+      const date = transactionDate(Number(item.date_offset_days || 0));
+      return {
+        user_id: link.user_id,
+        wallet_id: item.wallet_id,
+        to_wallet_id: item.to_wallet_id,
+        category_id: item.category_id,
+        contact_id: item.contact_id,
+        amount: item.amount,
+        type: item.type,
+        description: await resolveTemplateItemDescription(
+          link.user_id,
+          template,
+          item,
+          date,
+        ),
+        date,
+        is_recurring: false,
+        is_debt: false,
+      };
+    }),
+  );
   const { data: transactions, error } = await supabase
     .from("transactions")
     .insert(rows)
@@ -4413,6 +4602,7 @@ Deno.serve(async (req) => {
           "3. Template + báo cáo",
           "- /templates",
           "- /template create ...",
+          "- /template create Đổ xăng => đổ xăng",
           "- tóm tắt chi tiêu tháng này",
         ].join("\n"),
         { replyToMessageId: asText(message.message_id), replyMarkup: BOT_SHORTCUT_KEYBOARD },
