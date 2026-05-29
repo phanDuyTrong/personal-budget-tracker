@@ -35,8 +35,8 @@ import {
 import {
   useTransactions,
   useTransactionMutations,
-  TRANSACTION_SORT_MODES,
 } from "@/features/transactions/hooks";
+import { TRANSACTION_SORT_MODES } from "@/features/transactions/sort";
 import { useWallets } from "@/features/wallets/hooks";
 import { useCategories } from "@/features/categories/hooks";
 import { useContacts } from "@/features/contacts/hooks";

@@ -5,7 +5,8 @@ import { useFormatAmount } from '@/hooks/useTranslation';
 import { useWallets } from '@/features/wallets/hooks';
 import { useCategories } from '@/features/categories/hooks';
 import { useContacts } from '@/features/contacts/hooks';
-import { TRANSACTION_SORT_MODES, sortTransactionsForDisplay, useTransactionMutations } from '@/features/transactions/hooks';
+import { useTransactionMutations } from '@/features/transactions/hooks';
+import { TRANSACTION_SORT_MODES, sortTransactionsForDisplay } from '@/features/transactions/sort';
 import { TransactionModal } from '@/pages/Transactions';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { 

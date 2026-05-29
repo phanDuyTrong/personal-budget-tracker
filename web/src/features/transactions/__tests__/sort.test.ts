@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
     sortTransactionsForDisplay,
     TRANSACTION_SORT_MODES,
-} from "@/features/transactions/hooks";
+} from "@/features/transactions/sort";
 
 const rows = [
     {
