@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { buildTree, nowISO } from '@/features/shared/api';
+import { getRequiredUser } from '@/lib/auth';
 
 // ── Categories ────────────────────────────────────────────────────
 export const useCategories = () => useQuery({
@@ -14,10 +15,16 @@ export const useCategories = () => useQuery({
 
 export const useCategoryMutations = () => {
     const qc = useQueryClient();
-    const inv = () => qc.invalidateQueries({ queryKey: ['categories'] });
+    const inv = () => {
+        qc.invalidateQueries({ queryKey: ['categories'] });
+        qc.invalidateQueries({ queryKey: ['transactions'] });
+        qc.invalidateQueries({ queryKey: ['all-transactions'] });
+        qc.invalidateQueries({ queryKey: ['dashboard'] });
+        qc.invalidateQueries({ queryKey: ['budgets'] });
+    };
     const create = useMutation({
         mutationFn: async (d: any) => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const user = await getRequiredUser('You must be signed in to create a category.');
             const color = d.color || null;
             const { data, error } = await supabase.from('categories').insert({ user_id: user.id, name: d.name, icon: d.icon || null, color, type: d.type, parent_id: d.parentId || null }).select().single();
             if (error) throw error; return data;
@@ -40,8 +47,16 @@ export const useCategoryMutations = () => {
     });
     const reassign = useMutation({
         mutationFn: async ({ id, newCategoryId }: any) => {
-            await supabase.from('transactions').update({ category_id: newCategoryId || null }).eq('category_id', id);
-            await supabase.from('transaction_splits').update({ category_id: newCategoryId || null }).eq('category_id', id);
+            const { error: txError } = await supabase
+                .from('transactions')
+                .update({ category_id: newCategoryId || null })
+                .eq('category_id', id);
+            if (txError) throw txError;
+            const { error: splitError } = await supabase
+                .from('transaction_splits')
+                .update({ category_id: newCategoryId || null })
+                .eq('category_id', id);
+            if (splitError) throw splitError;
         }, onSuccess: inv,
     });
     return { create, update, remove, reassign };

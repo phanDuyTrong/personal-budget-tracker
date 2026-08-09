@@ -9,6 +9,8 @@ export const devMockSession = isDevMockAuthEnabled ? { access_token: 'mock-token
 export const useAuthStore = create((set) => ({
     user: devMockUser,
     session: devMockSession,
+    isReady: isDevMockAuthEnabled,
     setAuth: (user, session) => set({ user, session }),
     clearAuth: () => set({ user: devMockUser, session: devMockSession }),
+    markReady: () => set({ isReady: true }),
 }));

@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui';
 import { 
     ResponsiveContainer, ComposedChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend 
 } from 'recharts';
-import { Tabs, Tab } from "@heroui/react";
+import { Tabs, Tab } from "@heroui/tabs";
 
 const CustomTooltip = ({ active, payload, label, fmtMasked }) => {
     if (active && payload && payload.length) {

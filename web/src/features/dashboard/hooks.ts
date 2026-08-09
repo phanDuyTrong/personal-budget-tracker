@@ -5,6 +5,7 @@ import { calculateLiveBalance } from '@/features/wallets/balance';
 import { calculateDashboardKPIs } from './money';
 import { enrichGoal } from '@/features/goals/money';
 import { getDashboardDateRange, getDayOfMonth, getMonthRange, getPreviousMonthRange, getShiftedMonthRange, monthLabel, toISODate } from '@/lib/date';
+import { fetchAllTransactions } from '@/lib/transactionsFetch';
 
 // ── Dashboard ─────────────────────────────────────────────────────
 export const useDashboardKPIs = (params: Record<string, any> = {}) => useQuery({
@@ -15,11 +16,11 @@ export const useDashboardKPIs = (params: Record<string, any> = {}) => useQuery({
         }
         const { from, to } = getDashboardDateRange(params);
         const { from: prevFrom, to: prevTo } = getPreviousMonthRange(from);
-        const [{ data: accs }, { data: allTxs }, { data: curTxs }, { data: prevTxs }] = await Promise.all([
+        const [{ data: accs }, allTxs, curTxs, prevTxs] = await Promise.all([
             supabase.from('wallets').select('id, balance').is('deleted_at', null),
-            supabase.from('transactions').select('amount,type,wallet_id,to_wallet_id'),
-            supabase.from('transactions').select('amount,type').gte('date', from).lte('date', to),
-            supabase.from('transactions').select('amount,type').gte('date', prevFrom).lte('date', prevTo),
+            fetchAllTransactions('amount,type,wallet_id,to_wallet_id'),
+            fetchAllTransactions('amount,type', (query) => query.gte('date', from).lte('date', to)),
+            fetchAllTransactions('amount,type', (query) => query.gte('date', prevFrom).lte('date', prevTo)),
         ]);
         return calculateDashboardKPIs({
             wallets: accs || [],
@@ -37,7 +38,7 @@ export const useIncomeExpense = () => useQuery({
         return Promise.all(Array.from({ length: 6 }, async (_, i) => {
             const { from, to, start } = getShiftedMonthRange(now, -(5 - i));
             const label = monthLabel(start);
-            const { data: txs } = await supabase.from('transactions').select('amount,type').gte('date', from).lte('date', to);
+            const txs = await fetchAllTransactions('amount,type', (query) => query.gte('date', from).lte('date', to));
             const income = (txs || []).filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0), expense = (txs || []).filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
             return { label, income, expense };
         }));
@@ -47,9 +48,9 @@ export const useIncomeExpense = () => useQuery({
 export const useNetWorth = () => useQuery({
     queryKey: ['dashboard', 'net-worth'],
     queryFn: async () => {
-        const [{ data: accs }, { data: txs }] = await Promise.all([
+        const [{ data: accs }, txs] = await Promise.all([
             supabase.from('wallets').select('id, balance').is('deleted_at', null),
-            supabase.from('transactions').select('amount,type,wallet_id,to_wallet_id'),
+            fetchAllTransactions('amount,type,wallet_id,to_wallet_id'),
         ]);
         const base = calculateLiveBalance(accs || [], txs || []), now = new Date();
         return Array.from({ length: 12 }, (_, i) => {
@@ -73,7 +74,10 @@ export const useTrend = (period = 'month') => useQuery({
         }
         const now = new Date();
         let points = 6; if (period === 'day') points = 14; if (period === 'week') points = 12; if (period === 'month') points = 6; if (period === 'year') points = 5;
-        const [{ data: accs }, { data: allTxs }] = await Promise.all([supabase.from('wallets').select('id, balance').is('deleted_at', null), supabase.from('transactions').select('date,amount,type,wallet_id,to_wallet_id')]);
+        const [{ data: accs }, allTxs] = await Promise.all([
+            supabase.from('wallets').select('id, balance').is('deleted_at', null),
+            fetchAllTransactions('date,amount,type,wallet_id,to_wallet_id'),
+        ]);
         const activeWalletIds = new Set((accs || []).map(a => a.id)), baseNetWorth = (accs || []).reduce((s, a) => s + Number(a.balance), 0);
         return Array.from({ length: points }, (_, i) => {
             let fromD, toD, label;
@@ -101,7 +105,10 @@ export const useSpendingByCategory = (params: Record<string, any> = {}) => useQu
     queryKey: ['dashboard', 'spending-by-category', params],
     queryFn: async () => {
         const { from, to } = getDashboardDateRange(params);
-        const { data: txs } = await supabase.from('transactions').select('amount,category_id,category:categories(id,name,icon,color,parent_id)').eq('type', 'expense').gte('date', from).lte('date', to);
+        const txs = await fetchAllTransactions(
+            'amount,category_id,category:categories(id,name,icon,color,parent_id)',
+            (query) => query.eq('type', 'expense').gte('date', from).lte('date', to),
+        );
         const grouped: Record<string, any> = {};
         (txs || []).forEach(tx => { const key = tx.category_id || '__none__'; if (!grouped[key]) grouped[key] = { id: key, name: tx.category?.name || 'Uncategorized', icon: tx.category?.icon || 'CubeIcon', color: tx.category?.color || '#94a3b8', amount: 0 }; grouped[key].amount += Number(tx.amount); });
         return Object.values(grouped).sort((a, b) => b.amount - a.amount);
@@ -121,7 +128,10 @@ export const useBudgetHealth = (params: Record<string, any> = {}) => useQuery({
         const { from, to } = getDashboardDateRange(params);
         const { data: budgets } = await supabase.from('budgets').select('*, category:categories(id,name,icon,color)');
         return Promise.all((budgets || []).map(async (b) => {
-            const { data: txs } = await supabase.from('transactions').select('amount').eq('category_id', b.category_id).eq('type', 'expense').gte('date', from).lte('date', to);
+            const txs = await fetchAllTransactions(
+                'amount',
+                (query) => query.eq('category_id', b.category_id).eq('type', 'expense').gte('date', from).lte('date', to),
+            );
             const spent = (txs || []).reduce((s, t) => s + Number(t.amount), 0), percentage = Number(b.amount) > 0 ? Math.round((spent / Number(b.amount)) * 100) : 0;
             return { ...b, spent, percentage, status: percentage < 80 ? 'ok' : percentage < 100 ? 'warning' : 'over' };
         }));
@@ -132,7 +142,10 @@ export const useTopPayees = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['dashboard', 'top-payees', params],
     queryFn: async () => {
         const { from, to } = getDashboardDateRange(params);
-        const { data: txs } = await supabase.from('transactions').select('amount,contact:contacts(id,name)').eq('type', 'expense').gte('date', from).lte('date', to);
+        const txs = await fetchAllTransactions(
+            'amount,contact:contacts(id,name)',
+            (query) => query.eq('type', 'expense').gte('date', from).lte('date', to),
+        );
         const grouped: Record<string, any> = {};
         (txs || []).forEach(tx => { if (!tx.contact) return; const key = tx.contact.id; if (!grouped[key]) grouped[key] = { id: key, name: tx.contact.name, amount: 0 }; grouped[key].amount += Number(tx.amount); });
         return Object.values(grouped).sort((a, b) => b.amount - a.amount).slice(0, 5);
@@ -143,7 +156,10 @@ export const useCashFlowWaterfall = (params: Record<string, any> = {}) => useQue
     queryKey: ['dashboard', 'cashflow-waterfall', params],
     queryFn: async () => {
         const { from, to } = getDashboardDateRange(params);
-        const [{ data: accs }, { data: allTxs }] = await Promise.all([supabase.from('wallets').select('id, balance').is('deleted_at', null), supabase.from('transactions').select('date,amount,type,wallet_id,to_wallet_id')]);
+        const [{ data: accs }, allTxs] = await Promise.all([
+            supabase.from('wallets').select('id, balance').is('deleted_at', null),
+            fetchAllTransactions('date,amount,type,wallet_id,to_wallet_id'),
+        ]);
         const activeWalletIds = new Set((accs || []).map(a => a.id)), currentNetWorth = calculateLiveBalance(accs || [], allTxs || []);
         const txsAfterStart = (allTxs || []).filter(t => t.date >= from);
         let incAfterStart = 0, expAfterStart = 0;
@@ -170,7 +186,7 @@ export const useDailySpend = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['dashboard', 'daily-spend', params],
     queryFn: async () => {
         const { from, to, end } = getMonthRange();
-        const { data: txs } = await supabase.from('transactions').select('amount,date').eq('type', 'expense').gte('date', from).lte('date', to);
+        const txs = await fetchAllTransactions('amount,date', (query) => query.eq('type', 'expense').gte('date', from).lte('date', to));
         const dailyMap = {}; (txs || []).forEach(tx => { const d = getDayOfMonth(tx.date); dailyMap[d] = (dailyMap[d] || 0) + Number(tx.amount); });
         const days = end.getDate();
         const result = Array.from({ length: days }, (_, i) => ({ day: i + 1, amount: dailyMap[i + 1] || 0 }));
@@ -194,13 +210,19 @@ export const useTopCategories = (params: Record<string, any> = {}) => useQuery({
         }
         const limit = params.limit || 5;
         const { from, to } = getDashboardDateRange(params), refDate = new Date(from);
-        const { data: txs } = await supabase.from('transactions').select('amount,category_id,category:categories(id,name,icon,color,parent_id)').eq('type', 'expense').gte('date', from).lte('date', to);
+        const txs = await fetchAllTransactions(
+            'amount,category_id,category:categories(id,name,icon,color,parent_id)',
+            (query) => query.eq('type', 'expense').gte('date', from).lte('date', to),
+        );
         const grouped: Record<string, any> = {}; (txs || []).forEach(tx => { if (!tx.category_id) return; if (!grouped[tx.category_id]) grouped[tx.category_id] = { ...tx.category, total: 0, sparkline: [] }; grouped[tx.category_id].total += Number(tx.amount); });
         const topItems = Object.values(grouped).sort((a, b) => b.total - a.total).slice(0, limit);
         return Promise.all(topItems.map(async (cat) => {
             const sparkline = await Promise.all(Array.from({ length: 3 }, async (_, i) => {
                 const { from: mFrom, to: mTo } = getShiftedMonthRange(refDate, -(2 - i));
-                const { data: ts } = await supabase.from('transactions').select('amount').eq('category_id', cat.id).eq('type', 'expense').gte('date', mFrom).lte('date', mTo);
+                const ts = await fetchAllTransactions(
+                    'amount',
+                    (query) => query.eq('category_id', cat.id).eq('type', 'expense').gte('date', mFrom).lte('date', mTo),
+                );
                 return (ts || []).reduce((s, t) => s + Number(t.amount), 0);
             }));
             return { ...cat, sparkline };
@@ -211,8 +233,8 @@ export const useTopCategories = (params: Record<string, any> = {}) => useQuery({
 export const useGoalsProgress = () => useQuery({
     queryKey: ['dashboard', 'goals-progress'],
     queryFn: async () => {
-        const { data, error } = await supabase.from('goals').select('*, wallet:wallets(id,name)').eq('status', 'active');
+        const { data, error } = await supabase.from('goals').select('*').eq('status', 'active');
         if (error) throw error;
-        return (data || []).map(enrichGoal);
+        return (data || []).map((goal) => enrichGoal(goal));
     },
 });

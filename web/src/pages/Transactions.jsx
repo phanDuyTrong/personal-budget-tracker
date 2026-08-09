@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import { format, parseISO } from "date-fns";
+import React, { useEffect, useState, useMemo } from "react";
+import { format, getMonth, getYear, parseISO } from "date-fns";
 import {
   CheckIcon,
   PlusIcon,
@@ -12,25 +12,16 @@ import {
   ArrowDownTrayIcon,
   ArrowsRightLeftIcon,
   DocumentDuplicateIcon,
-  SparklesIcon,
 } from "@heroicons/react/24/outline";
-import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-  Input,
-  Select,
-  Autocomplete,
-  AutocompleteItem,
-  Button,
-  Pagination,
-  Chip,
-  Tooltip,
-  SelectItem,
-} from "@heroui/react";
+import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/table";
+import { Input } from "@heroui/input";
+import { Select, SelectItem } from "@heroui/select";
+import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
+import { Button } from "@heroui/button";
+import { Pagination } from "@heroui/pagination";
+import { Chip } from "@heroui/chip";
+import { Tooltip } from "@heroui/tooltip";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import {
   useTransactions,
@@ -41,10 +32,12 @@ import { useWallets } from "@/features/wallets/hooks";
 import { useCategories } from "@/features/categories/hooks";
 import { useContacts } from "@/features/contacts/hooks";
 import { useTrips } from "@/features/trips/hooks";
-import { aiService, buildTransactionDraft } from "@/lib/aiParser";
+import { useBudgets, useBudgetMutations } from "@/features/budgets/hooks";
+import { useGoals } from "@/features/goals/hooks";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { viFilter } from "@/lib/filters";
 import { toISODate } from "@/lib/date";
+import { parseMoneyInput } from "@/lib/money";
 import { useT } from "@/hooks/useTranslation";
 import {
   Modal,
@@ -54,10 +47,10 @@ import {
   EmptyState,
   AmountDisplay,
   ConfirmModal,
-  useToast,
   Textarea,
   DatePicker as CustomDatePicker,
 } from "@/components/ui";
+import { useToast } from "@/components/ui/useToast";
 
 const getEmptyForm = () => ({
   amount: "",
@@ -72,6 +65,53 @@ const getEmptyForm = () => ({
   isDebt: false,
   toWalletId: "",
 });
+
+const getErrorMessage = (err, fallback = "Error saving transaction") =>
+  err instanceof Error && err.message ? err.message : fallback;
+
+const areAmountsEqual = (left, right) =>
+  Math.abs(Number(left || 0) - Number(right || 0)) < 0.0001;
+
+function QuickBudgetModal({
+  open,
+  onClose,
+  categoryName,
+  amount,
+  onAmountChange,
+  onSubmit,
+  isSaving,
+}) {
+  return (
+    <Modal open={open} onClose={onClose} title="Create Budget" size="sm">
+      <form onSubmit={onSubmit} className="p-6 space-y-5">
+        <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">
+            Category
+          </p>
+          <p className="mt-2 text-sm font-bold text-neutral-900 dark:text-white">
+            {categoryName || "Selected category"}
+          </p>
+        </div>
+        <Field label="Monthly Budget Amount">
+          <AmountInput
+            value={amount}
+            onChange={(event) => onAmountChange(event.target.value)}
+            placeholder="0"
+            required
+          />
+        </Field>
+        <div className="flex justify-end gap-2 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+          <Button variant="light" onClick={onClose} isDisabled={isSaving}>
+            Cancel
+          </Button>
+          <Button color="primary" type="submit" isLoading={isSaving}>
+            Create Budget
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
 
 function SelectionBox({ isSelected, isIndeterminate = false, label, onChange }) {
   const active = isSelected || isIndeterminate;
@@ -104,145 +144,65 @@ function SelectionBox({ isSelected, isIndeterminate = false, label, onChange }) 
   );
 }
 
-function QuickAddModal({
-  open,
-  onClose,
-  wallets,
-  categories,
-  contacts,
-  onDraft,
-}) {
-  const [input, setInput] = useState("");
-  const [isParsing, setIsParsing] = useState(false);
-  const toast = useToast();
-
-  const examples = [
-    "ăn trưa 85k bằng tiền mặt",
-    "nhận lương 20tr vào Techcombank",
-    "chuyển 2tr từ Cash sang Savings",
-  ];
-
-  const handleParse = async (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    setIsParsing(true);
-    try {
-      const parsed = await aiService.parseTransaction(input.trim(), {
-        wallets,
-        categories,
-        contacts,
-      });
-      const draft = buildTransactionDraft(parsed, {
-        wallets,
-        categories,
-        contacts,
-      });
-      if (!draft.amount)
-        throw new Error(
-          "AI could not detect an amount. Try adding a clearer number.",
-        );
-      onDraft(draft);
-      setInput("");
-      toast(
-        "AI filled a transaction draft. Review it before saving.",
-        "success",
-      );
-    } catch (err) {
-      toast(err.message || "AI could not parse this transaction.", "error");
-    } finally {
-      setIsParsing(false);
-    }
-  };
-
-  return (
-    <Modal open={open} onClose={onClose} title="AI Quick Add" size="md">
-      <form onSubmit={handleParse} className="p-6 space-y-5">
-        <div className="rounded-3xl border border-primary/20 bg-primary/5 p-4">
-          <p className="text-sm font-semibold text-neutral-900 dark:text-white">
-            Viết như bạn nhắn tin cho chính mình.
-          </p>
-          <p className="mt-1 text-sm text-neutral-500">
-            AI sẽ đọc số tiền, ví, danh mục, ngày và người liên quan, rồi mở
-            form để bạn kiểm tra trước khi lưu.
-          </p>
-        </div>
-
-        <Field label="Transaction sentence">
-          <Textarea
-            autoFocus
-            rows={4}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ví dụ: ăn phở 55k bằng tiền mặt hôm nay"
-          />
-        </Field>
-
-        <div className="flex flex-wrap gap-2">
-          {examples.map((example) => (
-            <button
-              key={example}
-              type="button"
-              onClick={() => setInput(example)}
-              className="rounded-full border border-neutral-200 bg-white/60 px-3 py-1.5 text-xs text-neutral-600 transition hover:border-primary/40 hover:text-primary dark:border-neutral-700 dark:bg-neutral-900/60 dark:text-neutral-300"
-            >
-              {example}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex justify-end gap-2 border-t border-neutral-100 pt-4 dark:border-neutral-800">
-          <Button variant="light" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            color="primary"
-            type="submit"
-            isLoading={isParsing}
-            startContent={!isParsing && <SparklesIcon className="h-4 w-4" />}
-          >
-            Fill Transaction
-          </Button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
 export function TransactionModal({ open, onClose, transaction }) {
   const { currency } = useSettingsStore();
   const sym = currency === "VND" ? "₫" : "$";
+  const navigate = useNavigate();
 
   const isDuplicate = transaction?.intent === "duplicate";
-  const isQuickAdd = transaction?.intent === "quick-add";
   const txData = transaction?.data || transaction || null;
 
-  const [form, setForm] = useState(
-    txData
-      ? {
-          ...txData,
-          amount: txData.amount,
-          walletId: txData.wallet_id || txData.walletId || "",
-          toWalletId: txData.to_wallet_id || txData.toWalletId || "",
-          categoryId: txData.category_id || txData.categoryId || "",
-          contactId: txData.contact_id || txData.contactId || "",
-          tripId: txData.trip_id || txData.tripId || "",
-          isDebt:
-            txData.is_debt !== undefined ? !!txData.is_debt : !!txData.isDebt,
-          date: isDuplicate
-            ? toISODate(new Date())
-            : format(new Date(txData.date || new Date()), "yyyy-MM-dd"),
-        }
-      : getEmptyForm(),
+  const buildFormState = React.useCallback(
+    () =>
+      txData
+        ? {
+            ...txData,
+            amount: txData.amount,
+            walletId: txData.wallet_id || txData.walletId || "",
+            toWalletId: txData.to_wallet_id || txData.toWalletId || "",
+            categoryId: txData.category_id || txData.categoryId || "",
+            contactId: txData.contact_id || txData.contactId || "",
+            tripId: txData.trip_id || txData.tripId || "",
+            isDebt:
+              txData.is_debt !== undefined ? !!txData.is_debt : !!txData.isDebt,
+            date: isDuplicate
+              ? toISODate(new Date())
+              : format(new Date(txData.date || new Date()), "yyyy-MM-dd"),
+          }
+        : getEmptyForm(),
+    [isDuplicate, txData],
   );
-  const [splits, setSplits] = useState([]);
-  const [isSplit, setIsSplit] = useState(false);
+  const [form, setForm] = useState(buildFormState);
+  const [splits, setSplits] = useState(() =>
+    (txData?.splits || []).map((split) => ({
+      categoryId: split.category_id || split.categoryId || "",
+      amount: split.amount ?? "",
+      note: split.note || "",
+    })),
+  );
+  const [isSplit, setIsSplit] = useState(
+    () => (txData?.splits?.length || 0) > 0,
+  );
+  const [quickBudgetOpen, setQuickBudgetOpen] = useState(false);
+  const [quickBudgetAmount, setQuickBudgetAmount] = useState("");
   const { create, update, setSplits: saveSplits } = useTransactionMutations();
+  const { create: createBudget } = useBudgetMutations();
   const { data: wallets = [] } = useWallets();
   const { data: categoryTree = [] } = useCategories();
   const { data: contacts = [] } = useContacts();
   const { data: trips = [] } = useTrips();
   const toast = useToast();
+  const parsedFormDate = useMemo(() => {
+    try {
+      return form.date ? parseISO(form.date) : new Date();
+    } catch {
+      return new Date();
+    }
+  }, [form.date]);
+  const budgetMonth = getMonth(parsedFormDate) + 1;
+  const budgetYear = getYear(parsedFormDate);
+  const { data: budgets = [] } = useBudgets({ month: budgetMonth, year: budgetYear });
+  const { data: goals = [] } = useGoals({ excludeStatus: "archived" });
 
   // Detect if selected category belongs to "Du lịch" tree
   const isTravelCategory = useMemo(() => {
@@ -284,11 +244,95 @@ export function TransactionModal({ open, onClose, transaction }) {
     return flat;
   }, [categoryTree]);
 
-  const isEdit = !!txData?.id && !isDuplicate && !isQuickAdd;
+  const isEdit = !!txData?.id && !isDuplicate;
+  const activeBudget = useMemo(
+    () =>
+      form.type === "expense"
+        ? budgets.find(
+            (budget) =>
+              (budget.category_id || budget.category?.id) === form.categoryId,
+          ) || null
+        : null,
+    [budgets, form.categoryId, form.type],
+  );
+  const hasBudgetOpportunity =
+    form.type === "expense" && !!form.categoryId && !activeBudget;
+  const activeBudgetPercent = useMemo(() => {
+    if (!activeBudget) return 0;
+    const amount = Number(activeBudget.amount || 0);
+    const spent = Number(activeBudget.spent || 0);
+    return amount > 0 ? Math.round((spent / amount) * 100) : 0;
+  }, [activeBudget]);
+  const linkedGoals = useMemo(
+    () =>
+      goals.filter(
+        (goal) => goal.walletId && goal.walletId === form.walletId && goal.status !== "archived",
+      ),
+    [form.walletId, goals],
+  );
+  const selectedWallet = useMemo(
+    () => wallets.find((wallet) => wallet.id === form.walletId) || null,
+    [form.walletId, wallets],
+  );
+
+  useEffect(() => {
+    setForm(buildFormState());
+    setSplits(
+      (txData?.splits || []).map((split) => ({
+        categoryId: split.category_id || split.categoryId || "",
+        amount: split.amount ?? "",
+        note: split.note || "",
+      })),
+    );
+    setIsSplit((txData?.splits?.length || 0) > 0);
+  }, [buildFormState, txData]);
+
+  useEffect(() => {
+    if (!isTravelCategory && form.tripId) {
+      setForm((prev) => ({ ...prev, tripId: "" }));
+    }
+  }, [form.tripId, isTravelCategory]);
+
+  useEffect(() => {
+    if (form.type !== "transfer" && form.toWalletId) {
+      setForm((prev) => ({ ...prev, toWalletId: "" }));
+    }
+  }, [form.toWalletId, form.type]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const parsedAmount = parseMoneyInput(form.amount);
+      if (parsedAmount <= 0) {
+        throw new Error("Amount must be greater than 0.");
+      }
+      if (
+        form.type === "transfer" &&
+        (!form.toWalletId || form.toWalletId === form.walletId)
+      ) {
+        throw new Error("Please choose a different destination wallet.");
+      }
+      if (isSplit) {
+        if (splits.length === 0) {
+          throw new Error("Please add at least one split.");
+        }
+        const hasInvalidSplit = splits.some(
+          (split) => !split.categoryId || parseMoneyInput(split.amount) <= 0,
+        );
+        if (hasInvalidSplit) {
+          throw new Error(
+            "Each split needs a category and an amount greater than 0.",
+          );
+        }
+        const splitTotal = splits.reduce(
+          (sum, split) => sum + parseMoneyInput(split.amount),
+          0,
+        );
+        if (!areAmountsEqual(splitTotal, parsedAmount)) {
+          throw new Error("Split total must match the transaction amount.");
+        }
+      }
+
       let saved;
       if (isEdit) {
         saved = await update.mutateAsync({ id: txData.id, ...form });
@@ -300,15 +344,30 @@ export function TransactionModal({ open, onClose, transaction }) {
       toast(`Transaction ${isEdit ? "updated" : "created"}!`, "success");
       onClose();
     } catch (err) {
-      toast(
-        err.response?.data?.error?.message || "Error saving transaction",
-        "error",
-      );
+      toast(getErrorMessage(err), "error");
     }
   };
 
   const handleFormChange = (field, value) =>
     setForm((p) => ({ ...p, [field]: value }));
+
+  const handleQuickBudgetCreate = async (event) => {
+    event.preventDefault();
+    try {
+      await createBudget.mutateAsync({
+        categoryId: form.categoryId,
+        amount: quickBudgetAmount || form.amount,
+        period: "monthly",
+        rollover: false,
+        startDate: `${budgetYear}-${String(budgetMonth).padStart(2, "0")}-01`,
+      });
+      toast("Budget created for this category!", "success");
+      setQuickBudgetOpen(false);
+      setQuickBudgetAmount("");
+    } catch (err) {
+      toast(getErrorMessage(err, "Error creating budget"), "error");
+    }
+  };
 
   return (
     <Modal
@@ -317,9 +376,7 @@ export function TransactionModal({ open, onClose, transaction }) {
       title={
         isEdit
           ? "Edit Transaction"
-          : isQuickAdd
-            ? "Review AI Transaction"
-            : "New Transaction"
+          : "New Transaction"
       }
       size="lg"
     >
@@ -401,6 +458,49 @@ export function TransactionModal({ open, onClose, transaction }) {
             </Autocomplete>
           </Field>
         )}
+        {activeBudget && (
+          <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">
+              Budget Impact
+            </p>
+            <p className="mt-2 text-sm font-bold text-neutral-900 dark:text-white">
+              {activeBudget.category?.name || "Selected category"} budget is currently at{" "}
+              {activeBudgetPercent}%
+            </p>
+            <p className="mt-1 text-xs text-neutral-500">
+              Spent {sym} {Number(activeBudget.spent || 0).toLocaleString()} of {sym} {Number(activeBudget.amount || 0).toLocaleString()} this month.
+            </p>
+          </div>
+        )}
+        {hasBudgetOpportunity && (
+          <div className="rounded-2xl border border-warning/20 bg-warning/10 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">
+                  Budget Missing
+                </p>
+                <p className="mt-2 text-sm font-bold text-neutral-900 dark:text-white">
+                  This category does not have a budget for {format(parsedFormDate, "MMMM yyyy")} yet.
+                </p>
+                <p className="mt-1 text-xs text-neutral-500">
+                  Create one now so this transaction immediately contributes to budget tracking.
+                </p>
+              </div>
+              <Button
+                type="button"
+                color="warning"
+                variant="flat"
+                className="font-bold"
+                onPress={() => {
+                  setQuickBudgetAmount(form.amount || "");
+                  setQuickBudgetOpen(true);
+                }}
+              >
+                Create Budget
+              </Button>
+            </div>
+          </div>
+        )}
         <Field label="Category">
           <Autocomplete
             placeholder="Search category..."
@@ -474,6 +574,67 @@ export function TransactionModal({ open, onClose, transaction }) {
             rows={2}
           />
         </Field>
+        {linkedGoals.length > 0 && (
+          <div className="rounded-2xl border border-success/15 bg-success/5 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">
+              Goals Using This Wallet
+            </p>
+            <div className="mt-3 space-y-2">
+              {linkedGoals.map((goal) => (
+                <div key={goal.id} className="flex items-center justify-between gap-4 rounded-xl bg-white/60 px-3 py-2 dark:bg-neutral-900/40">
+                  <div>
+                    <p className="text-sm font-bold text-neutral-900 dark:text-white">{goal.name}</p>
+                    <p className="text-xs text-neutral-500">
+                      {Number(goal.percentage || 0)}% complete
+                    </p>
+                  </div>
+                  <span className="text-xs font-black uppercase tracking-widest text-success">
+                    {Number(goal.currentAmount || 0).toLocaleString()} / {Number(goal.targetAmount || 0).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {form.walletId && form.type !== "transfer" && linkedGoals.length === 0 && (
+          <div className="rounded-2xl border border-secondary/15 bg-secondary/5 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">
+                  Goal Opportunity
+                </p>
+                <p className="mt-2 text-sm font-bold text-neutral-900 dark:text-white">
+                  {selectedWallet?.name || "This wallet"} is not linked to any goal yet.
+                </p>
+                <p className="mt-1 text-xs text-neutral-500">
+                  Create a goal from this wallet so future income and contributions can roll into a savings milestone.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="flat"
+                color="secondary"
+                className="font-bold"
+                onPress={() => {
+                  onClose();
+                  navigate("/goals", {
+                    state: {
+                      prefillGoal: {
+                        walletId: form.walletId,
+                        name: "",
+                        targetAmount: "",
+                        currentAmount: "",
+                        deadline: "",
+                      },
+                    },
+                  });
+                }}
+              >
+                Create Goal
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <input
@@ -550,13 +711,17 @@ export function TransactionModal({ open, onClose, transaction }) {
         )}
 
         <div className="flex gap-2 justify-end pt-4 border-t border-neutral-100 dark:border-neutral-800">
-          <Button variant="light" onClick={onClose}>
+          <Button
+            variant="light"
+            onClick={onClose}
+            isDisabled={create.isPending || update.isPending || saveSplits.isPending}
+          >
             Cancel
           </Button>
           <Button
             color="primary"
             type="submit"
-            isLoading={create.isPending || update.isPending}
+            isLoading={create.isPending || update.isPending || saveSplits.isPending}
           >
             {isEdit
               ? "Save Changes"
@@ -566,6 +731,17 @@ export function TransactionModal({ open, onClose, transaction }) {
           </Button>
         </div>
       </form>
+      {quickBudgetOpen && (
+        <QuickBudgetModal
+          open
+          onClose={() => setQuickBudgetOpen(false)}
+          categoryName={flatCats.find((category) => category.id === form.categoryId)?.name}
+          amount={quickBudgetAmount}
+          onAmountChange={setQuickBudgetAmount}
+          onSubmit={handleQuickBudgetCreate}
+          isSaving={createBudget.isPending}
+        />
+      )}
     </Modal>
   );
 }
@@ -589,6 +765,20 @@ function collectCategoryAndDescendantIds(categories, selectedId) {
 
   const selectedNode = findNode(categories);
   return selectedNode ? collectIds(selectedNode) : [selectedId];
+}
+
+function buildFiltersFromLocation(location) {
+  const searchParams = new URLSearchParams(location.search);
+  return {
+    type: searchParams.get("type") || "all",
+    search: searchParams.get("search") || "",
+    walletId: searchParams.get("wallet_id") || "all",
+    categoryId: searchParams.get("category_id") || searchParams.get("categoryId") || "all",
+    contactId: searchParams.get("contact_id") || "all",
+    sortDate: searchParams.get("sortDate") || TRANSACTION_SORT_MODES.NEWEST,
+    dateFrom: searchParams.get("date_from") || "",
+    dateTo: searchParams.get("date_to") || "",
+  };
 }
 
 const MIXED_VALUE = "__mixed__";
@@ -649,7 +839,7 @@ function BulkEditModal({
   const buildPatch = () => {
     const patch = {};
     if (touchedFields.has("amount") && form.amount !== "") {
-      patch.amount = parseFloat(form.amount);
+      patch.amount = parseMoneyInput(form.amount);
     }
     if (touchedFields.has("type")) {
       patch.type = form.type;
@@ -960,23 +1150,25 @@ function BulkEditModal({
 }
 
 export function Transactions() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [selectedRowKeys, setSelectedRowKeys] = useState(new Set([]));
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
-  const [filters, setFilters] = useState({
-    type: "all",
-    search: "",
-    walletId: "all",
-    categoryId: "all",
-    contactId: "all",
-    sortDate: TRANSACTION_SORT_MODES.NEWEST,
-  });
+  const locationFilters = useMemo(() => buildFiltersFromLocation(location), [location.search]);
+  const [filters, setFilters] = useState(locationFilters);
   const [modal, setModal] = useState(null); // null | 'new' | transaction
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
   const [confirmBulkDel, setConfirmBulkDel] = useState(false);
   const toast = useToast();
   const t = useT();
+  const routeDraftTransaction = location.state?.openTransaction || null;
+  const activeModal = modal || routeDraftTransaction;
+
+  useEffect(() => {
+    setFilters(locationFilters);
+    setPage(1);
+  }, [locationFilters]);
 
   const updateFilter = (k, v) => {
     setFilters((prev) => ({ ...prev, [k]: v }));
@@ -1006,6 +1198,8 @@ export function Transactions() {
     ...(filters.type !== "all" && { type: filters.type }),
     ...(filters.search && { search: filters.search }),
     ...(filters.walletId !== "all" && { wallet_id: filters.walletId }),
+    ...(filters.dateFrom && { date_from: filters.dateFrom }),
+    ...(filters.dateTo && { date_to: filters.dateTo }),
     ...(selectedCategoryIds.length > 0 && { category_ids: selectedCategoryIds }),
     ...(filters.contactId !== "all" && { contact_id: filters.contactId }),
     sortDate: filters.sortDate,
@@ -1277,6 +1471,13 @@ export function Transactions() {
     }
   }, [toggleRowSelection]);
 
+  const handleModalClose = React.useCallback(() => {
+    setModal(null);
+    if (routeDraftTransaction) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.pathname, navigate, routeDraftTransaction]);
+
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-[1400px] mx-auto animate-in fade-in duration-500">
       {/* Header Section */}
@@ -1294,13 +1495,6 @@ export function Transactions() {
             onClick={handleExport}
           >
             Export CSV
-          </Button>
-          <Button
-            variant="bordered"
-            startContent={<SparklesIcon className="h-4 w-4" />}
-            onClick={() => setQuickAddOpen(true)}
-          >
-            AI Quick Add
           </Button>
           <Button
             color="primary"
@@ -1352,6 +1546,28 @@ export function Transactions() {
             <SelectItem key={TRANSACTION_SORT_MODES.UPDATED_OLDEST}>Least Recently Updated</SelectItem>
           </Select>
         </div>
+
+        {(filters.dateFrom || filters.dateTo) && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm font-bold text-neutral-700 dark:text-neutral-200">
+              Scoped to{" "}
+              {filters.dateFrom && filters.dateTo
+                ? `${format(parseISO(filters.dateFrom), "MMM yyyy")}`
+                : "selected period"}
+            </div>
+            <Button
+              variant="light"
+              size="sm"
+              onPress={() => {
+                setFilters((prev) => ({ ...prev, dateFrom: "", dateTo: "" }));
+                setPage(1);
+              }}
+            >
+              Clear period
+            </Button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Autocomplete
             placeholder="Search Wallets..."
@@ -1537,25 +1753,14 @@ export function Transactions() {
       )}
 
       {/* Modals */}
-      <QuickAddModal
-        open={quickAddOpen}
-        onClose={() => setQuickAddOpen(false)}
-        wallets={wallets}
-        categories={categoryTree}
-        contacts={contacts}
-        onDraft={(draft) => {
-          setQuickAddOpen(false);
-          setModal({ intent: "quick-add", data: draft });
-        }}
-      />
-      {modal === "new" && (
-        <TransactionModal open onClose={() => setModal(null)} />
+      {activeModal === "new" && (
+        <TransactionModal open onClose={handleModalClose} />
       )}
-      {modal && modal !== "new" && (
+      {activeModal && activeModal !== "new" && (
         <TransactionModal
           open
-          onClose={() => setModal(null)}
-          transaction={modal}
+          onClose={handleModalClose}
+          transaction={activeModal}
         />
       )}
       {bulkEditOpen && selectedRows.length > 0 && (

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  findExplicitTripMatch,
   parseTelegramEdit,
   parseTelegramTransaction,
+  resolveTelegramDraftSelection,
 } from "../../../../../supabase/functions/_shared/telegram-parser";
 
 const context = {
@@ -18,11 +20,32 @@ const context = {
   categories: [
     { id: "cat-food", name: "Mua đồ ăn", type: "expense" },
     { id: "cat-gift", name: "Mua quà", type: "expense" },
-    { id: "cat-salary", name: "Salary", type: "income" },
+    { id: "cat-travel-root", name: "Du lịch", type: "expense" },
+    {
+      id: "cat-travel-stay",
+      name: "Khách sạn/Homestay",
+      type: "expense",
+      parent_id: "cat-travel-root",
+    },
+    { id: "cat-income-root", name: "Thu nhập", type: "income" },
+    { id: "cat-income-salary", name: "Lương chính", parent_id: "cat-income-root" },
+    { id: "cat-income-bonus", name: "Thưởng", parent_id: "cat-income-root" },
   ],
   contacts: [
     { id: "contact-colleague", name: "Đồng nghiệp" },
     { id: "contact-minh", name: "Minh" },
+  ],
+  trips: [
+    {
+      id: "trip-phu-yen",
+      name: "[2026] Phú Yên với ín",
+      destination: "Phú Yên",
+    },
+    {
+      id: "trip-thai-lan",
+      name: "[2025] Thái Lan với nhà cô sáu",
+      destination: "Thái Lan",
+    },
   ],
 };
 
@@ -77,6 +100,34 @@ describe("parseTelegramTransaction", () => {
     expect(vi.ok && vi.amount).toBe(20000000);
     expect(en.ok && en.type).toBe("income");
     expect(en.ok && en.amount).toBe(20000000);
+  });
+
+  it("treats cho tien wording as income and parses đ amounts correctly", () => {
+    const result = parseTelegramTransaction(
+      "anh A cho tiền 800.000đ vào Techcombank",
+      context,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.type).toBe("income");
+    expect(result.amount).toBe(800000);
+    expect(result.walletId).toBe("wallet-tech");
+    expect(result.description).toBe("anh A cho tiền");
+  });
+
+  it("keeps income categories only for income messages", () => {
+    const result = parseTelegramTransaction(
+      "nhận lương 56.921đ vào Techcombank",
+      context,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.type).toBe("income");
+    expect(result.amount).toBe(56921);
+    expect(result.categoryId).toBe("cat-income-salary");
+    expect(result.description).toBe("nhận lương");
   });
 
   it("parses transfer wallets and returns drafts when destination is missing", () => {
@@ -170,6 +221,42 @@ describe("parseTelegramTransaction", () => {
     expect(result.contactId).toBe("contact-colleague");
     expect(result.description).toBe("góp tiền mua gà & vịt cho anh bâu");
   });
+
+  it("does not auto-attach a trip when only the destination is mentioned in a non-travel transaction", () => {
+    const result = parseTelegramTransaction(
+      "mua đồ ăn ở Phú Yên 500k bằng tài khoản",
+      context,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.type).toBe("expense");
+    expect(result.tripId).toBeNull();
+    expect(result.unmatched).not.toContain("trip");
+  });
+
+  it("does not auto-attach a trip even when the wording sounds travel-related", () => {
+    const result = parseTelegramTransaction(
+      "chi phí du lịch Phú Yên 770k bằng tài khoản",
+      context,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.tripId).toBeNull();
+    expect(result.unmatched).not.toContain("trip");
+  });
+
+  it("only matches a trip when the message includes a year and destination", () => {
+    expect(
+      findExplicitTripMatch(context.trips as any, "cô sáu cho tiền 600k"),
+    ).toBeNull();
+    expect(
+      findExplicitTripMatch(context.trips as any, "chi tiêu 2025 Thái Lan 600k"),
+    )?.toMatchObject({
+      id: "trip-thai-lan",
+    });
+  });
 });
 
 describe("parseTelegramEdit", () => {
@@ -188,5 +275,50 @@ describe("parseTelegramEdit", () => {
       action: "update",
       changes: { contactId: "contact-colleague" },
     });
+  });
+});
+
+describe("resolveTelegramDraftSelection", () => {
+  it("matches natural wallet follow-up text", () => {
+    expect(
+      resolveTelegramDraftSelection("tài khoản", "wallet", context),
+    ).toMatchObject({
+      kind: "select",
+      id: "wallet-account",
+    });
+  });
+
+  it("matches natural category follow-up text", () => {
+    expect(
+      resolveTelegramDraftSelection("đồ ăn", "category", context, {
+        type: "expense",
+      }),
+    ).toMatchObject({
+      kind: "select",
+      id: "cat-food",
+    });
+  });
+
+  it("allows skipping category or contact by text", () => {
+    expect(
+      resolveTelegramDraftSelection("bỏ qua", "category", context, {
+        type: "expense",
+      }),
+    ).toMatchObject({ kind: "skip" });
+    expect(
+      resolveTelegramDraftSelection("skip", "contact", context),
+    ).toMatchObject({ kind: "skip" });
+  });
+
+  it("matches contact names and cancel text", () => {
+    expect(
+      resolveTelegramDraftSelection("Minh", "contact", context),
+    ).toMatchObject({
+      kind: "select",
+      id: "contact-minh",
+    });
+    expect(
+      resolveTelegramDraftSelection("hủy", "wallet", context),
+    ).toMatchObject({ kind: "cancel" });
   });
 });

@@ -2,9 +2,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { jsonResponse } from "../_shared/cors.ts";
 import {
   flattenTelegramItems,
+  findExplicitTripMatch,
   normalizeText,
   parseTelegramEdit,
   parseTelegramTransaction,
+  resolveTelegramDraftSelection,
 } from "../_shared/telegram-parser.ts";
 
 type TelegramUser = {
@@ -76,6 +78,8 @@ type AiParsedTransaction = {
   toWalletName?: string | null;
   categoryName?: string | null;
   contactName?: string | null;
+  tripName?: string | null;
+  isDebt?: boolean | null;
   description?: string | null;
   date?: string | null;
   confidence?: number;
@@ -92,11 +96,13 @@ type ParsedOkTransaction = {
   toWalletId: string | null;
   categoryId: string | null;
   contactId: string | null;
+  tripId: string | null;
+  isDebt: boolean;
   unmatched: string[];
   fieldConfidence?: Record<string, number>;
 };
 
-type DraftField = "wallet" | "toWallet" | "category" | "contact";
+type DraftField = "wallet" | "toWallet" | "trip" | "category" | "contact";
 
 type InlineKeyboardButton = {
   text: string;
@@ -180,8 +186,25 @@ type GuidedDraftPayload = {
 
 type QuickEditDraftPayload = {
   draft_kind: "quick_edit";
-  field: "amount";
+  field: "amount" | "description" | "wallet" | "category" | "contact";
   transaction_id: string;
+  language: "vi" | "en";
+  parent_category_id?: string | null;
+};
+
+type CreateEntityDraftPayload = {
+  draft_kind: "create_entity";
+  field: "category" | "contact";
+  flow: "draft" | "guided";
+  language: "vi" | "en";
+  source_text: string;
+  transaction: Omit<ParsedOkTransaction, "ok">;
+};
+
+type TripCaptureDraftPayload = {
+  draft_kind: "trip_capture";
+  trip_id: string;
+  trip_name: string;
   language: "vi" | "en";
 };
 
@@ -249,6 +272,8 @@ function baseDraftTransaction(
     toWalletId: null,
     categoryId: null,
     contactId: null,
+    tripId: null,
+    isDebt: false,
     unmatched: [],
     fieldConfidence: {},
   };
@@ -259,14 +284,8 @@ function asText(value: number | string | undefined | null) {
 }
 
 function detectVietnamese(text: string) {
-  return (
-    /[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]/i.test(
-      text,
-    ) ||
-    /\b(hom|ngay|tien|vi|danh muc|sua|xoa|chuyen|luong|nhan)\b/i.test(
-      text.normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
-    )
-  );
+  void text;
+  return true;
 }
 
 function normalizedPlainText(text: string) {
@@ -607,6 +626,7 @@ async function setTelegramCommands() {
     { command: "expense", description: "Ghi chi tiêu từng bước" },
     { command: "income", description: "Ghi nhận tiền từng bước" },
     { command: "transfer", description: "Ghi chuyển tiền từng bước" },
+    { command: "template", description: "Ghi chi tiêu chuyến đi" },
     { command: "templates", description: "Xem và chạy templates" },
     { command: "report", description: "Gợi ý lệnh báo cáo" },
   ];
@@ -646,6 +666,7 @@ async function loadContext(userId: string, defaultWalletId?: string | null) {
     { data: wallets, error: walletError },
     { data: categories, error: categoryError },
     { data: contacts, error: contactError },
+    { data: trips, error: tripError },
   ] = await Promise.all([
     supabase
       .from("wallets")
@@ -657,15 +678,21 @@ async function loadContext(userId: string, defaultWalletId?: string | null) {
       .select("id,name,type,parent_id")
       .eq("user_id", userId),
     supabase.from("contacts").select("id,name").eq("user_id", userId),
+    supabase
+      .from("trips")
+      .select("id,name,destination,start_date,end_date")
+      .eq("user_id", userId),
   ]);
   if (walletError) throw walletError;
   if (categoryError) throw categoryError;
   if (contactError) throw contactError;
+  if (tripError) throw tripError;
   return {
     userId,
     wallets: wallets || [],
     categories: categories || [],
     contacts: contacts || [],
+    trips: trips || [],
     defaultWalletId,
     timeZone,
   };
@@ -762,6 +789,8 @@ function parsedPayload(parsed: ParsedOkTransaction) {
     to_wallet_id: parsed.toWalletId,
     category_id: parsed.categoryId,
     contact_id: parsed.contactId,
+    trip_id: parsed.tripId,
+    is_debt: parsed.isDebt,
     description: parsed.description,
     date: parsed.date,
   };
@@ -781,12 +810,14 @@ function parsedPayloadWithNames(
   const contact = context.contacts.find(
     (item: any) => item.id === parsed.contactId,
   );
+  const trip = context.trips.find((item: any) => item.id === parsed.tripId);
   return {
     ...parsedPayload(parsed),
     wallet_name: wallet?.name || null,
     to_wallet_name: toWallet?.name || null,
     category_name: category?.name || null,
     contact_name: contact?.name || null,
+    trip_name: trip?.name || null,
   };
 }
 
@@ -805,6 +836,8 @@ function compactMemories(memories: any[]) {
         toWalletId: parsed.to_wallet_id,
         categoryId: parsed.category_id,
         contactId: parsed.contact_id,
+        tripId: parsed.trip_id,
+        isDebt: !!parsed.is_debt,
         description: parsed.description,
         date: parsed.date,
       },
@@ -845,6 +878,22 @@ function textSuggestsContact(
   if (normalizedSegment.split(" ").length >= 2) return true;
   return /\b(?:anh|chi|em|me|ba|ma|team|sep|dong nghiep|khach|doi tac|friend|mom|dad|boss|client|colleague)\b/i.test(
     normalizedSegment,
+  );
+}
+
+function textSuggestsTrip(
+  text: string,
+  context: Awaited<ReturnType<typeof loadContext>>,
+  categoryId?: string | null,
+) {
+  if (isTravelRequest(text)) return true;
+  return isTravelCategoryId(categoryId, context.categories || []);
+}
+
+function textSuggestsDebt(text: string) {
+  const normalized = normalizeText(text);
+  return /(debt|cong no|công nợ|tra no|trả nợ|cho muon|cho mượn|muon tien|mượn tiền|ung ho|ứng hộ|tam ung|tạm ứng)/.test(
+    normalized,
   );
 }
 
@@ -962,6 +1011,22 @@ function transactionQuickEditKeyboard(
           callback_data: `quickedit:wallet:${transactionId}`,
         },
       ],
+      [
+        {
+          text: languageIsVietnamese ? "🏷️ Sửa category" : "🏷️ Change category",
+          callback_data: `quickedit:category:${transactionId}`,
+        },
+        {
+          text: languageIsVietnamese ? "👤 Sửa cho ai" : "👤 Change contact",
+          callback_data: `quickedit:contact:${transactionId}`,
+        },
+      ],
+      [
+        {
+          text: languageIsVietnamese ? "📝 Sửa mô tả" : "📝 Change description",
+          callback_data: `quickedit:description:${transactionId}`,
+        },
+      ],
     ],
   };
 }
@@ -986,14 +1051,89 @@ function normalizeQuickEditDraftPayload(
   payload: any,
 ): QuickEditDraftPayload | null {
   if (!payload || payload.draft_kind !== "quick_edit") return null;
-  if (payload.field !== "amount") return null;
+  if (!["amount", "description", "wallet", "category", "contact"].includes(payload.field)) return null;
   if (!payload.transaction_id) return null;
   return {
     draft_kind: "quick_edit",
-    field: "amount",
+    field: payload.field,
     transaction_id: payload.transaction_id,
     language: payload.language === "en" ? "en" : "vi",
+    parent_category_id: payload.parent_category_id || null,
   };
+}
+
+function normalizeCreateEntityDraftPayload(
+  payload: any,
+): CreateEntityDraftPayload | null {
+  if (!payload || payload.draft_kind !== "create_entity") return null;
+  if (!["category", "contact"].includes(payload.field)) return null;
+  if (!["draft", "guided"].includes(payload.flow)) return null;
+  if (!payload.transaction) return null;
+  return {
+    draft_kind: "create_entity",
+    field: payload.field,
+    flow: payload.flow,
+    language: payload.language === "en" ? "en" : "vi",
+    source_text: payload.source_text || "",
+    transaction: {
+      ...baseDraftTransaction(payload.transaction.type || "expense"),
+      ...(payload.transaction || {}),
+      unmatched: dedupeDraftFields(payload?.transaction?.unmatched || []),
+      fieldConfidence: payload?.transaction?.fieldConfidence || {},
+      tripId: payload?.transaction?.tripId || payload?.transaction?.trip_id || null,
+      isDebt:
+        payload?.transaction?.isDebt !== undefined
+          ? !!payload.transaction.isDebt
+          : !!payload?.transaction?.is_debt,
+    },
+  };
+}
+
+function normalizeTripCaptureDraftPayload(
+  payload: any,
+): TripCaptureDraftPayload | null {
+  if (!payload || payload.draft_kind !== "trip_capture") return null;
+  if (!payload.trip_id) return null;
+  return {
+    draft_kind: "trip_capture",
+    trip_id: payload.trip_id,
+    trip_name: payload.trip_name || "",
+    language: payload.language === "en" ? "en" : "vi",
+  };
+}
+
+async function fetchTransactionForUser(userId: string, transactionId: string) {
+  const { data: tx, error } = await supabase
+    .from("transactions")
+    .select(
+      "*, wallet:wallets!wallet_id(name), to_wallet:wallets!to_wallet_id(name), category:categories(name), contact:contacts(name)",
+    )
+    .eq("id", transactionId)
+    .eq("user_id", userId)
+    .single();
+  if (error) throw error;
+  return tx;
+}
+
+async function updateTransactionAndFetch(
+  userId: string,
+  transactionId: string,
+  updates: Record<string, unknown>,
+) {
+  const { data: tx, error } = await supabase
+    .from("transactions")
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", transactionId)
+    .eq("user_id", userId)
+    .select(
+      "*, wallet:wallets!wallet_id(name), to_wallet:wallets!to_wallet_id(name), category:categories(name), contact:contacts(name)",
+    )
+    .single();
+  if (error) throw error;
+  return tx;
 }
 
 async function saveGuidedDraft(
@@ -1030,6 +1170,48 @@ async function saveQuickEditDraft(
       chat_id: asText(message.chat.id),
       source_message_id: asText(message.message_id),
       source_text: payload.field,
+      parsed_payload: payload,
+      expires_at: expiresAt,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "telegram_user_id,chat_id" },
+  );
+}
+
+async function saveCreateEntityDraft(
+  link: any,
+  message: TelegramMessage,
+  payload: CreateEntityDraftPayload,
+) {
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  await supabase.from("telegram_pending_transaction_drafts").upsert(
+    {
+      user_id: link.user_id,
+      telegram_user_id: asText(message.from?.id),
+      chat_id: asText(message.chat.id),
+      source_message_id: asText(message.message_id),
+      source_text: payload.source_text,
+      parsed_payload: payload,
+      expires_at: expiresAt,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "telegram_user_id,chat_id" },
+  );
+}
+
+async function saveTripCaptureDraft(
+  link: any,
+  message: TelegramMessage,
+  payload: TripCaptureDraftPayload,
+) {
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  await supabase.from("telegram_pending_transaction_drafts").upsert(
+    {
+      user_id: link.user_id,
+      telegram_user_id: asText(message.from?.id),
+      chat_id: asText(message.chat.id),
+      source_message_id: asText(message.message_id),
+      source_text: payload.trip_name,
       parsed_payload: payload,
       expires_at: expiresAt,
       updated_at: new Date().toISOString(),
@@ -1081,15 +1263,108 @@ function categoryOptions(
   context: Awaited<ReturnType<typeof loadContext>>,
   sourceText: string,
   preferredId?: string | null,
+  transactionType: "expense" | "income" | "transfer" = "expense",
 ) {
-  const expenseCategories = context.categories.filter(
-    (category: any) => !category.type || category.type === "expense",
+  const expectedType = transactionType === "transfer" ? "expense" : transactionType;
+  const filteredCategories = context.categories.filter((category: any) =>
+    categoryMatchesTransactionType(category.id, context.categories, expectedType),
   );
-  const childCategories = expenseCategories.filter(
+  const childCategories = filteredCategories.filter(
     (category: any) => category.parent_id,
   );
-  const pool = childCategories.length ? childCategories : expenseCategories;
+  const pool = childCategories.length ? childCategories : filteredCategories;
   return rankDraftOptions(pool, sourceText, preferredId).slice(0, 10);
+}
+
+function categoryLineageType(
+  categoryId: string | null | undefined,
+  categories: Array<{ id: string; parent_id?: string | null; type?: string | null }>,
+) {
+  if (!categoryId) return null;
+  const categoryMap = new Map(categories.map((category) => [category.id, category]));
+  let current = categoryMap.get(categoryId) || null;
+  while (current) {
+    if (current.type === "income" || current.type === "expense") {
+      return current.type;
+    }
+    current = current.parent_id ? categoryMap.get(current.parent_id) || null : null;
+  }
+  return null;
+}
+
+function categoryMatchesTransactionType(
+  categoryId: string | null | undefined,
+  categories: Array<{ id: string; parent_id?: string | null; type?: string | null }>,
+  transactionType: "expense" | "income" | "transfer",
+) {
+  const lineageType = categoryLineageType(categoryId, categories);
+  if (transactionType === "income") return lineageType === "income";
+  return lineageType !== "income";
+}
+
+function topLevelCategoryOptions(
+  context: Awaited<ReturnType<typeof loadContext>>,
+  transactionType: "expense" | "income" | "transfer" = "expense",
+) {
+  const expectedType = transactionType === "transfer" ? "expense" : transactionType;
+  return context.categories
+    .filter((category: any) =>
+      !category.parent_id &&
+      categoryMatchesTransactionType(category.id, context.categories, expectedType)
+    )
+    .sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""))
+    .slice(0, 20);
+}
+
+function childCategoryOptions(
+  context: Awaited<ReturnType<typeof loadContext>>,
+  parentCategoryId: string,
+  preferredId?: string | null,
+) {
+  const directChildren = context.categories.filter(
+    (category: any) => category.parent_id === parentCategoryId,
+  );
+  if (!directChildren.length) {
+    const parent = context.categories.find((category: any) => category.id === parentCategoryId);
+    return parent ? [parent] : [];
+  }
+  return rankDraftOptions(directChildren, "", preferredId).slice(0, 20);
+}
+
+function quickEditCategoryRootRows(
+  context: Awaited<ReturnType<typeof loadContext>>,
+  transactionType: "expense" | "income" | "transfer" = "expense",
+) {
+  return keyboardRows(
+    topLevelCategoryOptions(context, transactionType),
+    "quickedit:categoryroot",
+  );
+}
+
+function quickEditCategoryChildRows(
+  context: Awaited<ReturnType<typeof loadContext>>,
+  parentCategoryId: string,
+  preferredId?: string | null,
+) {
+  return keyboardRows(
+    childCategoryOptions(context, parentCategoryId, preferredId),
+    "quickedit:categoryset",
+  );
+}
+
+function tripOptions(
+  context: Awaited<ReturnType<typeof loadContext>>,
+  sourceText: string,
+  preferredId?: string | null,
+) {
+  return rankDraftOptions(
+    (context.trips || []).map((trip: any) => ({
+      ...trip,
+      name: trip.destination ? `${trip.name} • ${trip.destination}` : trip.name,
+    })),
+    sourceText,
+    preferredId,
+  ).slice(0, 10);
 }
 
 function walletOptions(
@@ -1185,11 +1460,50 @@ async function askDraftField(
     return;
   }
 
+  if (field === "trip") {
+    const rows = keyboardRows(
+      tripOptions(context, sourceText, parsed.tripId),
+      `${callbackNamespace}:trip`,
+    );
+    rows.push([
+      {
+        text: languageIsVietnamese ? "Bỏ qua chuyến đi" : "Skip trip",
+        callback_data: `${callbackNamespace}:trip:skip`,
+      },
+      {
+        text: languageIsVietnamese ? "Hủy" : "Cancel",
+        callback_data: "guided:cancel",
+      },
+    ]);
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? `Mình thấy giao dịch này có vẻ thuộc một chuyến đi: ${summary}\nChọn chuyến nếu muốn mình gắn luôn nha.`
+        : `This transaction looks like it belongs to a trip: ${summary}\nPick the trip if you want me to tag it.`,
+      {
+        replyToMessageId,
+        replyMarkup: { inline_keyboard: rows },
+      },
+    );
+    return;
+  }
+
   if (field === "category") {
     const rows = keyboardRows(
-      categoryOptions(context, sourceText, profile?.category?.id),
+      categoryOptions(
+        context,
+        sourceText,
+        profile?.category?.id,
+        parsed.type,
+      ),
       `${callbackNamespace}:category`,
     );
+    rows.push([
+      {
+        text: languageIsVietnamese ? "➕ Tạo category mới" : "➕ Create category",
+        callback_data: `${callbackNamespace}:category:create`,
+      },
+    ]);
     rows.push([
       {
         text: languageIsVietnamese ? "Bỏ qua danh mục" : "Skip category",
@@ -1217,6 +1531,12 @@ async function askDraftField(
     contactOptions(context, sourceText, profile?.contact?.id),
     `${callbackNamespace}:contact`,
   );
+  rows.push([
+    {
+      text: languageIsVietnamese ? "➕ Tạo người mới" : "➕ Create contact",
+      callback_data: `${callbackNamespace}:contact:create`,
+    },
+  ]);
   rows.push([
     {
       text: languageIsVietnamese ? "Bỏ qua người liên quan" : "Skip contact",
@@ -1312,6 +1632,8 @@ function parsedFromDraftPayload(payload: any): ParsedOkTransaction {
     toWalletId: payload.to_wallet_id || null,
     categoryId: payload.category_id || null,
     contactId: payload.contact_id || null,
+    tripId: payload.trip_id || null,
+    isDebt: !!payload.is_debt,
     description: payload.description || "",
     date: payload.date || todayInTimeZone(),
     unmatched: dedupeDraftFields(
@@ -1363,12 +1685,13 @@ async function insertTransactionAndReply(
       to_wallet_id: parsed.toWalletId,
       category_id: parsed.categoryId,
       contact_id: parsed.contactId,
+      trip_id: parsed.tripId,
       amount: parsed.amount,
       type: parsed.type,
       description: parsed.description,
       date: parsed.date,
       is_recurring: false,
-      is_debt: false,
+      is_debt: parsed.isDebt,
     })
     .select(
       "*, wallet:wallets!wallet_id(name), to_wallet:wallets!to_wallet_id(name), category:categories(name), contact:contacts(name)",
@@ -1715,13 +2038,17 @@ function aiToParsedTransaction(
     type === "transfer"
       ? null
       : findByName(context.categories, ai.categoryName);
+  const safeCategory =
+    category && categoryMatchesTransactionType(category.id, context.categories, type)
+      ? category
+      : null;
   const contact = findByName(context.contacts, ai.contactName);
   const today = todayInTimeZone();
   const date = /^20\d{2}-\d{2}-\d{2}$/.test(ai.date || "") ? ai.date! : today;
   const unmatched = dedupeDraftFields([
     !walletId ? "wallet" : "",
     type === "transfer" && !toWallet ? "toWallet" : "",
-    !category && type !== "transfer" ? "category" : "",
+    !safeCategory && type !== "transfer" ? "category" : "",
     !contact && textSuggestsContact(text, context) ? "contact" : "",
   ]);
 
@@ -1733,8 +2060,12 @@ function aiToParsedTransaction(
     description: (ai.description || text).trim(),
     walletId,
     toWalletId: toWallet?.id || null,
-    categoryId: category?.id || null,
+    categoryId: safeCategory?.id || null,
     contactId: contact?.id || null,
+    tripId: null,
+    isDebt: ai.isDebt === null || ai.isDebt === undefined
+      ? textSuggestsDebt(text)
+      : !!ai.isDebt,
     unmatched,
   };
 }
@@ -1772,6 +2103,7 @@ async function parseTransactionWithAi(
       toWalletName: "destination wallet name for transfer, else null",
       categoryName: "category name from provided categories or null",
       contactName: "contact name from provided contacts or null",
+      isDebt: "boolean when this should be tracked as debt or repayment",
       description: "short natural description, same language as user",
       date: "YYYY-MM-DD or null",
       confidence: "0 to 1",
@@ -1819,7 +2151,12 @@ function applySpendingPatternProfile(
     next.type !== "transfer" &&
     !next.categoryId &&
     profile.category &&
-    profile.category.confidence >= 0.55
+    profile.category.confidence >= 0.55 &&
+    categoryMatchesTransactionType(
+      profile.category.id,
+      context.categories,
+      next.type,
+    )
   ) {
     next.categoryId = profile.category.id;
     next.fieldConfidence.category = profile.category.confidence;
@@ -1849,6 +2186,49 @@ function applySpendingPatternProfile(
     next.fieldConfidence.wallet = profile.wallet.confidence;
     next.unmatched = next.unmatched.filter((field) => field !== "wallet");
   }
+  next.unmatched = dedupeDraftFields(next.unmatched);
+  return next;
+}
+
+function enrichParsedTransaction(
+  parsed: ParsedOkTransaction,
+  context: Awaited<ReturnType<typeof loadContext>>,
+  text: string,
+) {
+  const next = {
+    ...parsed,
+    unmatched: [...parsed.unmatched],
+    fieldConfidence: { ...(parsed.fieldConfidence || {}) },
+    tripId: null,
+    isDebt: parsed.isDebt || textSuggestsDebt(text),
+  };
+
+  if (
+    next.type !== "transfer" &&
+    next.categoryId &&
+    !categoryMatchesTransactionType(next.categoryId, context.categories, next.type)
+  ) {
+    next.categoryId = null;
+    next.fieldConfidence.category = 0;
+    next.unmatched.push("category");
+  }
+
+  if (next.type === "transfer") {
+    const transferSignals = normalizeText(text);
+    const hasTransferKeywords = /(chuyen|chuyen khoan|transfer|move|nap|rut)/.test(
+      transferSignals,
+    );
+    if (
+      hasTransferKeywords &&
+      (!next.toWalletId || next.toWalletId === next.walletId)
+    ) {
+      next.toWalletId = next.toWalletId === next.walletId
+        ? null
+        : next.toWalletId;
+      next.unmatched.push("toWallet");
+    }
+  }
+
   next.unmatched = dedupeDraftFields(next.unmatched);
   return next;
 }
@@ -1943,24 +2323,24 @@ function summarizeTransaction(
           : "Expense";
   const warnings =
     unmatched.length > 0
-      ? `\n${languageIsVietnamese ? "Mình chưa khớp chắc" : "Not confidently matched"}: ${unmatched.join(", ")}`
+      ? `\n• ${languageIsVietnamese ? "Mình chưa khớp chắc" : "Not confidently matched"}: ${unmatched.join(", ")}`
       : "";
   const walletLine = tx.type === "transfer"
     ? languageIsVietnamese
-      ? `Ví: ${tx.wallet?.name || "-"} -> ${tx.to_wallet?.name || "-"}`
+      ? `• Ví: ${tx.wallet?.name || "-"} -> ${tx.to_wallet?.name || "-"}`
       : `Wallets: ${tx.wallet?.name || "-"} -> ${tx.to_wallet?.name || "-"}`
     : languageIsVietnamese
-      ? `Ví: ${tx.wallet?.name || "-"}`
+      ? `• Ví: ${tx.wallet?.name || "-"}`
       : `Wallet: ${tx.wallet?.name || "-"}`
   const categoryLine = languageIsVietnamese
-    ? `Danh mục: ${withEmoji(tx.category?.name || "-")}`
+    ? `• Danh mục: ${withEmoji(tx.category?.name || "-")}`
     : `Category: ${withEmoji(tx.category?.name || "-")}`
   const contactLine = languageIsVietnamese
-    ? `Cho ai / liên quan: ${tx.contact?.name || "-"}`
+    ? `• Cho ai / liên quan: ${tx.contact?.name || "-"}`
     : `For / contact: ${tx.contact?.name || "-"}`
   return languageIsVietnamese
-    ? `Done, mình ghi rồi nha ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nNgày: ${tx.date}\n${walletLine}\n${categoryLine}\n${contactLine}\nMô tả: ${tx.description || "-"}${warnings}\n\nBạn có thể bấm nút bên dưới để sửa nhanh số tiền hoặc ví. Nếu cần, vẫn có thể reply tin này với “sửa ...” hoặc “xóa”.`
-    : `Saved for you ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nDate: ${tx.date}\n${walletLine}\n${categoryLine}\n${contactLine}\nDescription: ${tx.description || "-"}${warnings}\n\nUse the buttons below to quickly change the amount or wallet. You can also reply with “change ...” or “delete”.`;
+    ? `Done, mình ghi rồi nha ✅\n• ${typeLabel}: ${formatAmount(Number(tx.amount))}\n• Ngày: ${tx.date}\n${walletLine}\n${categoryLine}\n${contactLine}\n• Mô tả: ${tx.description || "-"}${warnings}\n\nBạn có thể bấm nút bên dưới để sửa nhanh số tiền, ví, category, người liên quan hoặc mô tả. Nếu cần, vẫn có thể reply tin này với “sửa ...” hoặc “xóa”.`
+    : `Saved for you ✅\n${typeLabel}: ${formatAmount(Number(tx.amount))}\nDate: ${tx.date}\n${walletLine}\n${categoryLine}\n${contactLine}\nDescription: ${tx.description || "-"}${warnings}\n\nUse the buttons below to quickly change the amount, wallet, category, contact, or description. You can also reply with “change ...” or “delete”.`;
 }
 
 function itemSummary(item: TemplateItem, languageIsVietnamese: boolean) {
@@ -2095,18 +2475,44 @@ async function resolveTemplateItemDescription(
 
   const monthStart = startOfMonth(dateString);
   const monthEnd = addMonths(monthStart, 1);
-  const { count, error } = await supabase
+  const sequencePrefix = smart.prefix_vi || item.description || template.name;
+  const escapedPrefix = sequencePrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const sequencePattern = new RegExp(`^${escapedPrefix}\\s+(\\d+)$`, "i");
+
+  const { data, error } = await supabase
     .from("transactions")
-    .select("id", { count: "exact", head: true })
+    .select("description")
     .eq("user_id", userId)
     .eq("type", item.type)
     .gte("date", monthStart)
     .lt("date", monthEnd)
-    .ilike("description", `${smart.match_prefix}%`);
+    .ilike("description", `${sequencePrefix}%`);
   if (error) throw error;
 
-  const nextIndex = Number(count || 0) + 1;
-  return `${smart.prefix_vi} ${nextIndex}`;
+  const seenSequenceNumbers = new Set<number>();
+  (data || []).forEach((row: any) => {
+    const match = String(row.description || "").trim().match(sequencePattern);
+    const sequenceNumber = Number(match?.[1] || 0);
+    if (Number.isInteger(sequenceNumber) && sequenceNumber > 0) {
+      seenSequenceNumbers.add(sequenceNumber);
+    }
+  });
+
+  let nextIndex = 1;
+  while (seenSequenceNumbers.has(nextIndex)) nextIndex += 1;
+
+  return `${sequencePrefix} ${nextIndex}`;
+}
+
+function resolveTemplateItemAmount(
+  sourceText: string,
+  item: TemplateItem,
+) {
+  const smart = item.smart_config;
+  if (smart?.sequence_key !== "fuel-refill") return Number(item.amount || 0);
+  const overrideAmount = extractSingleAmount(sourceText || "");
+  if (!overrideAmount || overrideAmount <= 0) return Number(item.amount || 0);
+  return overrideAmount;
 }
 
 function findTemplateMatch(templates: TransactionTemplate[], text: string) {
@@ -2135,8 +2541,8 @@ async function listTemplates(message: TelegramMessage, link: any) {
     await sendMessage(
       chatId,
       languageIsVietnamese
-        ? "Bạn chưa có template nào. Tạo bằng: /template create Nhận lương tháng => nhận lương 20tr vào Techcombank; cho mẹ 5tr từ tài khoản\nHoặc preset nhanh: /template create Đổ xăng => đổ xăng"
-        : "You do not have templates yet. Create one with: /template create Monthly salary => received salary 20m to Techcombank; give mom 5m from Techcombank\nOr use the quick preset: /template create Fuel refill => fuel",
+        ? "Bạn chưa có template nào. Nếu muốn ghi chi tiêu cho chuyến đi thì dùng `/template` để chọn chuyến trước nha.\n\nCòn nếu muốn tạo template lưu sẵn, dùng: /template create Nhận lương tháng => nhận lương 20tr vào Techcombank; cho mẹ 5tr từ tài khoản\nHoặc preset nhanh: /template create Đổ xăng => đổ xăng"
+        : "You do not have templates yet. If you want to log a trip expense, use `/template` first to choose the trip.\n\nTo create a reusable template, try: /template create Monthly salary => received salary 20m to Techcombank; give mom 5m from Techcombank\nOr use the quick preset: /template create Fuel refill => fuel",
       asText(message.message_id),
     );
     return;
@@ -2148,18 +2554,65 @@ async function listTemplates(message: TelegramMessage, link: any) {
       .join("\n");
     return `${index + 1}. ${template.name} (${template.items?.length || 0})\n${items}`;
   });
-  const rows = templates.slice(0, 12).map((template) => [
+  const rows = [
+    [
+      {
+        text: languageIsVietnamese
+          ? "🧳 Ghi chi tiêu chuyến đi"
+          : "🧳 Add trip expense",
+        callback_data: "template:trip:start",
+      },
+    ],
+    ...templates.slice(0, 12).map((template) => [
     {
       text: `${languageIsVietnamese ? "Chạy" : "Run"}: ${template.name}`,
       callback_data: `template:run:${template.id}`,
     },
-  ]);
+    ]),
+  ];
   await sendMessage(
     chatId,
     `${languageIsVietnamese ? "Template hiện có" : "Templates"}:\n${lines.join("\n\n")}`,
     {
       replyToMessageId: asText(message.message_id),
       replyMarkup: rows.length ? { inline_keyboard: rows } : undefined,
+    },
+  );
+}
+
+async function startTripExpenseCapture(
+  message: TelegramMessage,
+  link: any,
+  languageIsVietnamese = detectVietnamese(message.text || ""),
+) {
+  const chatId = asText(message.chat.id);
+  const context = await loadContext(link.user_id, link.default_wallet_id);
+  const trips = (context.trips || []).slice(0, 12);
+  if (trips.length === 0) {
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? "Bạn chưa có chuyến đi nào để ghi chi tiêu. Tạo chuyến trong app trước nha."
+        : "You do not have any trips yet. Create a trip in the app first.",
+      asText(message.message_id),
+    );
+    return;
+  }
+
+  const rows = trips.map((trip: any) => [
+    {
+      text: trip.destination ? `${trip.name} • ${trip.destination}` : trip.name,
+      callback_data: `template:tripselect:${trip.id}`,
+    },
+  ]);
+  await sendMessage(
+    chatId,
+    languageIsVietnamese
+      ? "Chọn chuyến đi trước nha. Sau đó bạn cứ nhắn tự nhiên như bình thường, mình sẽ ghi giao dịch vào đúng chuyến đó."
+      : "Pick the trip first. After that, send natural messages as usual and I will save them into that trip.",
+    {
+      replyToMessageId: asText(message.message_id),
+      replyMarkup: { inline_keyboard: rows },
     },
   );
 }
@@ -2547,7 +3000,7 @@ async function runTemplate(
         to_wallet_id: item.to_wallet_id,
         category_id: item.category_id,
         contact_id: item.contact_id,
-        amount: item.amount,
+        amount: resolveTemplateItemAmount(message.text || "", item),
         type: item.type,
         description: await resolveTemplateItemDescription(
           link.user_id,
@@ -2568,11 +3021,28 @@ async function runTemplate(
   if (error) throw error;
 
   const total = rows.reduce((sum, item) => sum + Number(item.amount), 0);
-  const reply = await sendMessage(
-    chatId,
-    `Đã chạy template "${template.name}" và tạo ${rows.length} giao dịch.\nTổng giá trị: ${formatAmount(total)}\n${rows.map((item) => `- ${item.type}: ${formatAmount(Number(item.amount))} - ${item.description || "-"}`).join("\n")}`,
-    asText(message.message_id),
-  );
+  const languageIsVietnamese = detectVietnamese(message.text || template.name);
+  const reply =
+    transactions && transactions.length === 1
+      ? await sendMessage(
+        chatId,
+        summarizeTransaction(
+          await fetchTransactionForUser(link.user_id, transactions[0].id),
+          languageIsVietnamese,
+        ),
+        {
+          replyToMessageId: asText(message.message_id),
+          replyMarkup: transactionQuickEditKeyboard(
+            transactions[0].id,
+            languageIsVietnamese,
+          ),
+        },
+      )
+      : await sendMessage(
+        chatId,
+        `Đã chạy template "${template.name}" và tạo ${rows.length} giao dịch.\nTổng giá trị: ${formatAmount(total)}\n${rows.map((item) => `- ${item.type}: ${formatAmount(Number(item.amount))} - ${item.description || "-"}`).join("\n")}`,
+        asText(message.message_id),
+      );
 
   await supabase.from("telegram_transaction_events").insert(
     (transactions || []).map((tx: any) => ({
@@ -2651,6 +3121,15 @@ async function handleTemplateCommand(
   text: string,
 ) {
   const normalized = normalizeText(text);
+  if (
+    normalized === "/template" ||
+    normalized === "/template trip" ||
+    normalized === "/template travel"
+  ) {
+    await startTripExpenseCapture(message, link, detectVietnamese(text));
+    return true;
+  }
+
   if (
     normalized === "/templates" ||
     normalized === "/template list" ||
@@ -2755,12 +3234,6 @@ function isGoalRequest(text: string) {
   );
 }
 
-function isTravelRequest(text: string) {
-  return /\b(trip|travel|du lich|du lịch|chuyen di|chuyến đi|tour)\b/i.test(
-    normalizeText(text),
-  );
-}
-
 function isDebtRequest(text: string) {
   return /\b(debt|cong no|công nợ|no ai|nợ ai|ban no|bạn nợ|owes|owe)\b/i.test(
     normalizeText(text),
@@ -2787,6 +3260,26 @@ function collectCategoryIds(
     });
   }
   return [...ids];
+}
+
+function categoryNameSuggestsTravel(name = "") {
+  return /\b(du lich|trip|travel|tour|khach san|hotel|homestay|resort|ve may bay|ve xe|ve tau|tau hoa|thue xe)\b/i.test(
+    normalizeText(name),
+  );
+}
+
+function isTravelCategoryId(
+  categoryId: string | null | undefined,
+  categories: Array<{ id: string; name?: string | null; parent_id?: string | null }>,
+) {
+  if (!categoryId) return false;
+  const categoryMap = new Map(categories.map((category) => [category.id, category]));
+  let current = categoryMap.get(categoryId) || null;
+  while (current) {
+    if (categoryNameSuggestsTravel(current.name || "")) return true;
+    current = current.parent_id ? categoryMap.get(current.parent_id) || null : null;
+  }
+  return false;
 }
 
 function findBestNamedItem<T>(
@@ -3397,72 +3890,10 @@ async function handleTravelInsights(
     .order("start_date", { ascending: false });
   if (tripError) throw tripError;
 
-  if (!trips || trips.length === 0) {
-    await sendMessage(
-      chatId,
-      languageIsVietnamese
-        ? "Bạn chưa có chuyến đi nào để mình phân tích."
-        : "You do not have any trips yet.",
-      asText(message.message_id),
-    );
-    return true;
-  }
+  if (!trips || trips.length === 0) return false;
 
-  const requestedTrip = findBestNamedItem(
-    trips,
-    text,
-    [(item: any) => item.name, (item: any) => item.destination],
-  );
-
-  if (!isTravelRequest(text) && !requestedTrip) return false;
-
-  if (!requestedTrip) {
-    const tripIds = trips.map((trip: any) => trip.id);
-    const { data: rows, error } = await supabase
-      .from("transactions")
-      .select("trip_id,amount")
-      .eq("user_id", link.user_id)
-      .eq("type", "expense")
-      .in("trip_id", tripIds);
-    if (error) throw error;
-
-    const totals = new Map<string, number>();
-    (rows || []).forEach((row: any) => {
-      totals.set(row.trip_id, (totals.get(row.trip_id) || 0) + Number(row.amount || 0));
-    });
-    const summaryTrips = trips
-      .map((trip: any) => ({
-        ...trip,
-        total: totals.get(trip.id) || 0,
-      }))
-      .sort((a: any, b: any) => b.total - a.total);
-
-    const lines = [
-      languageIsVietnamese ? "Tổng quan chi tiêu du lịch ✈️" : "Travel spending overview ✈️",
-      ...summaryTrips.slice(0, 5).map((trip: any, index: number) =>
-        languageIsVietnamese
-          ? `${index + 1}. 🧳 ${trip.name}: ${formatAmount(trip.total)}`
-          : `${index + 1}. 🧳 ${trip.name}: ${formatAmount(trip.total)}`,
-      ),
-    ];
-    const coachNote =
-      (await buildDomainCoachNote(text, languageIsVietnamese, "travel", {
-        trips: summaryTrips.slice(0, 5).map((trip: any) => ({
-          name: trip.name,
-          total: trip.total,
-          destination: trip.destination,
-        })),
-      }).catch(() => null)) ||
-      (languageIsVietnamese
-        ? "Nếu bạn muốn, mình có thể bóc riêng từng chuyến để xem ăn uống, đi lại, ở đâu đang tốn nhiều nhất."
-        : "If you want, I can break down any specific trip by category next.");
-    await sendMessage(
-      chatId,
-      `${lines.join("\n")}\n\n${languageIsVietnamese ? "Nhận xét của mình" : "My take"}:\n${coachNote}`,
-      asText(message.message_id),
-    );
-    return true;
-  }
+  const requestedTrip = findExplicitTripMatch(trips, text);
+  if (!requestedTrip) return false;
 
   const { data: txs, error: txError } = await supabase
     .from("transactions")
@@ -4253,9 +4684,44 @@ async function handleQuickEditDraftMessage(
     await sendMessage(
       asText(message.chat.id),
       payload.language === "vi"
-        ? "Okie, mình hủy chỉnh nhanh số tiền rồi nha."
-        : "Got it, I cancelled the quick amount edit.",
+        ? payload.field === "description"
+          ? "Đã hủy sửa mô tả."
+          : "Đã hủy sửa số tiền."
+        : payload.field === "description"
+          ? "Description edit cancelled."
+          : "Amount edit cancelled.",
       asText(message.message_id),
+    );
+    return true;
+  }
+
+  if (payload.field === "description") {
+    const description = text.trim();
+    if (!description) {
+      await sendMessage(
+        asText(message.chat.id),
+        payload.language === "vi"
+          ? "Gửi mình mô tả mới ngắn gọn là được."
+          : "Send me the new description.",
+        asText(message.message_id),
+      );
+      return true;
+    }
+
+    const tx = await updateTransactionAndFetch(link.user_id, payload.transaction_id, {
+      description,
+    });
+    await clearPendingDraft(message);
+    await sendMessage(
+      asText(message.chat.id),
+      summarizeTransaction(tx, payload.language === "vi"),
+      {
+        replyToMessageId: asText(message.message_id),
+        replyMarkup: transactionQuickEditKeyboard(
+          tx.id,
+          payload.language === "vi",
+        ),
+      },
     );
     return true;
   }
@@ -4272,19 +4738,9 @@ async function handleQuickEditDraftMessage(
     return true;
   }
 
-  const { data: tx, error } = await supabase
-    .from("transactions")
-    .update({
-      amount,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", payload.transaction_id)
-    .eq("user_id", link.user_id)
-    .select(
-      "*, wallet:wallets!wallet_id(name), to_wallet:wallets!to_wallet_id(name), category:categories(name), contact:contacts(name)",
-    )
-    .single();
-  if (error) throw error;
+  const tx = await updateTransactionAndFetch(link.user_id, payload.transaction_id, {
+    amount,
+  });
 
   await clearPendingDraft(message);
   await sendMessage(
@@ -4297,6 +4753,353 @@ async function handleQuickEditDraftMessage(
         payload.language === "vi",
       ),
     },
+  );
+  return true;
+}
+
+async function handleCreateEntityDraftMessage(
+  message: TelegramMessage,
+  link: any,
+  draft: any,
+  text: string,
+) {
+  const payload = normalizeCreateEntityDraftPayload(draft.parsed_payload);
+  if (!payload) return false;
+
+  const normalized = normalizeText(text);
+  if (/^(huy|hủy|cancel|thoi|thôi)$/i.test(normalized)) {
+    await clearPendingDraft(message);
+    await sendMessage(
+      asText(message.chat.id),
+      payload.language === "vi"
+        ? "Đã hủy tạo mới."
+        : "Creation cancelled.",
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const name = text.trim();
+  if (!name) {
+    await sendMessage(
+      asText(message.chat.id),
+      payload.language === "vi"
+        ? payload.field === "category"
+          ? "Gửi mình tên category mới nha."
+          : "Gửi mình tên contact mới nha."
+        : payload.field === "category"
+          ? "Send me the new category name."
+          : "Send me the new contact name.",
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const context = await loadContext(link.user_id, link.default_wallet_id);
+  const parsed: ParsedOkTransaction = { ok: true, ...payload.transaction };
+
+  if (payload.field === "category") {
+    const existing = (context.categories || []).find(
+      (category: any) =>
+        normalizeText(category.name || "") === normalizeText(name) &&
+        category.type === (parsed.type === "income" ? "income" : "expense"),
+    );
+    const category = existing || (
+      await supabase
+        .from("categories")
+        .insert({
+          user_id: link.user_id,
+          name,
+          type: parsed.type === "income" ? "income" : "expense",
+          color: parsed.type === "income" ? null : "#64748b",
+          parent_id: null,
+        })
+        .select()
+        .single()
+        .then(({ data, error }) => {
+          if (error) throw error;
+          return data;
+        })
+    );
+    parsed.categoryId = category.id;
+    parsed.unmatched = parsed.unmatched.filter((field) => field !== "category");
+  } else {
+    const existing = (context.contacts || []).find(
+      (contact: any) =>
+        normalizeText(contact.name || "") === normalizeText(name),
+    );
+    const contact = existing || (
+      await supabase
+        .from("contacts")
+        .insert({
+          user_id: link.user_id,
+          name,
+        })
+        .select()
+        .single()
+        .then(({ data, error }) => {
+          if (error) throw error;
+          return data;
+        })
+    );
+    parsed.contactId = contact.id;
+    parsed.unmatched = parsed.unmatched.filter((field) => field !== "contact");
+  }
+
+  parsed.unmatched = dedupeDraftFields(parsed.unmatched);
+  const refreshedContext = await loadContext(link.user_id, link.default_wallet_id);
+
+  if (payload.flow === "guided") {
+    await promptGuidedStage(link, message, refreshedContext, {
+      draft_kind: "guided",
+      guided_type: parsed.type,
+      guided_stage: "description",
+      language: payload.language,
+      transaction: { ...parsed },
+    });
+    return true;
+  }
+
+  const nextField = nextDraftField(parsed);
+  if (nextField) {
+    await savePendingDraft(
+      link,
+      message,
+      payload.source_text,
+      parsed,
+      parsed.unmatched,
+    );
+    await askDraftField(
+      asText(message.chat.id),
+      asText(message.message_id),
+      parsed,
+      nextField,
+      refreshedContext,
+      payload.language === "vi",
+      payload.source_text,
+    );
+    return true;
+  }
+
+  await insertTransactionAndReply(
+    link,
+    message,
+    parsed,
+    payload.source_text,
+    "local",
+    parsed.unmatched,
+  );
+  await clearPendingDraft(message);
+  return true;
+}
+
+async function handleTripCaptureDraftMessage(
+  message: TelegramMessage,
+  link: any,
+  draft: any,
+  text: string,
+) {
+  const payload = normalizeTripCaptureDraftPayload(draft.parsed_payload);
+  if (!payload) return false;
+
+  const normalized = normalizeText(text);
+  if (/^(huy|hủy|cancel|thoi|thôi|xong|done)$/i.test(normalized)) {
+    await clearPendingDraft(message);
+    await sendMessage(
+      asText(message.chat.id),
+      payload.language === "vi"
+        ? `Đã thoát chế độ ghi cho chuyến "${payload.trip_name}".`
+        : `Exited trip capture mode for "${payload.trip_name}".`,
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const context = await loadContext(link.user_id, link.default_wallet_id);
+  const trip = (context.trips || []).find((item: any) => item.id === payload.trip_id);
+  if (!trip) {
+    await clearPendingDraft(message);
+    await sendMessage(
+      asText(message.chat.id),
+      payload.language === "vi"
+        ? "Chuyến đi này không còn tồn tại nữa nên mình đã thoát chế độ ghi chuyến."
+        : "That trip no longer exists, so I exited trip capture mode.",
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  const { parsed, parser } = await resolveParsedTransaction(text, context);
+  if (!parsed.ok) {
+    await sendMessage(
+      asText(message.chat.id),
+      payload.language === "vi"
+        ? `${parsed.reason}\n\nBạn vẫn đang ghi cho chuyến "${trip.name}". Gửi lại giao dịch khác hoặc nhắn \`hủy\` để thoát nha.`
+        : `${parsed.reason}\n\nYou are still adding entries to "${trip.name}". Send another transaction or reply \`cancel\` to exit.`,
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  if (parsed.type === "transfer") {
+    await sendMessage(
+      asText(message.chat.id),
+      payload.language === "vi"
+        ? "Chế độ chuyến đi chỉ nhận giao dịch thu/chi, chưa dùng cho chuyển ví nha. Bạn gửi giao dịch thường ở khung chat chính giúp mình."
+        : "Trip capture mode is only for expense or income entries, not wallet transfers. Please send transfers in the normal chat flow.",
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  parsed.tripId = trip.id;
+  parsed.unmatched = dedupeDraftFields(
+    parsed.unmatched.filter((field) => field !== "trip"),
+  );
+
+  await insertTransactionAndReply(
+    link,
+    message,
+    parsed,
+    text,
+    parser,
+    parsed.unmatched,
+  );
+  await sendMessage(
+    asText(message.chat.id),
+    payload.language === "vi"
+      ? `Đang ghi cho chuyến "${trip.name}". Gửi tiếp giao dịch khác hoặc nhắn \`hủy\` khi xong nha.`
+      : `Still logging into "${trip.name}". Send another transaction or reply \`cancel\` when you're done.`,
+    asText(message.message_id),
+  );
+  return true;
+}
+
+async function handleStandardDraftMessage(
+  message: TelegramMessage,
+  link: any,
+  draft: any,
+  text: string,
+) {
+  const parsed = parsedFromDraftPayload(draft.parsed_payload || {});
+  const nextField = nextDraftField(parsed);
+  if (!nextField) return false;
+
+  if (extractSingleAmount(text)) {
+    return false;
+  }
+
+  const languageIsVietnamese = detectVietnamese(draft.source_text || text);
+  const context = await loadContext(link.user_id, link.default_wallet_id);
+  const selection = resolveTelegramDraftSelection(text, nextField, context, {
+    type: parsed.type,
+    walletId: parsed.walletId,
+  });
+
+  if (selection.kind === "cancel") {
+    await clearPendingDraft(message);
+    await sendMessage(
+      asText(message.chat.id),
+      languageIsVietnamese
+        ? "Okie, mình hủy draft này rồi nha. Khi cần thì nhắn lại giao dịch mới giúp mình."
+        : "Cancelled this draft for you. Send a new transaction anytime.",
+      asText(message.message_id),
+    );
+    return true;
+  }
+
+  if (selection.kind === "unmatched") {
+    await sendMessage(
+      asText(message.chat.id),
+      languageIsVietnamese
+        ? "Mình chưa khớp chắc câu trả lời này. Bạn có thể gõ tên rõ hơn, bấm nút gợi ý, hoặc nhắn `hủy` để thoát."
+        : "I could not confidently match that answer yet. Try typing the name more clearly, use the suggested buttons, or reply `cancel`.",
+      asText(message.message_id),
+    );
+    await askDraftField(
+      asText(message.chat.id),
+      draft.source_message_id,
+      parsed,
+      nextField,
+      context,
+      languageIsVietnamese,
+      draft.source_text || parsed.description,
+    );
+    return true;
+  }
+
+  if (nextField === "wallet" && selection.kind === "select") {
+    parsed.walletId = selection.id;
+  } else if (nextField === "toWallet" && selection.kind === "select") {
+    parsed.toWalletId = selection.id;
+  } else if (nextField === "category") {
+    parsed.categoryId = selection.kind === "skip" ? null : selection.id;
+  } else if (nextField === "contact") {
+    parsed.contactId = selection.kind === "skip" ? null : selection.id;
+  }
+
+  parsed.unmatched = dedupeDraftFields(
+    parsed.unmatched.filter((field) => field !== nextField),
+  );
+
+  const remainingMissingFields = dedupeDraftFields(parsed.unmatched);
+  const upcomingField = nextDraftField({
+    ...parsed,
+    unmatched: remainingMissingFields,
+  });
+
+  if (upcomingField) {
+    await supabase
+      .from("telegram_pending_transaction_drafts")
+      .update({
+        parsed_payload: {
+          ...parsedPayload(parsed),
+          missing_fields: remainingMissingFields,
+          field_confidence: parsed.fieldConfidence || {},
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", draft.id)
+      .eq("user_id", link.user_id);
+    await sendMessage(
+      asText(message.chat.id),
+      languageIsVietnamese
+        ? `Okie, mình đã nhận ${selection.kind === "skip" ? "bỏ qua" : selection.label}.`
+        : `Got it${selection.kind === "skip" ? ", skipping that field" : `: ${selection.label}`}.`,
+      asText(message.message_id),
+    );
+    await askDraftField(
+      asText(message.chat.id),
+      draft.source_message_id,
+      {
+        ...parsed,
+        unmatched: remainingMissingFields,
+      },
+      upcomingField,
+      context,
+      languageIsVietnamese,
+      draft.source_text || parsed.description,
+    );
+    return true;
+  }
+
+  await sendMessage(
+    asText(message.chat.id),
+    languageIsVietnamese
+      ? `Okie, mình đã nhận ${selection.kind === "skip" ? "bỏ qua field này" : selection.label}. Mình lưu giao dịch luôn nha.`
+      : `Got it${selection.kind === "skip" ? ", skipping that field" : `: ${selection.label}`}. Saving the transaction now.`,
+    asText(message.message_id),
+  );
+  await saveParsedTransactionFromDraft(
+    {
+      id: "",
+      from: message.from!,
+      message,
+      data: "",
+    } as TelegramCallbackQuery,
+    link,
+    draft,
+    parsed,
   );
   return true;
 }
@@ -4315,14 +5118,22 @@ async function resolveParsedTransaction(
     : null;
   if (localParsed.ok && localParsed.type === "transfer") {
     return {
-      parsed: applySpendingPatternProfile(localParsed, profile, context, text),
+      parsed: enrichParsedTransaction(
+        applySpendingPatternProfile(localParsed, profile, context, text),
+        context,
+        text,
+      ),
       parser: "local" as const,
       profile,
     };
   }
   if (aiParsed?.ok) {
     return {
-      parsed: applySpendingPatternProfile(aiParsed, profile, context, text),
+      parsed: enrichParsedTransaction(
+        applySpendingPatternProfile(aiParsed, profile, context, text),
+        context,
+        text,
+      ),
       parser: "ai" as const,
       profile,
     };
@@ -4330,7 +5141,11 @@ async function resolveParsedTransaction(
 
   return {
     parsed: localParsed.ok
-      ? applySpendingPatternProfile(localParsed, profile, context, text)
+      ? enrichParsedTransaction(
+        applySpendingPatternProfile(localParsed, profile, context, text),
+        context,
+        text,
+      )
       : localParsed,
     parser: "local" as const,
     profile,
@@ -4349,7 +5164,7 @@ async function handleTransaction(
   const textToParse = pendingDraft
     ? `${pendingDraft.source_text} ${text}`
     : text;
-  const { parsed, parser } = await resolveParsedTransaction(
+  const { parsed, parser, profile } = await resolveParsedTransaction(
     textToParse,
     context,
   );
@@ -4408,6 +5223,57 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
     return;
   }
 
+  if (data === "template:trip:start") {
+    await answerCallbackQuery(callback.id, "Chọn chuyến đi nha.");
+    await startTripExpenseCapture(
+      {
+        ...message,
+        text: "/template",
+        from: callback.from,
+      },
+      link,
+      true,
+    );
+    return;
+  }
+
+  if (data.startsWith("template:tripselect:")) {
+    const tripId = data.split(":")[2];
+    const languageIsVietnamese = detectVietnamese(message.text || "");
+    const context = await loadContext(link.user_id, link.default_wallet_id);
+    const trip = (context.trips || []).find((item: any) => item.id === tripId);
+    if (!trip) {
+      await answerCallbackQuery(
+        callback.id,
+        languageIsVietnamese
+          ? "Chuyến đi này không còn nữa."
+          : "That trip no longer exists.",
+      );
+      return;
+    }
+    await saveTripCaptureDraft(link, { ...message, from: callback.from }, {
+      draft_kind: "trip_capture",
+      trip_id: trip.id,
+      trip_name: trip.name,
+      language: languageIsVietnamese ? "vi" : "en",
+    });
+    await answerCallbackQuery(
+      callback.id,
+      languageIsVietnamese ? "Đã chọn chuyến đi." : "Trip selected.",
+    );
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? `Đang ghi cho chuyến "${trip.name}".\nGiờ bạn cứ nhắn tự nhiên như:\n- ăn sáng 45k tiền mặt\n- mua thuốc dạ dày 38k tài khoản\n- hoàn tiền khách sạn 200k\n\nNhắn \`hủy\` khi muốn thoát chế độ này nha.`
+        : `Now logging into "${trip.name}".\nYou can send natural entries like:\n- breakfast 45k from cash\n- stomach medicine 38k from bank\n- hotel refund 200k\n\nReply \`cancel\` when you want to exit this mode.`,
+      {
+        replyToMessageId: asText(message.message_id),
+        replyMarkup: BOT_SHORTCUT_KEYBOARD,
+      },
+    );
+    return;
+  }
+
   if (data.startsWith("template:run:")) {
     const templateId = data.split(":")[2];
     const templates = await loadTemplates(link.user_id);
@@ -4431,10 +5297,17 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
   if (data.startsWith("quickedit:")) {
     const parts = data.split(":");
     const action = parts[1];
-    const transactionId = parts[2];
+    const actionTargetId = parts[2];
     const languageIsVietnamese = true;
+    const needsDirectTransactionId = [
+      "amount",
+      "description",
+      "wallet",
+      "category",
+      "contact",
+    ].includes(action);
 
-    if (!transactionId) {
+    if (needsDirectTransactionId && !actionTargetId) {
       await answerCallbackQuery(callback.id, "Thiếu giao dịch để sửa.");
       return;
     }
@@ -4443,7 +5316,7 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
       await saveQuickEditDraft(link, { ...message, from: callback.from }, {
         draft_kind: "quick_edit",
         field: "amount",
-        transaction_id: transactionId,
+        transaction_id: actionTargetId!,
         language: languageIsVietnamese ? "vi" : "en",
       });
       await answerCallbackQuery(
@@ -4460,9 +5333,40 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
       return;
     }
 
+    if (action === "description") {
+      await saveQuickEditDraft(link, { ...message, from: callback.from }, {
+        draft_kind: "quick_edit",
+        field: "description",
+        transaction_id: actionTargetId!,
+        language: languageIsVietnamese ? "vi" : "en",
+      });
+      await answerCallbackQuery(
+        callback.id,
+        languageIsVietnamese ? "Nhập mô tả mới." : "Send the new description.",
+      );
+      await sendMessage(
+        chatId,
+        languageIsVietnamese
+          ? "Gửi mình mô tả mới cho giao dịch này. Nếu đổi ý thì nhắn `hủy`."
+          : "Send me the new description for this transaction. If you change your mind, send `cancel`.",
+        asText(message.message_id),
+      );
+      return;
+    }
+
     if (action === "wallet") {
+      await saveQuickEditDraft(link, { ...message, from: callback.from }, {
+        draft_kind: "quick_edit",
+        field: "wallet",
+        transaction_id: actionTargetId!,
+        language: languageIsVietnamese ? "vi" : "en",
+      });
       const context = await loadContext(link.user_id, link.default_wallet_id);
-      const rows = keyboardRows(context.wallets, `quickedit:walletset:${transactionId}`);
+      const tx = await fetchTransactionForUser(link.user_id, actionTargetId!);
+      const rows = keyboardRows(
+        walletOptions(context, tx.description || tx.wallet?.name || "", tx.wallet_id),
+        "quickedit:walletset",
+      );
       await answerCallbackQuery(
         callback.id,
         languageIsVietnamese ? "Chọn ví mới nha." : "Pick the new wallet.",
@@ -4480,8 +5384,201 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
       return;
     }
 
+    if (action === "category") {
+      await saveQuickEditDraft(link, { ...message, from: callback.from }, {
+        draft_kind: "quick_edit",
+        field: "category",
+        transaction_id: actionTargetId!,
+        language: languageIsVietnamese ? "vi" : "en",
+        parent_category_id: null,
+      });
+      const context = await loadContext(link.user_id, link.default_wallet_id);
+      const tx = await fetchTransactionForUser(link.user_id, actionTargetId!);
+      const rows = quickEditCategoryRootRows(context, tx.type);
+      rows.push([
+        {
+          text: languageIsVietnamese ? "Bỏ category" : "Clear category",
+          callback_data: "quickedit:categoryclear",
+        },
+      ]);
+      await answerCallbackQuery(
+        callback.id,
+        languageIsVietnamese ? "Chọn category mới." : "Pick the new category.",
+      );
+      await sendMessage(
+        chatId,
+        languageIsVietnamese
+          ? "Chọn nhóm danh mục trước nha:"
+          : "Pick the top-level category first:",
+        {
+          replyToMessageId: asText(message.message_id),
+          replyMarkup: { inline_keyboard: rows },
+        },
+      );
+      return;
+    }
+
+    if (action === "contact") {
+      await saveQuickEditDraft(link, { ...message, from: callback.from }, {
+        draft_kind: "quick_edit",
+        field: "contact",
+        transaction_id: actionTargetId!,
+        language: languageIsVietnamese ? "vi" : "en",
+      });
+      const context = await loadContext(link.user_id, link.default_wallet_id);
+      const tx = await fetchTransactionForUser(link.user_id, actionTargetId!);
+      const rows = keyboardRows(
+        contactOptions(
+          context,
+          tx.description || tx.contact?.name || "",
+          tx.contact_id,
+        ),
+        "quickedit:contactset",
+      );
+      rows.push([
+        {
+          text: languageIsVietnamese ? "Bỏ người liên quan" : "Clear contact",
+          callback_data: "quickedit:contactclear",
+        },
+      ]);
+      await answerCallbackQuery(
+        callback.id,
+        languageIsVietnamese ? "Chọn người liên quan." : "Pick the contact.",
+      );
+      await sendMessage(
+        chatId,
+        languageIsVietnamese
+          ? "Chọn người liên quan mới cho giao dịch này:"
+          : "Pick the new contact for this transaction:",
+        {
+          replyToMessageId: asText(message.message_id),
+          replyMarkup: { inline_keyboard: rows },
+        },
+      );
+      return;
+    }
+
+    if (action === "categoryroot") {
+      const parentCategoryId = actionTargetId;
+      const pendingDraft = await loadPendingDraft({
+        ...message,
+        from: callback.from,
+      } as TelegramMessage);
+      const payload = pendingDraft
+        ? normalizeQuickEditDraftPayload(pendingDraft.parsed_payload)
+        : null;
+      if (!payload || payload.field !== "category") {
+        await answerCallbackQuery(callback.id, "Phiên sửa category hết hạn rồi nha.");
+        return;
+      }
+      const context = await loadContext(link.user_id, link.default_wallet_id);
+      const parentCategory = context.categories.find(
+        (item: any) => item.id === parentCategoryId,
+      );
+      if (!parentCategory) {
+        await answerCallbackQuery(
+          callback.id,
+          languageIsVietnamese ? "Nhóm danh mục này không còn nữa." : "That category group no longer exists.",
+        );
+        return;
+      }
+      const tx = await fetchTransactionForUser(link.user_id, payload.transaction_id);
+      await saveQuickEditDraft(link, { ...message, from: callback.from }, {
+        ...payload,
+        parent_category_id: parentCategory.id,
+      });
+      const preferredCategoryId =
+        context.categories.find((item: any) => item.id === tx.category_id)?.parent_id ===
+          parentCategory.id
+          ? tx.category_id
+          : null;
+      const rows = quickEditCategoryChildRows(
+        context,
+        parentCategory.id,
+        preferredCategoryId,
+      );
+      rows.push([
+        {
+          text: languageIsVietnamese ? "⬅️ Chọn nhóm khác" : "⬅️ Back",
+          callback_data: "quickedit:categoryback",
+        },
+        {
+          text: languageIsVietnamese ? "Bỏ category" : "Clear category",
+          callback_data: "quickedit:categoryclear",
+        },
+      ]);
+      await answerCallbackQuery(
+        callback.id,
+        languageIsVietnamese ? "Chọn danh mục cấp 2 nha." : "Pick the subcategory.",
+      );
+      await sendMessage(
+        chatId,
+        languageIsVietnamese
+          ? `Okie, giờ chọn mục con trong nhóm ${parentCategory.name}:`
+          : `Now pick a subcategory inside ${parentCategory.name}:`,
+        {
+          replyToMessageId: asText(message.message_id),
+          replyMarkup: { inline_keyboard: rows },
+        },
+      );
+      return;
+    }
+
+    if (action === "categoryback") {
+      const pendingDraft = await loadPendingDraft({
+        ...message,
+        from: callback.from,
+      } as TelegramMessage);
+      const payload = pendingDraft
+        ? normalizeQuickEditDraftPayload(pendingDraft.parsed_payload)
+        : null;
+      if (!payload || payload.field !== "category") {
+        await answerCallbackQuery(callback.id, "Phiên sửa category hết hạn rồi nha.");
+        return;
+      }
+      const context = await loadContext(link.user_id, link.default_wallet_id);
+      const tx = await fetchTransactionForUser(link.user_id, payload.transaction_id);
+      await saveQuickEditDraft(link, { ...message, from: callback.from }, {
+        ...payload,
+        parent_category_id: null,
+      });
+      const rows = quickEditCategoryRootRows(context, tx.type);
+      rows.push([
+        {
+          text: languageIsVietnamese ? "Bỏ category" : "Clear category",
+          callback_data: "quickedit:categoryclear",
+        },
+      ]);
+      await answerCallbackQuery(
+        callback.id,
+        languageIsVietnamese ? "Chọn lại nhóm danh mục nha." : "Pick another category group.",
+      );
+      await sendMessage(
+        chatId,
+        languageIsVietnamese
+          ? "Chọn nhóm danh mục khác nha:"
+          : "Pick another top-level category:",
+        {
+          replyToMessageId: asText(message.message_id),
+          replyMarkup: { inline_keyboard: rows },
+        },
+      );
+      return;
+    }
+
     if (action === "walletset") {
-      const walletId = parts[3];
+      const walletId = actionTargetId;
+      const pendingDraft = await loadPendingDraft({
+        ...message,
+        from: callback.from,
+      } as TelegramMessage);
+      const payload = pendingDraft
+        ? normalizeQuickEditDraftPayload(pendingDraft.parsed_payload)
+        : null;
+      if (!payload || payload.field !== "wallet") {
+        await answerCallbackQuery(callback.id, "Phiên sửa ví hết hạn rồi nha.");
+        return;
+      }
       const context = await loadContext(link.user_id, link.default_wallet_id);
       const wallet = context.wallets.find((item: any) => item.id === walletId);
       if (!wallet) {
@@ -4491,22 +5588,184 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
         );
         return;
       }
-      const { data: tx, error } = await supabase
-        .from("transactions")
-        .update({
-          wallet_id: wallet.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", transactionId)
-        .eq("user_id", link.user_id)
-        .select(
-          "*, wallet:wallets!wallet_id(name), to_wallet:wallets!to_wallet_id(name), category:categories(name), contact:contacts(name)",
-        )
-        .single();
-      if (error) throw error;
+      const tx = await updateTransactionAndFetch(link.user_id, payload.transaction_id, {
+        wallet_id: wallet.id,
+      });
+      await clearPendingDraft({
+        ...message,
+        from: callback.from,
+      } as TelegramMessage);
       await answerCallbackQuery(
         callback.id,
         languageIsVietnamese ? "Đã đổi ví rồi nha." : "Wallet updated.",
+      );
+      await sendMessage(
+        chatId,
+        summarizeTransaction(tx, languageIsVietnamese),
+        {
+          replyToMessageId: asText(message.message_id),
+          replyMarkup: transactionQuickEditKeyboard(
+            tx.id,
+            languageIsVietnamese,
+          ),
+        },
+      );
+      return;
+    }
+
+    if (action === "categoryset") {
+      const categoryId = actionTargetId;
+      const pendingDraft = await loadPendingDraft({
+        ...message,
+        from: callback.from,
+      } as TelegramMessage);
+      const payload = pendingDraft
+        ? normalizeQuickEditDraftPayload(pendingDraft.parsed_payload)
+        : null;
+      if (!payload || payload.field !== "category") {
+        await answerCallbackQuery(callback.id, "Phiên sửa category hết hạn rồi nha.");
+        return;
+      }
+      const context = await loadContext(link.user_id, link.default_wallet_id);
+      const category = context.categories.find((item: any) => item.id === categoryId);
+      if (!category) {
+        await answerCallbackQuery(
+          callback.id,
+          languageIsVietnamese ? "Category này không còn nữa." : "That category no longer exists.",
+        );
+        return;
+      }
+      const tx = await updateTransactionAndFetch(link.user_id, payload.transaction_id, {
+        category_id: category.id,
+      });
+      await clearPendingDraft({
+        ...message,
+        from: callback.from,
+      } as TelegramMessage);
+      await answerCallbackQuery(
+        callback.id,
+        languageIsVietnamese ? "Đã đổi category." : "Category updated.",
+      );
+      await sendMessage(
+        chatId,
+        summarizeTransaction(tx, languageIsVietnamese),
+        {
+          replyToMessageId: asText(message.message_id),
+          replyMarkup: transactionQuickEditKeyboard(
+            tx.id,
+            languageIsVietnamese,
+          ),
+        },
+      );
+      return;
+    }
+
+    if (action === "categoryclear") {
+      const pendingDraft = await loadPendingDraft({
+        ...message,
+        from: callback.from,
+      } as TelegramMessage);
+      const payload = pendingDraft
+        ? normalizeQuickEditDraftPayload(pendingDraft.parsed_payload)
+        : null;
+      if (!payload || payload.field !== "category") {
+        await answerCallbackQuery(callback.id, "Phiên sửa category hết hạn rồi nha.");
+        return;
+      }
+      const tx = await updateTransactionAndFetch(link.user_id, payload.transaction_id, {
+        category_id: null,
+      });
+      await clearPendingDraft({
+        ...message,
+        from: callback.from,
+      } as TelegramMessage);
+      await answerCallbackQuery(
+        callback.id,
+        languageIsVietnamese ? "Đã bỏ category." : "Category cleared.",
+      );
+      await sendMessage(
+        chatId,
+        summarizeTransaction(tx, languageIsVietnamese),
+        {
+          replyToMessageId: asText(message.message_id),
+          replyMarkup: transactionQuickEditKeyboard(
+            tx.id,
+            languageIsVietnamese,
+          ),
+        },
+      );
+      return;
+    }
+
+    if (action === "contactset") {
+      const contactId = actionTargetId;
+      const pendingDraft = await loadPendingDraft({
+        ...message,
+        from: callback.from,
+      } as TelegramMessage);
+      const payload = pendingDraft
+        ? normalizeQuickEditDraftPayload(pendingDraft.parsed_payload)
+        : null;
+      if (!payload || payload.field !== "contact") {
+        await answerCallbackQuery(callback.id, "Phiên sửa người liên quan hết hạn rồi nha.");
+        return;
+      }
+      const context = await loadContext(link.user_id, link.default_wallet_id);
+      const contact = context.contacts.find((item: any) => item.id === contactId);
+      if (!contact) {
+        await answerCallbackQuery(
+          callback.id,
+          languageIsVietnamese ? "Người này không còn nữa." : "That contact no longer exists.",
+        );
+        return;
+      }
+      const tx = await updateTransactionAndFetch(link.user_id, payload.transaction_id, {
+        contact_id: contact.id,
+      });
+      await clearPendingDraft({
+        ...message,
+        from: callback.from,
+      } as TelegramMessage);
+      await answerCallbackQuery(
+        callback.id,
+        languageIsVietnamese ? "Đã đổi người liên quan." : "Contact updated.",
+      );
+      await sendMessage(
+        chatId,
+        summarizeTransaction(tx, languageIsVietnamese),
+        {
+          replyToMessageId: asText(message.message_id),
+          replyMarkup: transactionQuickEditKeyboard(
+            tx.id,
+            languageIsVietnamese,
+          ),
+        },
+      );
+      return;
+    }
+
+    if (action === "contactclear") {
+      const pendingDraft = await loadPendingDraft({
+        ...message,
+        from: callback.from,
+      } as TelegramMessage);
+      const payload = pendingDraft
+        ? normalizeQuickEditDraftPayload(pendingDraft.parsed_payload)
+        : null;
+      if (!payload || payload.field !== "contact") {
+        await answerCallbackQuery(callback.id, "Phiên sửa người liên quan hết hạn rồi nha.");
+        return;
+      }
+      const tx = await updateTransactionAndFetch(link.user_id, payload.transaction_id, {
+        contact_id: null,
+      });
+      await clearPendingDraft({
+        ...message,
+        from: callback.from,
+      } as TelegramMessage);
+      await answerCallbackQuery(
+        callback.id,
+        languageIsVietnamese ? "Đã bỏ người liên quan." : "Contact cleared.",
       );
       await sendMessage(
         chatId,
@@ -4605,10 +5864,51 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
     }
 
     const chosenMessage = { ...message, from: callback.from };
+    if (
+      (field === "category" || field === "contact") &&
+      value === "create"
+    ) {
+      await answerCallbackQuery(
+        callback.id,
+        languageIsVietnamese
+          ? field === "category"
+            ? "Gửi tên category mới nha."
+            : "Gửi tên người liên quan mới nha."
+          : field === "category"
+            ? "Send the new category name."
+            : "Send the new contact name.",
+      );
+      await saveCreateEntityDraft(link, chosenMessage, {
+        draft_kind: "create_entity",
+        field,
+        flow: "guided",
+        language: guidedPayload.language,
+        source_text:
+          guidedPayload.transaction.description ||
+          guidedPayload.guided_type,
+        transaction: { ...guidedPayload.transaction },
+      });
+      await sendMessage(
+        chatId,
+        languageIsVietnamese
+          ? field === "category"
+            ? "Nhắn tên category mới cho mình. Ví dụ: `Phí chuyển khoản`.\nNếu đổi ý thì nhắn `hủy`."
+            : "Nhắn tên người liên quan mới cho mình. Ví dụ: `Anh Bâu`.\nNếu đổi ý thì nhắn `hủy`."
+          : field === "category"
+            ? "Send me the new category name, for example `Transfer fee`.\nReply `cancel` if you want to stop."
+            : "Send me the new contact name, for example `Anh Bâu`.\nReply `cancel` if you want to stop.",
+        {
+          replyToMessageId: asText(message.message_id),
+        },
+      );
+      return;
+    }
     if (field === "wallet") {
       guidedPayload.transaction.walletId = value;
     } else if (field === "toWallet") {
       guidedPayload.transaction.toWalletId = value;
+    } else if (field === "trip") {
+      guidedPayload.transaction.tripId = value === "skip" ? null : value;
     } else if (field === "category") {
       guidedPayload.transaction.categoryId = value === "skip" ? null : value;
     } else if (field === "contact") {
@@ -4633,6 +5933,44 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
   const [, field, value] = data.split(":");
   const parsed = parsedFromDraftPayload(draft.parsed_payload || {});
   const languageIsVietnamese = detectVietnamese(draft.source_text || "");
+  if (
+    (field === "category" || field === "contact") &&
+    value === "create"
+  ) {
+    const { ok: _ignored, ...transactionWithoutOk } = parsed;
+    await answerCallbackQuery(
+      callback.id,
+      languageIsVietnamese
+        ? field === "category"
+          ? "Gửi tên category mới nha."
+          : "Gửi tên người liên quan mới nha."
+        : field === "category"
+          ? "Send the new category name."
+          : "Send the new contact name.",
+    );
+    await saveCreateEntityDraft(link, { ...message, from: callback.from }, {
+      draft_kind: "create_entity",
+      field,
+      flow: "draft",
+      language: languageIsVietnamese ? "vi" : "en",
+      source_text: draft.source_text || parsed.description,
+      transaction: transactionWithoutOk,
+    });
+    await sendMessage(
+      chatId,
+      languageIsVietnamese
+        ? field === "category"
+          ? "Nhắn tên category mới cho mình. Ví dụ: `Phí chuyển khoản`.\nNếu đổi ý thì nhắn `hủy`."
+          : "Nhắn tên người liên quan mới cho mình. Ví dụ: `Anh Bâu`.\nNếu đổi ý thì nhắn `hủy`."
+        : field === "category"
+          ? "Send me the new category name, for example `Transfer fee`.\nReply `cancel` if you want to stop."
+          : "Send me the new contact name, for example `Anh Bâu`.\nReply `cancel` if you want to stop.",
+      {
+        replyToMessageId: asText(message.message_id),
+      },
+    );
+    return;
+  }
   if (field === "wallet") {
     const wallet = context.wallets.find((item: any) => item.id === value);
     if (!wallet) {
@@ -4663,6 +6001,38 @@ async function handleCallbackQuery(callback: TelegramCallbackQuery) {
         ? `Đã chọn ví nhận: ${wallet.name}`
         : `Destination wallet selected: ${wallet.name}`,
     );
+  } else if (field === "trip") {
+    if (value === "skip") {
+      parsed.tripId = null;
+      parsed.unmatched = parsed.unmatched.filter((item) => item !== "trip");
+      await editMessageText(
+        chatId,
+        asText(message.message_id),
+        languageIsVietnamese
+          ? "Đã bỏ qua gắn chuyến đi cho giao dịch này."
+          : "Skipped trip tagging for this transaction.",
+      );
+    } else {
+      const trip = (context.trips || []).find((item: any) => item.id === value);
+      if (!trip) {
+        await answerCallbackQuery(
+          callback.id,
+          languageIsVietnamese
+            ? "Chuyến đi này không còn tồn tại."
+            : "That trip no longer exists.",
+        );
+        return;
+      }
+      parsed.tripId = trip.id;
+      parsed.unmatched = parsed.unmatched.filter((item) => item !== "trip");
+      await editMessageText(
+        chatId,
+        asText(message.message_id),
+        languageIsVietnamese
+          ? `Đã gắn chuyến đi: ${trip.name}`
+          : `Trip selected: ${trip.name}`,
+      );
+    }
   } else if (field === "category") {
     if (value === "skip") {
       parsed.categoryId = null;
@@ -4808,7 +6178,7 @@ Deno.serve(async (req) => {
       await setTelegramCommands();
       await sendMessage(
         chatId,
-        "Mình đây, trợ lý tài chính cá nhân bản dễ tính của bạn 😄\n\nĐể bắt đầu: mở Budget Manager Settings, tạo Telegram link code, rồi gửi /link 123456 ở đây.\n\nSau khi link xong, bạn có thể:\n- dùng menu lệnh `/expense`, `/income`, `/transfer`\n- bấm keyboard nhanh như `💸 Ghi chi tiêu`\n- nhắn tự nhiên để mình tự parse\n- hỏi report kiểu `tóm tắt chi tiêu tháng này`",
+        "Mình đây, trợ lý tài chính cá nhân bản dễ tính của bạn 😄\n\nĐể bắt đầu: mở Budget Manager Settings, tạo Telegram link code, rồi gửi /link 123456 ở đây.\n\nSau khi link xong, bạn có thể:\n- dùng menu lệnh `/expense`, `/income`, `/transfer`\n- bấm keyboard nhanh như `💸 Ghi chi tiêu`\n- nhắn tự nhiên để mình tự parse chi tiêu thường\n- dùng `/template` khi muốn ghi chi tiêu cho chuyến đi\n- hỏi report kiểu `tóm tắt chi tiêu tháng này`",
         { replyMarkup: BOT_SHORTCUT_KEYBOARD },
       );
       return jsonResponse({ ok: true });
@@ -4831,7 +6201,8 @@ Deno.serve(async (req) => {
           "- /income hoặc bấm `💰 Ghi nhận tiền`",
           "- /transfer hoặc bấm `🔁 Ghi chuyển tiền`",
           "",
-          "3. Template + báo cáo",
+          "3. Chuyến đi + template + báo cáo",
+          "- /template để chọn chuyến rồi ghi chi tiêu du lịch",
           "- /templates",
           "- /template create ...",
           "- /template create Đổ xăng => đổ xăng",
@@ -4902,6 +6273,26 @@ Deno.serve(async (req) => {
     if (pendingDraft && normalizeQuickEditDraftPayload(pendingDraft.parsed_payload)) {
       await handleQuickEditDraftMessage(message, link, pendingDraft, text);
       return jsonResponse({ ok: true });
+    }
+
+    if (pendingDraft && normalizeCreateEntityDraftPayload(pendingDraft.parsed_payload)) {
+      await handleCreateEntityDraftMessage(message, link, pendingDraft, text);
+      return jsonResponse({ ok: true });
+    }
+
+    if (pendingDraft && normalizeTripCaptureDraftPayload(pendingDraft.parsed_payload)) {
+      await handleTripCaptureDraftMessage(message, link, pendingDraft, text);
+      return jsonResponse({ ok: true });
+    }
+
+    if (pendingDraft) {
+      const handled = await handleStandardDraftMessage(
+        message,
+        link,
+        pendingDraft,
+        text,
+      );
+      if (handled) return jsonResponse({ ok: true });
     }
 
     if (message.reply_to_message) {

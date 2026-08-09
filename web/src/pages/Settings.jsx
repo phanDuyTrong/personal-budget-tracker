@@ -12,22 +12,18 @@ import {
   PaperAirplaneIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
-import {
-  Button,
-  Input as HeroInput,
-  Select as HeroSelect,
-  Tabs,
-  Tab,
-  Chip,
-  Card,
-  Tooltip,
-  SelectItem,
-} from "@heroui/react";
+import { Button } from "@heroui/button";
+import { Input as HeroInput } from "@heroui/input";
+import { Select as HeroSelect, SelectItem } from "@heroui/select";
+import { Tabs, Tab } from "@heroui/tabs";
+import { Chip } from "@heroui/chip";
+import { Card } from "@heroui/card";
+import { Tooltip } from "@heroui/tooltip";
 import { useSettingsStore, ACCENT_COLORS } from "@/stores/settingsStore";
 import { useT } from "@/hooks/useTranslation";
 import { useWallets } from "@/features/wallets/hooks";
 import { supabase } from "@/lib/supabase";
-import { useToast } from "@/components/ui";
+import { useToast } from "@/components/ui/useToast";
 
 function Section({ icon, title, description, children }) {
   const SectionIcon = icon;
@@ -69,6 +65,11 @@ function TelegramBotSettings() {
   const { data: wallets = [] } = useWallets();
   const [status, setStatus] = useState(null);
   const [selectedWalletId, setSelectedWalletId] = useState("");
+  const [weeklyAlertsEnabled, setWeeklyAlertsEnabled] = useState(true);
+  const [weeklyAlertBudgetEnabled, setWeeklyAlertBudgetEnabled] = useState(true);
+  const [weeklyAlertGoalEnabled, setWeeklyAlertGoalEnabled] = useState(true);
+  const [weeklyAlertInactivityEnabled, setWeeklyAlertInactivityEnabled] = useState(false);
+  const [weeklyAlertInactivityDays, setWeeklyAlertInactivityDays] = useState("7");
   const [linkCode, setLinkCode] = useState(null);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -81,6 +82,12 @@ function TelegramBotSettings() {
     setStatus(data?.link || null);
     if (data?.link?.default_wallet_id)
       setSelectedWalletId(data.link.default_wallet_id);
+    else setSelectedWalletId("");
+    setWeeklyAlertsEnabled(data?.link?.weekly_alerts_enabled !== false);
+    setWeeklyAlertBudgetEnabled(data?.link?.weekly_alerts_budget_enabled !== false);
+    setWeeklyAlertGoalEnabled(data?.link?.weekly_alerts_goal_enabled !== false);
+    setWeeklyAlertInactivityEnabled(data?.link?.weekly_alerts_inactivity_enabled === true);
+    setWeeklyAlertInactivityDays(String(data?.link?.weekly_alerts_inactivity_days || 7));
   };
 
   const loadTemplates = async () => {
@@ -160,9 +167,79 @@ function TelegramBotSettings() {
       if (error) throw error;
       setStatus(null);
       setLinkCode(null);
+      setWeeklyAlertsEnabled(true);
       toast("Telegram account unlinked.", "success");
     } catch (error) {
       toast(error.message || "Could not unlink Telegram.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateWeeklyAlerts = async (enabled) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke("telegram-config", {
+        body: {
+          action: "update_weekly_alerts",
+          weeklyAlertsEnabled: enabled,
+        },
+      });
+      if (error) throw error;
+      setWeeklyAlertsEnabled(enabled);
+      await loadStatus();
+      toast(
+        enabled
+          ? "Weekly Telegram reminders turned on."
+          : "Weekly Telegram reminders turned off.",
+        "success",
+      );
+    } catch (error) {
+      toast(error.message || "Could not update weekly reminders.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendWeeklyPreview = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("telegram-config", {
+        body: { action: "send_weekly_preview" },
+      });
+      if (error) throw error;
+      if (data?.sent) {
+        toast("Weekly reminder preview sent to Telegram.", "success");
+      } else {
+        toast(
+          data?.message || "No reminder was sent because everything looks healthy right now.",
+          "success",
+        );
+      }
+    } catch (error) {
+      toast(error.message || "Could not send weekly preview.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateWeeklyAlertPreferences = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke("telegram-config", {
+        body: {
+          action: "update_weekly_alert_preferences",
+          weeklyAlertBudgetEnabled,
+          weeklyAlertGoalEnabled,
+          weeklyAlertInactivityEnabled,
+          weeklyAlertInactivityDays: Number(weeklyAlertInactivityDays || 7),
+        },
+      });
+      if (error) throw error;
+      await loadStatus();
+      toast("Weekly reminder preferences updated.", "success");
+    } catch (error) {
+      toast(error.message || "Could not update reminder preferences.", "error");
     } finally {
       setLoading(false);
     }
@@ -293,6 +370,134 @@ function TelegramBotSettings() {
               </Button>
             </>
           )}
+        </div>
+      </div>
+
+      <div className="rounded-[2rem] border border-neutral-200/70 dark:border-neutral-800/70 bg-neutral-100/50 dark:bg-neutral-800/50 p-6 space-y-5">
+        <div>
+          <p className="text-sm font-black text-neutral-900 dark:text-white">
+            Weekly reminders
+          </p>
+          <p className="text-xs font-medium text-neutral-500 mt-1">
+            Every weekend, the bot can send a quick check-in when budgets are near the limit or goals are at risk of slipping.
+          </p>
+        </div>
+
+        <div className="rounded-2xl bg-white/70 dark:bg-neutral-950/50 border border-neutral-200 dark:border-neutral-800 p-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="font-bold text-neutral-900 dark:text-white">
+              {weeklyAlertsEnabled ? "Weekly reminder is on" : "Weekly reminder is off"}
+            </p>
+            <p className="text-xs text-neutral-500 mt-1">
+              Reminder goes to the Telegram account linked above. You can test the current message anytime.
+            </p>
+            {status?.weekly_alerts_last_sent_at && (
+              <p className="text-xs text-neutral-400 mt-2">
+                Last sent: {new Date(status.weekly_alerts_last_sent_at).toLocaleString()}
+              </p>
+            )}
+          </div>
+          <Chip
+            color={weeklyAlertsEnabled ? "success" : "default"}
+            variant="flat"
+            className="font-bold w-fit"
+          >
+            {weeklyAlertsEnabled ? "Enabled" : "Disabled"}
+          </Chip>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="rounded-2xl bg-white/70 dark:bg-neutral-950/50 border border-neutral-200 dark:border-neutral-800 p-4 flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={weeklyAlertBudgetEnabled}
+              onChange={(event) => setWeeklyAlertBudgetEnabled(event.target.checked)}
+              className="mt-1 rounded border-neutral-300 dark:border-neutral-700 bg-transparent text-primary focus:ring-primary"
+              disabled={!status || !weeklyAlertsEnabled}
+            />
+            <div>
+              <p className="font-bold text-neutral-900 dark:text-white">Budget risk</p>
+              <p className="text-xs text-neutral-500 mt-1">
+                Nhắc khi danh mục nào đó đang tiến gần hoặc vượt ngân sách tháng.
+              </p>
+            </div>
+          </label>
+
+          <label className="rounded-2xl bg-white/70 dark:bg-neutral-950/50 border border-neutral-200 dark:border-neutral-800 p-4 flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={weeklyAlertGoalEnabled}
+              onChange={(event) => setWeeklyAlertGoalEnabled(event.target.checked)}
+              className="mt-1 rounded border-neutral-300 dark:border-neutral-700 bg-transparent text-primary focus:ring-primary"
+              disabled={!status || !weeklyAlertsEnabled}
+            />
+            <div>
+              <p className="font-bold text-neutral-900 dark:text-white">Goal risk</p>
+              <p className="text-xs text-neutral-500 mt-1">
+                Nhắc khi goal sắp quá hạn hoặc tiến độ đang chậm.
+              </p>
+            </div>
+          </label>
+
+          <label className="rounded-2xl bg-white/70 dark:bg-neutral-950/50 border border-neutral-200 dark:border-neutral-800 p-4 flex items-start gap-3 md:col-span-2">
+            <input
+              type="checkbox"
+              checked={weeklyAlertInactivityEnabled}
+              onChange={(event) => setWeeklyAlertInactivityEnabled(event.target.checked)}
+              className="mt-1 rounded border-neutral-300 dark:border-neutral-700 bg-transparent text-primary focus:ring-primary"
+              disabled={!status || !weeklyAlertsEnabled}
+            />
+            <div className="flex-1 space-y-3">
+              <div>
+                <p className="font-bold text-neutral-900 dark:text-white">No activity</p>
+                <p className="text-xs text-neutral-500 mt-1">
+                  Nhắc khi bạn không ghi giao dịch nào trong một số ngày liên tiếp.
+                </p>
+              </div>
+              <HeroSelect
+                label="Inactivity threshold"
+                selectedKeys={[weeklyAlertInactivityDays]}
+                onSelectionChange={(keys) => setWeeklyAlertInactivityDays(String(Array.from(keys)[0] || "7"))}
+                variant="flat"
+                isDisabled={!status || !weeklyAlertsEnabled || !weeklyAlertInactivityEnabled}
+                className="max-w-xs"
+              >
+                <SelectItem key="3" textValue="3 days">3 days</SelectItem>
+                <SelectItem key="5" textValue="5 days">5 days</SelectItem>
+                <SelectItem key="7" textValue="7 days">7 days</SelectItem>
+                <SelectItem key="14" textValue="14 days">14 days</SelectItem>
+              </HeroSelect>
+            </div>
+          </label>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={weeklyAlertsEnabled ? "bordered" : "primary"}
+            color={weeklyAlertsEnabled ? "default" : "primary"}
+            onClick={() => handleUpdateWeeklyAlerts(!weeklyAlertsEnabled)}
+            isLoading={loading}
+            isDisabled={!status}
+          >
+            {weeklyAlertsEnabled ? "Turn off weekly reminder" : "Turn on weekly reminder"}
+          </Button>
+          <Button
+            variant="bordered"
+            onClick={handleUpdateWeeklyAlertPreferences}
+            isLoading={loading}
+            isDisabled={!status || !weeklyAlertsEnabled}
+          >
+            Save reminder preferences
+          </Button>
+          <Button
+            variant="flat"
+            color="primary"
+            onClick={handleSendWeeklyPreview}
+            isLoading={loading}
+            isDisabled={!status}
+          >
+            Send preview to Telegram
+          </Button>
         </div>
       </div>
 

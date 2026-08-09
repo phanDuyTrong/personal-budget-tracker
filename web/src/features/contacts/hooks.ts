@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { nowISO } from '@/features/shared/api';
+import { getRequiredUser } from '@/lib/auth';
 
 // ── Contacts ───────────────────────────────────────────────────────
 export const useContacts = () => useQuery({
@@ -34,10 +35,16 @@ export const useDebts = () => useQuery({
 
 export const useContactMutations = () => {
     const qc = useQueryClient();
-    const inv = () => qc.invalidateQueries({ queryKey: ['contacts'] });
+    const inv = () => {
+        qc.invalidateQueries({ queryKey: ['contacts'] });
+        qc.invalidateQueries({ queryKey: ['debts'] });
+        qc.invalidateQueries({ queryKey: ['transactions'] });
+        qc.invalidateQueries({ queryKey: ['all-transactions'] });
+        qc.invalidateQueries({ queryKey: ['dashboard'] });
+    };
     const create = useMutation({
         mutationFn: async (d: any) => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const user = await getRequiredUser('You must be signed in to create a contact.');
             const { data, error } = await supabase.from('contacts').insert({ user_id: user.id, name: d.name, email: d.email || null, phone: d.phone || null }).select().single();
             if (error) throw error; return data;
         }, onSuccess: inv,
@@ -50,7 +57,11 @@ export const useContactMutations = () => {
     });
     const remove = useMutation({
         mutationFn: async (id: string) => {
-            await supabase.from('transactions').update({ contact_id: null }).eq('contact_id', id);
+            const { error: unlinkError } = await supabase
+                .from('transactions')
+                .update({ contact_id: null })
+                .eq('contact_id', id);
+            if (unlinkError) throw unlinkError;
             const { error } = await supabase.from('contacts').delete().eq('id', id);
             if (error) throw error; return true;
         }, onSuccess: inv,

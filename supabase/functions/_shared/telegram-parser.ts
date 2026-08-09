@@ -17,6 +17,8 @@ export type ParsedTransaction =
       toWalletId: string | null;
       categoryId: string | null;
       contactId: string | null;
+      tripId: string | null;
+      isDebt: boolean;
       unmatched: string[];
     }
   | {
@@ -28,6 +30,7 @@ type ParseContext = {
   wallets: TelegramItem[];
   categories: TelegramItem[];
   contacts: TelegramItem[];
+  trips?: Array<TelegramItem & { destination?: string | null }>;
   defaultWalletId?: string | null;
   now?: Date;
   timeZone?: string;
@@ -39,13 +42,33 @@ type MatchResult = {
   phrase: string;
 };
 
+export type DraftSelectionField =
+  | "wallet"
+  | "toWallet"
+  | "category"
+  | "contact";
+
+export type DraftSelectionResult =
+  | { kind: "select"; id: string; label: string }
+  | { kind: "skip" }
+  | { kind: "cancel" }
+  | { kind: "unmatched" };
+
 const INCOME_KEYWORDS = [
+  "nhan",
   "luong",
   "nhan luong",
   "nhan tien",
   "thu nhap",
   "thu tien",
   "hoan tien",
+  "co tuc",
+  "cổ tức",
+  "dividend",
+  "lai",
+  "lai suat",
+  "lãi",
+  "lãi suất",
   "refund",
   "salary",
   "received",
@@ -54,9 +77,34 @@ const INCOME_KEYWORDS = [
   "paid back",
 ];
 
-const TRANSFER_KEYWORDS = ["chuyen", "transfer", "move", "doi vi"];
+const TRANSFER_KEYWORDS = [
+  "chuyen",
+  "chuyen khoan",
+  "transfer",
+  "move",
+  "doi vi",
+  "nap",
+  "rut",
+  "nap vi",
+  "rut vi",
+];
 const DATE_WORDS = ["hom nay", "today", "hom qua", "yesterday"];
-
+const DEBT_KEYWORDS = [
+  "cho muon",
+  "mượn",
+  "muon",
+  "muon tien",
+  "mượn tiền",
+  "tra no",
+  "trả nợ",
+  "ung ho",
+  "ứng hộ",
+  "tam ung",
+  "tạm ứng",
+  "debt",
+  "owe",
+  "owes",
+];
 export function normalizeText(value = "") {
   return value
     .toLowerCase()
@@ -78,6 +126,13 @@ export function flattenTelegramItems(items: TelegramItem[] = []) {
   };
   walk(items);
   return flat;
+}
+
+function normalizeTripYear(item: TelegramItem & { start_date?: string | null }) {
+  const yearFromDate = item.start_date?.slice(0, 4);
+  if (yearFromDate) return yearFromDate;
+  const yearMatch = normalizeText(item.name || "").match(/\b(20\d{2})\b/);
+  return yearMatch?.[1] || null;
 }
 
 function todayInTimeZone(now = new Date(), timeZone = "Asia/Ho_Chi_Minh") {
@@ -119,10 +174,39 @@ function parseDate(text: string, now?: Date, timeZone?: string) {
   return today;
 }
 
+function parseMoneyLikeText(value: string) {
+  const text = value.trim().replace(/\s+/g, "");
+  if (!text) return null;
+
+  let normalized = text;
+  const hasComma = normalized.includes(",");
+  const hasDot = normalized.includes(".");
+
+  if (hasComma && hasDot) {
+    if (normalized.lastIndexOf(",") > normalized.lastIndexOf(".")) {
+      normalized = normalized.replace(/\./g, "").replace(",", ".");
+    } else {
+      normalized = normalized.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    normalized = /,\d{1,2}$/.test(normalized)
+      ? normalized.replace(/\./g, "").replace(",", ".")
+      : normalized.replace(/,/g, "");
+  } else if (hasDot) {
+    normalized = /\.\d{1,2}$/.test(normalized)
+      ? normalized.replace(/,/g, "")
+      : normalized.replace(/\./g, "");
+  }
+
+  normalized = normalized.replace(/[^\d.-]/g, "");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function parseAmount(text: string) {
   const matches = [
     ...text.matchAll(
-      /(?:[$₫]\s*)?(\d+(?:[.,]\d+)?)\s*(k|nghin|ngan|ngan|ngàn|tr|trieu|m|million|usd|dollars?|vnd|₫|d)?\b/gi,
+      /(?:[$₫]\s*)?(\d[\d.,]*)(?:\s*(k|nghin|ngan|ngan|ngàn|tr|trieu|m|million|usd|dollars?|vnd|₫|đ|d))?/gi,
     ),
   ];
   const moneyMatch =
@@ -142,16 +226,16 @@ function parseAmount(text: string) {
     );
 
   if (!moneyMatch) return null;
-  const raw = moneyMatch[1].replace(",", ".");
-  let amount = Number.parseFloat(raw);
-  if (!Number.isFinite(amount)) return null;
+  const amount = parseMoneyLikeText(moneyMatch[1]);
+  if (amount === null) return null;
 
   const unit = normalizeText(moneyMatch[2] || "");
-  if (["k", "nghin", "ngan", "ngan"].includes(unit)) amount *= 1000;
-  if (["tr", "trieu", "m", "million"].includes(unit)) amount *= 1000000;
+  let parsedAmount = amount;
+  if (["k", "nghin", "ngan", "ngan"].includes(unit)) parsedAmount *= 1000;
+  if (["tr", "trieu", "m", "million"].includes(unit)) parsedAmount *= 1000000;
 
   return {
-    amount: Math.round(amount * 100) / 100,
+    amount: Math.round(parsedAmount * 100) / 100,
     raw: moneyMatch[0],
   };
 }
@@ -167,9 +251,42 @@ function detectType(text: string): "expense" | "income" | "transfer" {
     TRANSFER_KEYWORDS.some((keyword) => normalized.includes(keyword))
   )
     return "transfer";
+  if (
+    /(?:^|\s)(?:nhan|thu|hoan tien|refund|salary|received|income)\b/.test(
+      normalized,
+    ) ||
+    /\bcho\s+tien\b/.test(normalized)
+  )
+    return "income";
   if (INCOME_KEYWORDS.some((keyword) => normalized.includes(keyword)))
     return "income";
   return "expense";
+}
+
+function resolveCategoryLineageType(
+  category: TelegramItem,
+  categories: TelegramItem[],
+) {
+  const categoryMap = new Map(categories.map((item) => [item.id, item]));
+  let current: TelegramItem | null = category;
+  while (current) {
+    if (current.type === "income" || current.type === "expense") {
+      return current.type;
+    }
+    current = current.parent_id ? categoryMap.get(current.parent_id) || null : null;
+  }
+  return null;
+}
+
+function categoryMatchesType(
+  category: TelegramItem,
+  type: "expense" | "income" | "transfer",
+  categories: TelegramItem[],
+) {
+  const lineageType = resolveCategoryLineageType(category, categories);
+  if (type === "income") return lineageType === "income";
+  if (type === "transfer") return lineageType !== "income";
+  return lineageType !== "income";
 }
 
 function scoreCandidate(text: string, name: string) {
@@ -236,6 +353,42 @@ function aliasesForItem(item: TelegramItem) {
   else if (normalized === "qua" || normalized.includes("gift"))
     aliases.push("mua qua", "cho qua", "gift", "present");
 
+  const isIncomeRoot =
+    Boolean(item.children?.length) ||
+    normalized === "thu nhap" ||
+    normalized === "income";
+  if (isIncomeRoot)
+    aliases.push(
+      "thu nhap",
+      "income",
+      "thu nhap chinh",
+      "thu nhap phu",
+      "thu nhap khac",
+    );
+  else if (
+    normalized.includes("luong") ||
+    normalized.includes("salary") ||
+    normalized.includes("received") ||
+    normalized.includes("hoan tien") ||
+    normalized.includes("refund") ||
+    normalized.includes("lai") ||
+    normalized.includes("dividend") ||
+    normalized.includes("co tuc")
+  ) {
+    aliases.push(
+      normalized,
+      "luong",
+      "nhan luong",
+      "salary",
+      "received",
+      "refund",
+      "hoan tien",
+      "lai",
+      "dividend",
+      "co tuc",
+    );
+  }
+
   if (normalized.includes("dong nghiep"))
     aliases.push("anh bau", "dong nghiep", "team", "cong ty", "colleague");
 
@@ -266,6 +419,25 @@ function findBest(
       );
     })[0];
   return best && best.score >= minimum ? best : null;
+}
+
+function extractEditTarget(input: string, labels: string[]) {
+  const match = input.match(
+    new RegExp(
+      `(?:sửa|doi|đổi|change|update|edit)\\s+(?:${labels.join("|")})(?:\\s+(?:thanh|thành|to|la|là))?\\s+(.+)`,
+      "i",
+    ),
+  );
+  return match?.[1]?.trim() || "";
+}
+
+function findExactByName(
+  items: TelegramItem[],
+  text: string,
+) {
+  const normalized = normalizeText(text);
+  if (!normalized) return null;
+  return items.find((item) => normalizeText(item.name || "") === normalized) || null;
 }
 
 function findWalletFromSegment(
@@ -312,6 +484,18 @@ function findContactFromSegment(contacts: TelegramItem[], text: string) {
   return findBest(contacts, match[1], 30);
 }
 
+function isSkipSelection(text: string) {
+  return /\b(?:bo qua|bỏ qua|skip|khong can|không cần|none)\b/i.test(
+    normalizeText(text),
+  );
+}
+
+function isCancelSelection(text: string) {
+  return /\b(?:huy|hủy|cancel|stop|thoat|thoát)\b/i.test(
+    normalizeText(text),
+  );
+}
+
 function extractContactSegment(text: string) {
   const normalized = normalizeText(text);
   const match = normalized.match(
@@ -329,13 +513,23 @@ function looksLikeContactIntent(text: string) {
   );
 }
 
+function looksLikeDebtIntent(text: string) {
+  const normalized = normalizeText(text);
+  return DEBT_KEYWORDS.some((keyword) => normalized.includes(keyword));
+}
+
 function cleanDescription(
   text: string,
   amountRaw: string,
+  type: "expense" | "income" | "transfer",
   matches: Array<MatchResult | null>,
 ) {
   let description = text;
   description = description.replace(amountRaw, " ");
+  description = description.replace(
+    /\b\d+(?:[.,]\d+)?\s*(?:k|nghin|ngan|ngàn|tr|trieu|m|million|usd|dollars?|vnd|₫|đ|d)\b/gi,
+    " ",
+  );
   DATE_WORDS.forEach((word) => {
     description = description.replace(new RegExp(`\\b${word}\\b`, "ig"), " ");
   });
@@ -357,6 +551,13 @@ function cleanDescription(
     /\b(?:bằng|từ|vào|sang|qua|về|đến)\b/gi,
     " ",
   );
+  if (type === "transfer") {
+    description = description.replace(
+      /^\s*(?:chuyển|transfer|move|nạp|rút)\b[:\s-]*/i,
+      "",
+    );
+  }
+  description = description.replace(/\b[đ₫]\b/gi, " ");
   return (
     description.replace(/\s+/g, " ").trim() || text.replace(/\s+/g, " ").trim()
   );
@@ -379,11 +580,9 @@ export function parseTelegramTransaction(
   const wallets = context.wallets.filter(
     (wallet) => !wallet.type || wallet.type !== "deleted",
   );
+  const allCategories = flattenTelegramItems(context.categories);
   const categories = flattenTelegramItems(context.categories).filter(
-    (category) =>
-      !category.type ||
-      category.type === type ||
-      (type === "transfer" ? false : true),
+    (category) => categoryMatchesType(category, type, allCategories),
   );
   const contacts = context.contacts;
   const connectorWallets =
@@ -417,16 +616,28 @@ export function parseTelegramTransaction(
 
   const category = type === "transfer" ? null : findBest(categories, input, 55);
   const contact =
-    findContactFromSegment(contacts, input) || findBest(contacts, input, 60);
+    findContactFromSegment(contacts, input) ||
+    (looksLikeContactIntent(input) ? findBest(contacts, input, 60) : null);
   const walletId = fromWallet?.item.id || context.defaultWalletId || "";
-  const description = cleanDescription(input, amount.raw, [
-    fromWallet,
-    toWallet,
-    contact,
-  ]);
+  const description = cleanDescription(
+    input,
+    amount.raw,
+    type,
+    [
+      fromWallet,
+      toWallet,
+      contact,
+    ],
+  );
   const unmatched: string[] = [];
+  const sameWalletTransfer =
+    type === "transfer" &&
+    Boolean(walletId) &&
+    Boolean(toWallet?.item.id) &&
+    walletId === toWallet?.item.id;
   if (!walletId) unmatched.push("wallet");
-  if (type === "transfer" && !toWallet) unmatched.push("toWallet");
+  if (type === "transfer" && (!toWallet || sameWalletTransfer))
+    unmatched.push("toWallet");
   if (!category && type !== "transfer") unmatched.push("category");
   if (!contact && looksLikeContactIntent(input)) unmatched.push("contact");
 
@@ -437,11 +648,103 @@ export function parseTelegramTransaction(
     date: parseDate(input, context.now, context.timeZone),
     description,
     walletId,
-    toWalletId: toWallet?.item.id || null,
+    toWalletId: sameWalletTransfer ? null : toWallet?.item.id || null,
     categoryId: category?.item.id || null,
     contactId: contact?.item.id || null,
+    tripId: null,
+    isDebt: looksLikeDebtIntent(input),
     unmatched,
   };
+}
+
+export function resolveTelegramDraftSelection(
+  input: string,
+  field: DraftSelectionField,
+  context: ParseContext,
+  options: {
+    type?: "expense" | "income" | "transfer";
+    walletId?: string | null;
+  } = {},
+): DraftSelectionResult {
+  if (isCancelSelection(input)) return { kind: "cancel" };
+  if (
+    isSkipSelection(input) &&
+    (field === "category" || field === "contact")
+  ) {
+    return { kind: "skip" };
+  }
+
+  if (field === "wallet" || field === "toWallet") {
+    const wallets = context.wallets.filter(
+      (wallet) =>
+        !wallet.type || wallet.type !== "deleted",
+    );
+    const candidates =
+      field === "toWallet" && options.walletId
+        ? wallets.filter((wallet) => wallet.id !== options.walletId)
+        : wallets;
+    const wallet =
+      findExactByName(candidates, input) ||
+      findBest(candidates, input, 30)?.item ||
+      null;
+    return wallet
+      ? { kind: "select", id: wallet.id, label: wallet.name }
+      : { kind: "unmatched" };
+  }
+
+  if (field === "category") {
+    const allCategories = flattenTelegramItems(context.categories);
+    const categories = allCategories.filter(
+      (category) =>
+        categoryMatchesType(
+          category,
+          options.type || "expense",
+          allCategories,
+        ),
+    );
+    const category =
+      findExactByName(categories, input) ||
+      findBest(categories, input, 35)?.item ||
+      null;
+    return category
+      ? { kind: "select", id: category.id, label: category.name }
+      : { kind: "unmatched" };
+  }
+
+  const contact =
+    findExactByName(context.contacts, input) ||
+    findBest(context.contacts, input, 30)?.item ||
+    null;
+  return contact
+    ? { kind: "select", id: contact.id, label: contact.name }
+    : { kind: "unmatched" };
+}
+
+export function findExplicitTripMatch(
+  trips: Array<TelegramItem & { destination?: string | null; start_date?: string | null }>,
+  text: string,
+) {
+  const normalized = normalizeText(text);
+  const yearMatch = normalized.match(/\b(20\d{2})\b/);
+  if (!yearMatch) return null;
+
+  const year = yearMatch[1];
+  const candidates = trips.filter((trip) => {
+    const tripYear = normalizeTripYear(trip);
+    if (tripYear && tripYear !== year) return false;
+    const destination = normalizeText(trip.destination || "");
+    return destination ? normalized.includes(destination) : false;
+  });
+
+  if (candidates.length === 0) return null;
+
+  return candidates
+    .slice()
+    .sort((a, b) => {
+      const aDest = normalizeText(a.destination || "");
+      const bDest = normalizeText(b.destination || "");
+      return bDest.length - aDest.length;
+    })[0];
 }
 
 export type ParsedEdit = {
@@ -473,21 +776,28 @@ export function parseTelegramEdit(
     changes.amount = amount.amount;
 
   if (/\b(vi|wallet)\b/.test(normalized)) {
-    const wallet = findBest(context.wallets, input, 35);
+    const walletTarget = extractEditTarget(input, ["vi", "wallet"]);
+    const wallet =
+      findExactByName(context.wallets, walletTarget) ||
+      findBest(context.wallets, walletTarget || input, 35)?.item;
     if (!wallet)
       return { action: "none", reason: "I could not match that wallet." };
-    changes.walletId = wallet.item.id;
+    changes.walletId = wallet.id;
   }
 
   if (/\b(danh muc|category)\b/.test(normalized)) {
-    const category = findBest(
-      flattenTelegramItems(context.categories),
-      input,
-      35,
-    );
+    const categoryTarget = extractEditTarget(input, ["danh muc", "category"]);
+    const categories = flattenTelegramItems(context.categories);
+    const category =
+      findExactByName(categories, categoryTarget) ||
+      findBest(
+        categories,
+        categoryTarget || input,
+        35,
+      )?.item;
     if (!category)
       return { action: "none", reason: "I could not match that category." };
-    changes.categoryId = category.item.id;
+    changes.categoryId = category.id;
   }
 
   if (
@@ -495,10 +805,20 @@ export function parseTelegramEdit(
       normalized,
     )
   ) {
-    const contact = findBest(context.contacts, input, 30);
+    const contactTarget = extractEditTarget(input, [
+      "nguoi nhan",
+      "nguoi lien quan",
+      "lien quan",
+      "contact",
+      "person",
+      "recipient",
+    ]);
+    const contact =
+      findExactByName(context.contacts, contactTarget) ||
+      findBest(context.contacts, contactTarget || input, 30)?.item;
     if (!contact)
       return { action: "none", reason: "I could not match that contact." };
-    changes.contactId = contact.item.id;
+    changes.contactId = contact.id;
   }
 
   if (/\b(ngay|date)\b/.test(normalized))

@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon, UsersIcon, EnvelopeIcon, PhoneIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useContacts, useContactMutations } from '@/features/contacts/hooks';
-import { Modal, Button, Input, Field, Skeleton, EmptyState, ConfirmModal, useToast } from '@/components/ui';
+import { Modal, Button, Input, Field, Skeleton, EmptyState, ConfirmModal } from '@/components/ui';
+import { useToast } from '@/components/ui/useToast';
 
 function ContactModal({ open, onClose, contact }) {
     const isEdit = !!contact;
-    const [form, setForm] = useState(isEdit
-        ? { name: contact.name, email: contact.email || '', phone: contact.phone || '' }
-        : { name: '', email: '', phone: '' }
-    );
+    const buildFormState = React.useCallback(() => (
+        isEdit
+            ? { name: contact.name, email: contact.email || '', phone: contact.phone || '' }
+            : { name: '', email: '', phone: '' }
+    ), [contact, isEdit]);
+    const [form, setForm] = useState(buildFormState);
     const { create, update } = useContactMutations();
     const toast = useToast();
 
@@ -21,6 +24,10 @@ function ContactModal({ open, onClose, contact }) {
             onClose();
         } catch (err) { toast(err.message || 'Error saving contact', 'error'); }
     };
+
+    useEffect(() => {
+        setForm(buildFormState());
+    }, [buildFormState]);
 
     return (
         <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Contact' : 'New Contact'}>
@@ -58,7 +65,7 @@ export function Contacts() {
         try {
             await remove.mutateAsync(contact.id);
             toast('Contact deleted', 'success');
-        } catch { toast('Error deleting contact', 'error'); }
+        } catch (err) { toast(err?.message || 'Error deleting contact', 'error'); }
         setConfirmDel(null);
     };
 
