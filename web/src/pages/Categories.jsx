@@ -1,24 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon, ChevronRightIcon, ChevronDownIcon, TagIcon } from '@heroicons/react/24/outline';
-import { 
-    Button, 
-    Input as HeroInput, 
-    Select as HeroSelect, 
-
-    Skeleton,
-    Tooltip,
-    Chip,
-    Accordion,
-    AccordionItem,
-    Modal as HeroModal,
-    ModalContent,
-    ModalHeader,
-    ModalBody,
-    ModalFooter,
-
- SelectItem } from "@heroui/react";
+import { Button } from "@heroui/button";
+import { Input as HeroInput } from "@heroui/input";
+import { Select as HeroSelect, SelectItem } from "@heroui/select";
+import { Skeleton } from "@heroui/skeleton";
+import { Tooltip } from "@heroui/tooltip";
+import { Chip } from "@heroui/chip";
+import { Accordion, AccordionItem } from "@heroui/accordion";
+import { Modal as HeroModal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
 import { useCategories, useCategoryMutations } from '@/features/categories/hooks';
-import { Modal, Field, EmptyState, ConfirmModal, useToast, DynamicIcon , GlassCard } from '@/components/ui';
+import { Modal, Field, EmptyState, ConfirmModal, DynamicIcon , GlassCard } from '@/components/ui';
+import { useToast } from '@/components/ui/useToast';
 
 const ICONS = [
     'HomeIcon', 'ShoppingCartIcon', 'TruckIcon', 'PaperAirplaneIcon', 'PuzzlePieceIcon', 
@@ -38,10 +30,19 @@ function displayCategoryColor(category) {
     return category.color || colorForCategoryType(category.type);
 }
 
+function getErrorMessage(err, fallback = 'Error') {
+    return err instanceof Error && err.message ? err.message : fallback;
+}
+
 function CategoryModal({ open, onClose, category, parentCategory }) {
     const isEdit = !!category;
     const initialType = category?.type || parentCategory?.type || 'expense';
-    const [form, setForm] = useState(isEdit ? { name: category.name, icon: category.icon || '', color: category.color || colorForCategoryType(category.type), type: category.type, parentId: category.parent_id || '' } : { name: '', icon: '', color: colorForCategoryType(initialType), type: initialType, parentId: parentCategory?.id || '' });
+    const buildFormState = React.useCallback(() => (
+        isEdit
+            ? { name: category.name, icon: category.icon || '', color: category.color || colorForCategoryType(category.type), type: category.type, parentId: category.parent_id || '' }
+            : { name: '', icon: '', color: colorForCategoryType(initialType), type: initialType, parentId: parentCategory?.id || '' }
+    ), [category, initialType, isEdit, parentCategory?.id]);
+    const [form, setForm] = useState(buildFormState);
     const { create, update } = useCategoryMutations();
     const { data: categoryTree = [] } = useCategories();
     const toast = useToast();
@@ -59,8 +60,12 @@ function CategoryModal({ open, onClose, category, parentCategory }) {
             else await create.mutateAsync(payload);
             toast(`Category ${isEdit ? 'updated' : 'created'}!`, 'success');
             onClose();
-        } catch (err) { toast(err.response?.data?.error?.message || 'Error', 'error'); }
+        } catch (err) { toast(getErrorMessage(err), 'error'); }
     };
+
+    useEffect(() => {
+        setForm(buildFormState());
+    }, [buildFormState]);
 
     return (
         <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Category' : parentCategory ? `New Sub-category under "${parentCategory.name}"` : 'New Category'}>
@@ -132,7 +137,7 @@ function CategoryModal({ open, onClose, category, parentCategory }) {
 
                 <div className="flex gap-2 justify-end pt-4 border-t border-neutral-100 dark:border-neutral-800">
                     <Button variant="light" onClick={onClose}>Cancel</Button>
-                    <Button color="primary" type="submit" className="font-bold">{isEdit ? 'Save' : 'Create'}</Button>
+                    <Button color="primary" type="submit" className="font-bold" isLoading={create.isPending || update.isPending}>{isEdit ? 'Save' : 'Create'}</Button>
                 </div>
             </form>
         </Modal>
@@ -183,9 +188,9 @@ export function Categories() {
             await remove.mutateAsync(cat.id);
             toast('Deleted', 'success');
         } catch (err) {
-            const code = err.response?.data?.error?.code;
+            const code = err && typeof err === 'object' ? err.code : undefined;
             if (code === 'LINKED_TRANSACTIONS' || code === 'LINKED_SPLITS') { setReassignModal(cat); }
-            else { toast(err.response?.data?.error?.message || 'Error', 'error'); }
+            else { toast(getErrorMessage(err), 'error'); }
         }
         setConfirmDel(null);
     };
@@ -312,7 +317,7 @@ export function Categories() {
 
             {modal !== null && <CategoryModal open onClose={() => setModal(null)} category={modal.category} parentCategory={modal.parentCategory} />}
             <ConfirmModal open={!!confirmDel} title={`Delete "${confirmDel?.name}"?`} description="If transactions use this category, you'll be prompted to reassign them." onConfirm={() => handleDeleteAttempt(confirmDel)} onCancel={() => setConfirmDel(null)} />
-            {reassignModal && <ReassignModal open category={reassignModal} onClose={() => setReassignModal(null)} onReassign={handleReassign} />}
+            {reassignModal && <ReassignModal key={reassignModal.id} open category={reassignModal} onClose={() => setReassignModal(null)} onReassign={handleReassign} />}
         </div>
     );
 }

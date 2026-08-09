@@ -3,10 +3,20 @@ import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { EyeIcon, EyeSlashIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
-import { Button, Input, Card } from "@heroui/react";
+import { Button } from "@heroui/button";
+import { Input } from "@heroui/input";
+import { Card } from "@heroui/card";
 
 function AuthLayout({ title, subtitle, children }) {
-    const { user } = useAuthStore();
+    const { user, isReady } = useAuthStore();
+
+    if (!isReady) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            </div>
+        );
+    }
     
     // Automatically redirect to dashboard if user is already authenticated or mocked
     if (user) {

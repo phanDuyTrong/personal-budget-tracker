@@ -9,5 +9,30 @@ export function enrichGoal(g: any, today = new Date()) {
         daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / 86400000);
         requiredMonthlySaving = monthsLeft > 0 ? Math.ceil(remaining / monthsLeft) : remaining;
     }
-    return { ...g, percentage, remaining, requiredMonthlySaving, daysLeft, targetAmount: g.target_amount, currentAmount: g.current_amount };
+    return {
+        ...g,
+        percentage,
+        remaining,
+        requiredMonthlySaving,
+        daysLeft,
+        targetAmount: g.target_amount,
+        currentAmount: g.current_amount,
+        walletId: g.walletId ?? g.wallet_id ?? null,
+    };
+}
+
+export function resolveGoalStatus({
+    targetAmount,
+    currentAmount,
+    fallbackStatus = 'active',
+}: {
+    targetAmount: number;
+    currentAmount: number;
+    fallbackStatus?: string;
+}) {
+    if (targetAmount > 0) {
+        return currentAmount >= targetAmount ? 'completed' : 'active';
+    }
+
+    return fallbackStatus;
 }

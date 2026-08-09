@@ -2,11 +2,13 @@ import React from 'react';
 import { useCalculatedWallets, useWalletMutations } from '@/features/wallets/hooks';
 import { useFormatAmount } from '@/hooks/useTranslation';
 import { TermBox, TermInputPrompt, TermButton } from '@/components/terminal';
+import { useToast } from '@/components/ui/useToast';
 
 export function TerminalWallets() {
     const { data: walletsRaw = [], isLoading } = useCalculatedWallets();
     const fmt = useFormatAmount();
     const { remove } = useWalletMutations();
+    const toast = useToast();
 
     const wallets = walletsRaw || [];
     const totalBalance = wallets.reduce((s, a) => s + Number(a.liveBalance), 0);
@@ -15,8 +17,8 @@ export function TerminalWallets() {
         if (window.confirm('CONFIRM_DELETE?')) {
             try {
                 await remove.mutateAsync(id);
-            } catch (e) {
-                console.error(e);
+            } catch {
+                toast?.('DELETE_FAILED', 'error');
             }
         }
     };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
     PlusIcon, 
     PencilIcon, 
@@ -10,29 +10,24 @@ import {
     BanknotesIcon, 
     CurrencyDollarIcon 
 } from '@heroicons/react/24/outline';
-import { 
-    Button, 
-    Input as HeroInput, 
-    Select as HeroSelect, 
-
-    Skeleton,
-    Tooltip,
-    Modal as HeroModal,
-    ModalContent,
-    ModalHeader,
-    ModalBody,
-    ModalFooter, SelectItem } from "@heroui/react";
+import { Button } from "@heroui/button";
+import { Input as HeroInput } from "@heroui/input";
+import { Select as HeroSelect, SelectItem } from "@heroui/select";
+import { Skeleton } from "@heroui/skeleton";
+import { Tooltip } from "@heroui/tooltip";
+import { Modal as HeroModal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
 import { useCalculatedWallets, useWalletMutations } from '@/features/wallets/hooks';
 import { 
     Modal, 
     AmountInput, 
     Field, 
     EmptyState, 
-    ConfirmModal, 
-    useToast 
+    ConfirmModal
 , GlassCard } from '@/components/ui';
+import { useToast } from '@/components/ui/useToast';
 import { useFormatAmount } from '@/hooks/useTranslation';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { parseMoneyInput } from '@/lib/money';
 
 const WALLET_TYPES = [
     { value: 'checking', label: 'Checking', icon: WalletIcon },
@@ -45,10 +40,11 @@ const WALLET_TYPES = [
 
 function WalletModal({ open, onClose, wallet }) {
     const isEdit = !!wallet;
-    const [form, setForm] = useState(isEdit
+    const buildFormState = React.useCallback(() => isEdit
         ? { name: wallet.name, type: wallet.type || 'checking', balance: String(wallet.balance ?? 0) }
         : { name: '', type: 'checking', balance: '0' }
-    );
+    , [isEdit, wallet]);
+    const [form, setForm] = useState(buildFormState);
     const { create, update } = useWalletMutations();
     const toast = useToast();
 
@@ -57,11 +53,15 @@ function WalletModal({ open, onClose, wallet }) {
         try {
             const payload = { name: form.name, type: form.type };
             if (isEdit) await update.mutateAsync({ id: wallet.id, ...payload });
-            else await create.mutateAsync({ ...payload, balance: parseFloat(form.balance) || 0 });
+            else await create.mutateAsync({ ...payload, balance: parseMoneyInput(form.balance) });
             toast(`Wallet ${isEdit ? 'updated' : 'created'}!`, 'success');
             onClose();
         } catch (err) { toast(err.message || 'Error', 'error'); }
     };
+
+    useEffect(() => {
+        setForm(buildFormState());
+    }, [buildFormState]);
 
     return (
         <Modal open={open} onClose={onClose} title={isEdit ? `Edit "${wallet.name}"` : 'New Wallet'}>
@@ -99,8 +99,8 @@ function WalletModal({ open, onClose, wallet }) {
                 </Field>
 
                 <div className="flex gap-2 justify-end pt-4 border-t border-neutral-100 dark:border-neutral-800">
-                    <Button variant="light" onClick={onClose}>Cancel</Button>
-                    <Button color="primary" type="submit" className="font-bold">{isEdit ? 'Save Changes' : 'Create Wallet'}</Button>
+                    <Button variant="light" onClick={onClose} isDisabled={create.isPending || update.isPending}>Cancel</Button>
+                    <Button color="primary" type="submit" className="font-bold" isLoading={create.isPending || update.isPending}>{isEdit ? 'Save Changes' : 'Create Wallet'}</Button>
                 </div>
             </form>
         </Modal>

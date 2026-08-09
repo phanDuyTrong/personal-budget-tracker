@@ -3,17 +3,10 @@ import { useDebts } from '@/features/contacts/hooks';
 import { EmptyState, AmountDisplay , GlassCard } from '@/components/ui';
 import { UsersIcon, ExclamationCircleIcon, ArrowUpRightIcon, ArrowDownLeftIcon } from '@heroicons/react/24/outline';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { 
-    Skeleton, 
-    Table, 
-    TableHeader, 
-    TableColumn, 
-    TableBody, 
-    TableRow, 
-    TableCell,
-    Chip,
-    Card
-} from "@heroui/react";
+import { Skeleton } from "@heroui/skeleton";
+import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/table";
+import { Chip } from "@heroui/chip";
+import { Card } from "@heroui/card";
 
 export function Debts() {
     const { data: debts = [], isLoading, error } = useDebts();

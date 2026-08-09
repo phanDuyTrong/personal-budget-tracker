@@ -1,6 +1,6 @@
-import { Progress } from "@heroui/react";
-import React, { useState, useMemo } from 'react';
-import { format, startOfMonth, getMonth, getYear, setMonth, setYear } from 'date-fns';
+import { Progress } from "@heroui/progress";
+import React, { useEffect, useState, useMemo } from 'react';
+import { format, startOfMonth, getMonth, getYear } from 'date-fns';
 import { 
     PlusIcon, 
     PencilIcon, 
@@ -11,26 +11,30 @@ import {
     EllipsisVerticalIcon 
 } from '@heroicons/react/24/outline';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { 
-    Button, 
-    Input as HeroInput, 
-    Select as HeroSelect, 
-
-    Skeleton,
-    Tooltip,
-    Tabs,
-    Tab,
-
-    Chip, SelectItem } from "@heroui/react";
+import { Button } from "@heroui/button";
+import { Input as HeroInput } from "@heroui/input";
+import { Select as HeroSelect, SelectItem } from "@heroui/select";
+import { Skeleton } from "@heroui/skeleton";
+import { Tooltip } from "@heroui/tooltip";
+import { Tabs, Tab } from "@heroui/tabs";
+import { Chip } from "@heroui/chip";
 import { useBudgets, useBudgetMutations } from '@/features/budgets/hooks';
 import { useCategories } from '@/features/categories/hooks';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { Modal, AmountInput, Field, EmptyState, ConfirmModal, useToast, DatePicker as CustomDatePicker , GlassCard } from '@/components/ui';
+import { Modal, AmountInput, Field, EmptyState, ConfirmModal, DatePicker as CustomDatePicker , GlassCard } from '@/components/ui';
+import { useToast } from '@/components/ui/useToast';
 import { useFormatAmount } from '@/hooks/useTranslation';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { TransactionModal } from '@/pages/Transactions';
+import { toISODate } from '@/lib/date';
+
+function getErrorMessage(err, fallback = 'Error saving budget') {
+    return err instanceof Error && err.message ? err.message : fallback;
+}
 
 function BudgetModal({ open, onClose, budget }) {
-    const [form, setForm] = useState(() => budget ? { categoryId: budget.category_id || budget.categoryId, amount: Number(budget.amount), period: budget.period, rollover: budget.rollover, startDate: format(new Date(budget.start_date || budget.startDate), 'yyyy-MM-dd') } : { categoryId: '', amount: '', period: 'monthly', rollover: false, startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd') });
+    const buildFormState = React.useCallback(() => budget ? { categoryId: budget.category_id || budget.categoryId, amount: Number(budget.amount), period: budget.period, rollover: budget.rollover, startDate: format(new Date(budget.start_date || budget.startDate), 'yyyy-MM-dd') } : { categoryId: '', amount: '', period: 'monthly', rollover: false, startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd') }, [budget]);
+    const [form, setForm] = useState(buildFormState);
     const { create, update } = useBudgetMutations();
     const { data: categoryTree = [] } = useCategories();
     const toast = useToast();
@@ -55,10 +59,14 @@ function BudgetModal({ open, onClose, budget }) {
             else await create.mutateAsync(form);
             toast(`Budget ${isEdit ? 'updated' : 'created'}!`, 'success');
             onClose();
-        } catch (err) { toast(err.response?.data?.error?.message || 'Error saving budget', 'error'); }
+        } catch (err) { toast(getErrorMessage(err), 'error'); }
     };
 
     const handleFormChange = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+    useEffect(() => {
+        setForm(buildFormState());
+    }, [buildFormState]);
 
     return (
         <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Budget' : 'New Budget'}>
@@ -101,7 +109,7 @@ function BudgetModal({ open, onClose, budget }) {
 
                 <div className="flex gap-2 justify-end pt-4 border-t border-neutral-100 dark:border-neutral-800">
                     <Button variant="light" onClick={onClose}>Cancel</Button>
-                    <Button color="primary" type="submit" className="font-bold">{isEdit ? 'Save Changes' : 'Create Budget'}</Button>
+                    <Button color="primary" type="submit" className="font-bold" isLoading={create.isPending || update.isPending}>{isEdit ? 'Save Changes' : 'Create Budget'}</Button>
                 </div>
             </form>
         </Modal>
@@ -113,15 +121,14 @@ export function Budgets() {
     const [month, setMonthIdx] = useState(getMonth(today));
     const [year, setYearIdx] = useState(getYear(today));
 
-    const currentMonth = useMemo(() => setMonth(setYear(new Date(), year), month), [month, year]);
-
     const [modal, setModal] = useState(null);
     const [viewMode, setViewMode] = useState('grid');
     const [confirmDel, setConfirmDel] = useState(null);
+    const [transactionModal, setTransactionModal] = useState(null);
     const toast = useToast();
     const { budgetOrder, setBudgetOrder } = useSettingsStore();
 
-    const { data: budgets = [], isLoading } = useBudgets({ month: format(currentMonth, 'MMMM'), year });
+    const { data: budgets = [], isLoading } = useBudgets({ month: month + 1, year });
     const { remove } = useBudgetMutations();
     const fmt = useFormatAmount();
 
@@ -139,6 +146,20 @@ export function Budgets() {
         return sorted;
     }, [budgets, budgetOrder]);
 
+    const budgetSummary = useMemo(() => {
+        const totalBudget = sortedBudgets.reduce((sum, budget) => sum + Number(budget.amount || 0), 0);
+        const totalSpent = sortedBudgets.reduce((sum, budget) => sum + Number(budget.spent || 0), 0);
+        const totalRemaining = Math.max(totalBudget - totalSpent, 0);
+        const totalPct = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
+
+        return {
+            totalBudget,
+            totalSpent,
+            totalRemaining,
+            totalPct,
+        };
+    }, [sortedBudgets]);
+
     const handleDragEnd = (result) => {
         if (!result.destination) return;
         const items = Array.from(sortedBudgets);
@@ -148,8 +169,24 @@ export function Budgets() {
     };
 
     const handleDelete = async () => {
-        try { await remove.mutateAsync(confirmDel); toast('Budget deleted', 'success'); } catch { toast('Error', 'error'); }
+        try { await remove.mutateAsync(confirmDel); toast('Budget deleted', 'success'); } catch (err) { toast(getErrorMessage(err, 'Error deleting budget'), 'error'); }
         setConfirmDel(null);
+    };
+
+    const openBudgetExpense = (budget) => {
+        setTransactionModal({
+            amount: '',
+            type: 'expense',
+            walletId: '',
+            categoryId: budget.category_id || budget.categoryId || '',
+            contactId: '',
+            tripId: '',
+            description: '',
+            date: toISODate(new Date()),
+            isRecurring: false,
+            isDebt: false,
+            toWalletId: '',
+        });
     };
 
     return (
@@ -168,7 +205,7 @@ export function Budgets() {
                             variant="flat"
                         >
                             {Array.from({ length: 12 }).map((_, i) => (
-                                <SelectItem key={i} textValue={format(new Date(2000, i, 1), 'MMMM')}>{format(new Date(2000, i, 1), 'MMMM')}</SelectItem>
+                                <SelectItem key={String(i)} textValue={format(new Date(2000, i, 1), 'MMMM')}>{format(new Date(2000, i, 1), 'MMMM')}</SelectItem>
                             ))}
                         </HeroSelect>
                         <HeroSelect 
@@ -179,7 +216,7 @@ export function Budgets() {
                         >
                             {Array.from({ length: 5 }).map((_, i) => {
                                 const y = new Date().getFullYear() - 2 + i;
-                                return <SelectItem key={y} textValue={String(y)}>{y}</SelectItem>;
+                                return <SelectItem key={String(y)} textValue={String(y)}>{y}</SelectItem>;
                             })}
                         </HeroSelect>
                     </div>
@@ -200,6 +237,45 @@ export function Budgets() {
                     </Button>
                 </div>
             </div>
+
+            {!isLoading && sortedBudgets.length > 0 && (
+                <GlassCard className="px-5 py-4">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-neutral-500">
+                                Budget Overview
+                            </p>
+                            <h2 className="mt-2 text-xl font-black text-neutral-900 dark:text-white">
+                                {fmt(budgetSummary.totalSpent)} / {fmt(budgetSummary.totalBudget)}
+                            </h2>
+                            <p className="mt-1 text-sm text-neutral-500">
+                                You have used {budgetSummary.totalPct}% of your full budget pool this period.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+                            <div className="rounded-2xl border border-black/5 bg-neutral-100/70 px-4 py-3 dark:border-white/10 dark:bg-neutral-900/70">
+                                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-neutral-500">Total budget</p>
+                                <p className="mt-2 text-lg font-black text-neutral-900 dark:text-white">
+                                    {fmt(budgetSummary.totalBudget)}
+                                </p>
+                            </div>
+                            <div className="rounded-2xl border border-black/5 bg-neutral-100/70 px-4 py-3 dark:border-white/10 dark:bg-neutral-900/70">
+                                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-neutral-500">Spent</p>
+                                <p className="mt-2 text-lg font-black text-neutral-900 dark:text-white">
+                                    {fmt(budgetSummary.totalSpent)}
+                                </p>
+                            </div>
+                            <div className="rounded-2xl border border-black/5 bg-neutral-100/70 px-4 py-3 dark:border-white/10 dark:bg-neutral-900/70">
+                                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-neutral-500">Remaining</p>
+                                <p className="mt-2 text-lg font-black text-neutral-900 dark:text-white">
+                                    {fmt(budgetSummary.totalRemaining)}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </GlassCard>
+            )}
 
             {isLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -231,7 +307,10 @@ export function Budgets() {
                                                     <GlassCard className={`relative space-y-6 group ${snapshot.isDragging ? 'shadow-2xl scale-105 rotate-1 ring-4 ring-primary/20' : ''}`}>
                                                         <div className="flex items-start justify-between">
                                                             <div className="flex items-center gap-2">
-                                                                <div {...provided.dragHandleProps} className="cursor-grab opacity-0 group-hover:opacity-100 transition-opacity text-neutral-400">
+                                                                <div
+                                                                    {...provided.dragHandleProps}
+                                                                    className="cursor-grab rounded-full border border-black/5 bg-neutral-100/80 p-1 text-neutral-400 transition-colors hover:text-neutral-600 dark:border-white/10 dark:bg-neutral-900/80 dark:hover:text-neutral-200"
+                                                                >
                                                                     <EllipsisVerticalIcon className="h-5 w-5" />
                                                                 </div>
                                                                 <div>
@@ -245,6 +324,9 @@ export function Budgets() {
                                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                 <Button isIconOnly size="sm" variant="light" onClick={() => setModal(b)}>
                                                                     <PencilIcon className="h-4 w-4 text-neutral-400" />
+                                                                </Button>
+                                                                <Button isIconOnly size="sm" variant="light" color="primary" onClick={() => openBudgetExpense(b)}>
+                                                                    <PlusIcon className="h-4 w-4" />
                                                                 </Button>
                                                                 <Button isIconOnly size="sm" variant="light" color="danger" onClick={() => setConfirmDel(b.id)}>
                                                                     <TrashIcon className="h-4 w-4 text-neutral-400 hover:text-danger" />
@@ -345,6 +427,9 @@ export function Budgets() {
                                                     <Button isIconOnly size="sm" variant="light" onClick={() => setModal(b)}>
                                                         <PencilIcon className="h-4 w-4 text-neutral-400" />
                                                     </Button>
+                                                    <Button isIconOnly size="sm" variant="light" color="primary" onClick={() => openBudgetExpense(b)}>
+                                                        <PlusIcon className="h-4 w-4" />
+                                                    </Button>
                                                     <Button isIconOnly size="sm" variant="light" color="danger" onClick={() => setConfirmDel(b.id)}>
                                                         <TrashIcon className="h-4 w-4 text-neutral-400 hover:text-danger" />
                                                     </Button>
@@ -361,6 +446,7 @@ export function Budgets() {
 
             {modal === 'new' && <BudgetModal open onClose={() => setModal(null)} />}
             {modal && modal !== 'new' && <BudgetModal open onClose={() => setModal(null)} budget={modal} />}
+            {transactionModal && <TransactionModal open onClose={() => setTransactionModal(null)} transaction={transactionModal} />}
             <ConfirmModal open={!!confirmDel} title="Delete Budget" description="This budget will be deleted. Transactions will not be affected." onConfirm={handleDelete} onCancel={() => setConfirmDel(null)} />
         </div>
     );

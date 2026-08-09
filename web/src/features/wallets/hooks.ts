@@ -2,6 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { nowISO, useDevMockData } from '@/features/shared/api';
 import { applyTransactionsToWallets } from './balance';
+import { parseMoneyInput } from '@/lib/money';
+import { fetchAllTransactions } from '@/lib/transactionsFetch';
+import { getRequiredUser } from '@/lib/auth';
 
 // ── Wallets ─────────────────────────────────────────────────────
 export const useWallets = () => useQuery({
@@ -25,8 +28,7 @@ export const useCalculatedWallets = () => useQuery({
         }
         const { data: wallets, error: accError } = await supabase.from('wallets').select('*').is('deleted_at', null).order('name');
         if (accError) throw accError;
-        const { data: txs, error: txError } = await supabase.from('transactions').select('amount, type, wallet_id, to_wallet_id');
-        if (txError) throw txError;
+        const txs = await fetchAllTransactions('amount, type, wallet_id, to_wallet_id');
         return applyTransactionsToWallets(wallets || [], txs || []);
     },
 });
@@ -40,8 +42,8 @@ export const useWalletMutations = () => {
     };
     const create = useMutation({
         mutationFn: async (d: any) => {
-            const { data: { user } } = await supabase.auth.getUser();
-            const { data, error } = await supabase.from('wallets').insert({ user_id: user.id, name: d.name, type: d.type || 'checking', balance: parseFloat(d.balance) || 0 }).select().single();
+            const user = await getRequiredUser('You must be signed in to create a wallet.');
+            const { data, error } = await supabase.from('wallets').insert({ user_id: user.id, name: d.name, type: d.type || 'checking', balance: parseMoneyInput(d.balance) }).select().single();
             if (error) throw error; return data;
         }, onSuccess: inv,
     });

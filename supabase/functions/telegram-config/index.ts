@@ -2,8 +2,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 
 type RequestBody = {
-  action?: "status" | "create_link_code" | "update_default_wallet" | "unlink";
+  action?: "status" | "create_link_code" | "update_default_wallet" | "update_weekly_alerts" | "update_weekly_alert_preferences" | "send_weekly_preview" | "unlink";
   defaultWalletId?: string;
+  weeklyAlertsEnabled?: boolean;
+  weeklyAlertBudgetEnabled?: boolean;
+  weeklyAlertGoalEnabled?: boolean;
+  weeklyAlertInactivityEnabled?: boolean;
+  weeklyAlertInactivityDays?: number;
 };
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -65,7 +70,7 @@ Deno.serve(async (req) => {
       const { data: link, error } = await serviceClient
         .from("telegram_user_links")
         .select(
-          "id, telegram_user_id, chat_id, username, first_name, last_name, default_wallet_id, created_at, updated_at, wallet:wallets(id,name)",
+          "id, telegram_user_id, chat_id, username, first_name, last_name, default_wallet_id, weekly_alerts_enabled, weekly_alerts_budget_enabled,weekly_alerts_goal_enabled,weekly_alerts_inactivity_enabled,weekly_alerts_inactivity_days, weekly_alerts_last_sent_at, created_at, updated_at, wallet:wallets(id,name)",
         )
         .eq("user_id", user.id)
         .maybeSingle();
@@ -118,6 +123,71 @@ Deno.serve(async (req) => {
         .eq("user_id", user.id);
       if (error) throw error;
       return jsonResponse({ ok: true, wallet });
+    }
+
+    if (action === "update_weekly_alerts") {
+      const { error } = await serviceClient
+        .from("telegram_user_links")
+        .update({
+          weekly_alerts_enabled: body.weeklyAlertsEnabled !== false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return jsonResponse({ ok: true, weeklyAlertsEnabled: body.weeklyAlertsEnabled !== false });
+    }
+
+    if (action === "update_weekly_alert_preferences") {
+      const inactivityDays = Math.max(
+        1,
+        Number(body.weeklyAlertInactivityDays || 7),
+      );
+      const { error } = await serviceClient
+        .from("telegram_user_links")
+        .update({
+          weekly_alerts_budget_enabled: body.weeklyAlertBudgetEnabled !== false,
+          weekly_alerts_goal_enabled: body.weeklyAlertGoalEnabled !== false,
+          weekly_alerts_inactivity_enabled: body.weeklyAlertInactivityEnabled === true,
+          weekly_alerts_inactivity_days: inactivityDays,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return jsonResponse({
+        ok: true,
+        weeklyAlertBudgetEnabled: body.weeklyAlertBudgetEnabled !== false,
+        weeklyAlertGoalEnabled: body.weeklyAlertGoalEnabled !== false,
+        weeklyAlertInactivityEnabled: body.weeklyAlertInactivityEnabled === true,
+        weeklyAlertInactivityDays: inactivityDays,
+      });
+    }
+
+    if (action === "send_weekly_preview") {
+      const authHeader = `Bearer ${serviceRoleKey}`;
+      const response = await fetch(`${supabaseUrl}/functions/v1/telegram-weekly-alerts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authHeader,
+        },
+        body: JSON.stringify({
+          dryRun: false,
+          userId: user.id,
+          source: "settings-preview",
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.ok === false) {
+        throw new Error(payload?.error || "Could not send weekly preview.");
+      }
+      if (payload?.sent === 0) {
+        return jsonResponse({
+          ok: true,
+          sent: 0,
+          message: "No alert was sent because there are no budgets or goals that need attention right now.",
+        });
+      }
+      return jsonResponse({ ok: true, sent: payload?.sent || 0 });
     }
 
     if (action === "unlink") {

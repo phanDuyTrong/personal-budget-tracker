@@ -1,14 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { nowISO } from '@/features/shared/api';
+import { sortTransactionsForDisplay, TRANSACTION_SORT_MODES } from '@/features/transactions/sort';
+import { parseMoneyInput } from '@/lib/money';
+import { getRequiredUser } from '@/lib/auth';
 
 // ── Transactions ─────────────────────────────────────────────────
 export const useTransactions = (params: Record<string, any> = {}) => useQuery({
     queryKey: ['transactions', params],
     queryFn: async () => {
         let query = supabase.from('transactions').select('*, wallet:wallets!wallet_id(id,name), to_wallet:wallets!to_wallet_id(id,name), category:categories(id,name,icon,color,parent_id), splits:transaction_splits(*, category:categories(id,name,icon,color)), contact:contacts(id,name)', { count: 'exact' });
-        if (params.sortDate === 'oldest') query = query.order('created_at', { ascending: true }).order('date', { ascending: true });
-        else query = query.order('created_at', { ascending: false }).order('date', { ascending: false });
+        if (params.sortDate === TRANSACTION_SORT_MODES.OLDEST) {
+            query = query.order('date', { ascending: true }).order('created_at', { ascending: true });
+        } else if (params.sortDate === TRANSACTION_SORT_MODES.UPDATED_NEWEST) {
+            query = query
+                .order('updated_at', { ascending: false, nullsFirst: false })
+                .order('date', { ascending: false })
+                .order('created_at', { ascending: false });
+        } else if (params.sortDate === TRANSACTION_SORT_MODES.UPDATED_OLDEST) {
+            query = query
+                .order('updated_at', { ascending: true, nullsFirst: false })
+                .order('date', { ascending: true })
+                .order('created_at', { ascending: true });
+        } else {
+            query = query.order('date', { ascending: false }).order('created_at', { ascending: false });
+        }
         if (params.date_from) query = query.gte('date', params.date_from);
         if (params.date_to) query = query.lte('date', params.date_to);
         if (params.category_ids?.length) query = query.in('category_id', params.category_ids);
@@ -25,7 +41,13 @@ export const useTransactions = (params: Record<string, any> = {}) => useQuery({
         query = query.range(from, from + limit - 1);
         const { data, error, count } = await query;
         if (error) throw error;
-        return { data: data || [], total: count || 0, page, limit, totalPages: Math.ceil((count || 0) / limit) };
+        return {
+            data: sortTransactionsForDisplay(data || [], params.sortDate),
+            total: count || 0,
+            page,
+            limit,
+            totalPages: Math.ceil((count || 0) / limit),
+        };
     },
 });
 
@@ -50,11 +72,16 @@ export const useTransactionMutations = () => {
         qc.invalidateQueries({ queryKey: ['wallets'] });
         qc.invalidateQueries({ queryKey: ['calculated-wallets'] });
         qc.invalidateQueries({ queryKey: ['dashboard'] });
+        qc.invalidateQueries({ queryKey: ['budgets'] });
+        qc.invalidateQueries({ queryKey: ['goals'] });
+        qc.invalidateQueries({ queryKey: ['trips'] });
+        qc.invalidateQueries({ queryKey: ['contacts'] });
+        qc.invalidateQueries({ queryKey: ['categories'] });
     };
     const create = useMutation({
         mutationFn: async (d: any) => {
-            const { data: { user } } = await supabase.auth.getUser();
-            const amt = parseFloat(d.amount);
+            const user = await getRequiredUser('You must be signed in to create a transaction.');
+            const amt = parseMoneyInput(d.amount);
             const { data: tx, error } = await supabase.from('transactions').insert({ user_id: user.id, wallet_id: d.walletId || null, category_id: d.categoryId || null, contact_id: d.contactId || null, trip_id: d.tripId || null, amount: amt, type: d.type, description: d.description || null, date: d.date, is_recurring: !!d.isRecurring, is_debt: !!d.isDebt, to_wallet_id: d.type === 'transfer' ? (d.toWalletId || null) : null }).select().single();
             if (error) throw error; return tx;
         }, onSuccess: invAll,
@@ -62,7 +89,7 @@ export const useTransactionMutations = () => {
     const update = useMutation({
         mutationFn: async ({ id, ...d }: any) => {
             const { data: existing } = await supabase.from('transactions').select('*').eq('id', id).single();
-            const amt = d.amount !== undefined ? parseFloat(d.amount) : Number(existing.amount);
+            const amt = d.amount !== undefined ? parseMoneyInput(d.amount) : Number(existing.amount);
             const newType = d.type || existing.type;
             const { data: tx, error } = await supabase.from('transactions').update({ wallet_id: d.walletId !== undefined ? (d.walletId || null) : existing.wallet_id, category_id: d.categoryId !== undefined ? (d.categoryId || null) : existing.category_id, contact_id: d.contactId !== undefined ? (d.contactId || null) : existing.contact_id, trip_id: d.tripId !== undefined ? (d.tripId || null) : existing.trip_id, amount: amt, type: newType, description: d.description !== undefined ? d.description : existing.description, date: d.date || existing.date, is_reviewed: d.isReviewed !== undefined ? d.isReviewed : existing.is_reviewed, is_debt: d.isDebt !== undefined ? d.isDebt : existing.is_debt, to_wallet_id: newType === 'transfer' ? (d.toWalletId !== undefined ? (d.toWalletId || null) : existing.to_wallet_id) : null, updated_at: nowISO() }).eq('id', id).select().single();
             if (error) throw error; return tx;
@@ -96,7 +123,7 @@ export const useTransactionMutations = () => {
     const bulkDuplicate = useMutation({
         mutationFn: async ({ transactions, date }: { transactions: any[]; date: string }) => {
             if (transactions.length === 0) return;
-            const { data: { user } } = await supabase.auth.getUser();
+            const user = await getRequiredUser('You must be signed in to duplicate transactions.');
             const txRows = transactions.map((tx) => ({
                 user_id: user.id,
                 wallet_id: tx.wallet_id,
@@ -195,7 +222,7 @@ export const useTransactionMutations = () => {
     const setSplits = useMutation({
         mutationFn: async ({ id, splits }: any) => {
             await supabase.from('transaction_splits').delete().eq('transaction_id', id);
-            if (splits.length > 0) { const { error } = await supabase.from('transaction_splits').insert(splits.map((s: any) => ({ transaction_id: id, category_id: s.categoryId || null, amount: parseFloat(s.amount), note: s.note || null }))); if (error) throw error; }
+            if (splits.length > 0) { const { error } = await supabase.from('transaction_splits').insert(splits.map((s: any) => ({ transaction_id: id, category_id: s.categoryId || null, amount: parseMoneyInput(s.amount), note: s.note || null }))); if (error) throw error; }
         }, onSuccess: invAll,
     });
     const toggleReview = useMutation({

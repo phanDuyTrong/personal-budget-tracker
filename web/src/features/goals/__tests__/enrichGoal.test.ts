@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { enrichGoal } from '../money';
+import { enrichGoal, resolveGoalStatus } from '../money';
 
 describe('enrichGoal', () => {
     it('calculates progress, remaining amount, days left, and required monthly saving', () => {
@@ -29,5 +29,11 @@ describe('enrichGoal', () => {
         expect(goal.remaining).toBe(0);
         expect(goal.requiredMonthlySaving).toBeNull();
         expect(goal.daysLeft).toBeNull();
+    });
+
+    it('derives goal status from the final target and current amounts', () => {
+        expect(resolveGoalStatus({ targetAmount: 1000, currentAmount: 400 })).toBe('active');
+        expect(resolveGoalStatus({ targetAmount: 1000, currentAmount: 1000 })).toBe('completed');
+        expect(resolveGoalStatus({ targetAmount: 0, currentAmount: 500, fallbackStatus: 'paused' })).toBe('paused');
     });
 });

@@ -6,6 +6,7 @@ import { useWallets } from '@/features/wallets/hooks';
 import { useCategories } from '@/features/categories/hooks';
 import { useContacts } from '@/features/contacts/hooks';
 import { useTransactionMutations } from '@/features/transactions/hooks';
+import { TRANSACTION_SORT_MODES, sortTransactionsForDisplay } from '@/features/transactions/sort';
 import { TransactionModal } from '@/pages/Transactions';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { 
@@ -28,37 +29,24 @@ import {
     ResponsiveContainer,
 } from 'recharts';
 
-import { 
-    Button,
-    Input,
-    Select,
-    SelectItem,
-    Autocomplete,
-    AutocompleteItem,
-    Skeleton,
-    Modal as HeroModal,
-    ModalContent,
-    ModalHeader,
-    ModalBody,
-    ModalFooter,
-    Table,
-    TableHeader,
-    TableColumn,
-    TableBody,
-    TableRow,
-    TableCell,
-    Chip,
-    Tooltip,
-} from "@heroui/react";
+import { Button } from "@heroui/button";
+import { Input } from "@heroui/input";
+import { Select, SelectItem } from "@heroui/select";
+import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
+import { Skeleton } from "@heroui/skeleton";
+import { Modal as HeroModal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
+import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/table";
+import { Chip } from "@heroui/chip";
+import { Tooltip } from "@heroui/tooltip";
 
 import { 
     AmountDisplay, 
-    useToast,
     ConfirmModal,
     GlassCard,
     EmptyState,
     DatePicker as CustomDatePicker,
 } from '@/components/ui';
+import { useToast } from '@/components/ui/useToast';
 import { viFilter } from '@/lib/filters';
 import { toISODate } from '@/lib/date';
 
@@ -72,6 +60,10 @@ const normalizeSearchText = (value = '') =>
         .replace(/Đ/g, 'D')
         .toLowerCase()
         .trim();
+
+function getTravelErrorMessage(error, fallback) {
+    return error instanceof Error && error.message ? error.message : fallback;
+}
 
 function flattenCategories(categories) {
     const flat = [];
@@ -201,7 +193,7 @@ function TripDetailView({ trip, onBack, formatAmount }) {
         categoryId: 'all',
         walletId: 'all',
         contactId: 'all',
-        sortDate: 'newest',
+        sortDate: TRANSACTION_SORT_MODES.NEWEST,
     });
     const [txModal, setTxModal] = useState(null);
     const [confirmTxDel, setConfirmTxDel] = useState(null);
@@ -239,17 +231,7 @@ function TripDetailView({ trip, onBack, formatAmount }) {
                 (filters.contactId === 'all' || tx.contact_id === filters.contactId)
             );
         });
-        return [...rows].sort((a, b) => {
-            const aSortTime = new Date(a.created_at || a.date).getTime();
-            const bSortTime = new Date(b.created_at || b.date).getTime();
-            const createdDiff = aSortTime - bSortTime;
-            if (createdDiff !== 0) {
-                return filters.sortDate === 'oldest' ? createdDiff : -createdDiff;
-            }
-
-            const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
-            return filters.sortDate === 'oldest' ? dateDiff : -dateDiff;
-        });
+        return sortTransactionsForDisplay(rows, filters.sortDate);
     }, [expenseTransactions, filters, selectedCategoryIds]);
 
     const kpis = useMemo(() => {
@@ -306,8 +288,8 @@ function TripDetailView({ trip, onBack, formatAmount }) {
         try {
             await remove.mutateAsync(confirmTxDel);
             toast('Đã xóa giao dịch.', 'success');
-        } catch {
-            toast('Lỗi khi xóa giao dịch.', 'error');
+        } catch (error) {
+            toast(getTravelErrorMessage(error, 'Lỗi khi xóa giao dịch.'), 'error');
         }
         setConfirmTxDel(null);
     };
@@ -460,8 +442,10 @@ function TripDetailView({ trip, onBack, formatAmount }) {
                             onSelectionChange={(keys) => updateFilter('sortDate', Array.from(keys)[0])}
                             variant="flat"
                         >
-                            <SelectItem key="newest">Mới nhất</SelectItem>
-                            <SelectItem key="oldest">Cũ nhất</SelectItem>
+                            <SelectItem key={TRANSACTION_SORT_MODES.NEWEST}>Mới nhất</SelectItem>
+                            <SelectItem key={TRANSACTION_SORT_MODES.OLDEST}>Cũ nhất</SelectItem>
+                            <SelectItem key={TRANSACTION_SORT_MODES.UPDATED_NEWEST}>Cập nhật gần nhất</SelectItem>
+                            <SelectItem key={TRANSACTION_SORT_MODES.UPDATED_OLDEST}>Cập nhật xa nhất</SelectItem>
                         </Select>
                     </div>
 
@@ -588,6 +572,10 @@ export function TravelTracker() {
             toast('Vui lòng điền đầy đủ thông tin.', 'error');
             return;
         }
+        if (new Date(form.endDate) < new Date(form.startDate)) {
+            toast('Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.', 'error');
+            return;
+        }
         try {
             if (isEditMode) {
                 await update.mutateAsync({ id: editingTrip.id, ...form });
@@ -597,8 +585,8 @@ export function TravelTracker() {
                 toast('Tạo chuyến đi thành công!', 'success');
             }
             onOpenChange(false);
-        } catch {
-            toast('Có lỗi xảy ra, thử lại sau.', 'error');
+        } catch (error) {
+            toast(getTravelErrorMessage(error, 'Có lỗi xảy ra, thử lại sau.'), 'error');
         }
     };
 
@@ -607,8 +595,8 @@ export function TravelTracker() {
             await remove.mutateAsync(confirmDel);
             toast('Đã xóa chuyến đi.', 'success');
             if (selectedTrip?.id === confirmDel) setSelectedTrip(null);
-        } catch {
-            toast('Lỗi khi xóa.', 'error');
+        } catch (error) {
+            toast(getTravelErrorMessage(error, 'Lỗi khi xóa.'), 'error');
         }
         setConfirmDel(null);
     };

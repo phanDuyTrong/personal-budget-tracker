@@ -1,88 +1,18 @@
 // ── UI Bridge: wraps HeroUI v3 compound components with familiar APIs ──
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React from 'react';
 export { DatePicker } from './DatePicker';
 export { ErrorBoundary } from './ErrorBoundary';
 import { DynamicIcon } from './DynamicIcon';
 export { DynamicIcon };
+export { ToastProvider } from './Toast';
 
-import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { useFormatAmount } from '@/hooks/useTranslation';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { 
-    Button as HeroButton, 
-    Input as HeroInput, 
-    Modal as HeroModal, 
-    ModalContent, 
-    ModalHeader, 
-    ModalBody, 
-    ModalFooter,
-
-    Skeleton as HeroSkeleton,
-    Chip
-} from "@heroui/react";
-
-// ── Toast ──────────────────────────────────────────────────────────
-const ToastCtx = createContext(null);
-export function ToastProvider({ children }) {
-    const [toasts, setToasts] = useState([]);
-    const add = useCallback((message, type = 'info', options = 3500) => {
-        const duration = typeof options === 'number' ? options : (options.duration ?? 3500);
-        const id = Math.random().toString(36);
-        setToasts(t => [...t, { id, message, type, actionLabel: options.actionLabel, onAction: options.onAction }]);
-        setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), duration);
-    }, []);
-    // FIX: was setToasts(t => setToasts(...)) — double nesting corrupted state
-    const remove = (id) => setToasts(prev => prev.filter(x => x.id !== id));
-
-    const iconColorMap = {
-        success: { bg: 'rgba(34,197,94,0.12)', color: '#22c55e' },
-        error:   { bg: 'rgba(239,68,68,0.12)',  color: '#ef4444' },
-        info:    { bg: 'rgba(59,130,246,0.12)', color: '#3b82f6' },
-    };
-    const icons = { 
-        success: <CheckCircleIcon className="h-5 w-5" />, 
-        error: <ExclamationCircleIcon className="h-5 w-5" />, 
-        info: <InformationCircleIcon className="h-5 w-5" />,
-    };
-
-    return (
-        <ToastCtx.Provider value={add}>
-            {children}
-            <div className="fixed bottom-6 right-6 z-[100] space-y-3 max-w-sm w-full pointer-events-none">
-                {toasts.map(t => {
-                    const { bg, color } = iconColorMap[t.type] || iconColorMap.info;
-                    return (
-                        <div 
-                            key={t.id} 
-                            className="pointer-events-auto flex items-center gap-4 p-4 rounded-[1.5rem] shadow-2xl glass-modal backdrop-blur-2xl animate-in slide-in-from-right-full duration-300"
-                        >
-                            {/* FIX: use inline style instead of dynamic Tailwind class (not compiled in v4) */}
-                            <div style={{ background: bg, color }} className="p-2 rounded-xl shrink-0">
-                                {icons[t.type]}
-                            </div>
-                            <span className="flex-1 font-bold text-sm text-neutral-900 dark:text-white tracking-tight">{t.message}</span>
-                            {t.actionLabel && (
-                                <button
-                                    onClick={() => {
-                                        t.onAction?.();
-                                        remove(t.id);
-                                    }}
-                                    className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-black text-white transition-colors hover:bg-primary dark:bg-white dark:text-neutral-950"
-                                >
-                                    {t.actionLabel}
-                                </button>
-                            )}
-                            <button onClick={() => remove(t.id)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors shrink-0">
-                                <XMarkIcon className="h-5 w-5" />
-                            </button>
-                        </div>
-                    );
-                })}
-            </div>
-        </ToastCtx.Provider>
-    );
-}
-export const useToast = () => useContext(ToastCtx);
+import { Button as HeroButton } from "@heroui/button";
+import { Input as HeroInput, Textarea as HeroTextarea } from "@heroui/input";
+import { Modal as HeroModal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/modal";
+import { Skeleton as HeroSkeleton } from "@heroui/skeleton";
+import { Chip } from "@heroui/chip";
 
 // ── ConfirmModal ───────────────────────────────────────────────────
 export function ConfirmModal({ open, title, description, confirmLabel = 'Delete', onConfirm, onCancel, destructive = true }) {
@@ -258,7 +188,6 @@ export function AmountInput({ value, onChange, className = '', ...props }) {
 }
 
 // ── Textarea ──────────────────────────────────────────────────────
-import { Textarea as HeroTextarea } from "@heroui/react";
 export function Textarea({ className = '', ...props }) {
     return (
         <HeroTextarea

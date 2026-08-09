@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { getRequiredUser } from '@/lib/auth';
 
 // ── Trips ────────────────────────────────────────────────────────
 export const useTrips = () => useQuery({
@@ -47,11 +48,13 @@ export const useTripMutations = () => {
     const qc = useQueryClient();
     const inv = () => {
         qc.invalidateQueries({ queryKey: ['trips'] });
+        qc.invalidateQueries({ queryKey: ['trips', 'with-cost'] });
         qc.invalidateQueries({ queryKey: ['transactions'] });
+        qc.invalidateQueries({ queryKey: ['dashboard'] });
     };
     const create = useMutation({
         mutationFn: async (d: any) => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const user = await getRequiredUser('You must be signed in to create a trip.');
             const { data, error } = await supabase.from('trips').insert({ 
                 user_id: user.id, 
                 name: d.name,
@@ -76,7 +79,11 @@ export const useTripMutations = () => {
     const remove = useMutation({
         mutationFn: async (id: string) => {
             // Unlink transactions before deleting trip
-            await supabase.from('transactions').update({ trip_id: null }).eq('trip_id', id);
+            const { error: unlinkError } = await supabase
+                .from('transactions')
+                .update({ trip_id: null })
+                .eq('trip_id', id);
+            if (unlinkError) throw unlinkError;
             const { error } = await supabase.from('trips').delete().eq('id', id);
             if (error) throw error;
         },
